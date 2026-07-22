@@ -6,7 +6,9 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/alex60217101990/qdf-hook/internal/analytics"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
@@ -15,6 +17,8 @@ import (
 // It records CompactedAt in the session state so subsequent reads know
 // to serve full content (since compaction erased the context).
 func HandlePreCompact(r io.Reader, w io.Writer) error {
+	start := time.Now()
+
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
@@ -31,6 +35,14 @@ func HandlePreCompact(r io.Reader, w io.Writer) error {
 		fmt.Fprintf(os.Stderr, "qdf-hook: save state: %v\n", err)
 	}
 
+	_ = analytics.Record(analytics.Event{
+		TS:     time.Now().UnixNano(),
+		SID:    inp.SessionID,
+		Hook:   "precompact",
+		Action: "precompact",
+		DurNS:  time.Since(start).Nanoseconds(),
+	})
+
 	// PreCompact hook doesn't replace tool output — just updates state.
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }
@@ -39,6 +51,8 @@ func HandlePreCompact(r io.Reader, w io.Writer) error {
 // It injects a manifest of previously-read files into the fresh context,
 // so Claude knows what's been read without re-reading.
 func HandlePostCompact(r io.Reader, w io.Writer) error {
+	start := time.Now()
+
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
@@ -50,6 +64,16 @@ func HandlePostCompact(r io.Reader, w io.Writer) error {
 	}
 
 	manifest := buildManifest(state)
+
+	_ = analytics.Record(analytics.Event{
+		TS:       time.Now().UnixNano(),
+		SID:      inp.SessionID,
+		Hook:     "postcompact",
+		Action:   "postcompact",
+		BytesOut: len(manifest),
+		DurNS:    time.Since(start).Nanoseconds(),
+	})
+
 	return protocol.EncodeOutput(w, protocol.Replace(manifest))
 }
 
@@ -57,6 +81,8 @@ func HandlePostCompact(r io.Reader, w io.Writer) error {
 // If there is an existing state file from a previous compacted session,
 // it injects the file manifest. Otherwise it's a no-op.
 func HandleSessionStart(r io.Reader, w io.Writer) error {
+	start := time.Now()
+
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
@@ -69,6 +95,15 @@ func HandleSessionStart(r io.Reader, w io.Writer) error {
 	}
 
 	manifest := buildManifest(state)
+
+	_ = analytics.Record(analytics.Event{
+		TS:     time.Now().UnixNano(),
+		SID:    inp.SessionID,
+		Hook:   "sessionstart",
+		Action: "session-start",
+		DurNS:  time.Since(start).Nanoseconds(),
+	})
+
 	return protocol.EncodeOutput(w, protocol.Replace(manifest))
 }
 

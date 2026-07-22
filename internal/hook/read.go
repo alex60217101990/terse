@@ -8,7 +8,9 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/alex60217101990/qdf-hook/internal/analytics"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
@@ -17,6 +19,8 @@ import (
 // It reads the hook JSON from r, applies delta/unchanged logic, and writes
 // the hook output JSON to w.
 func HandleRead(r io.Reader, w io.Writer) error {
+	start := time.Now()
+
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
@@ -31,6 +35,12 @@ func HandleRead(r io.Reader, w io.Writer) error {
 	if err := json.Unmarshal(inp.ToolInput, &ti); err != nil || ti.FilePath == "" {
 		// Cannot parse path — pass through.
 		return protocol.EncodeOutput(w, protocol.Passthrough())
+	}
+
+	// Stat the file to capture its modification time.
+	var modTime int64
+	if info, err := os.Stat(ti.FilePath); err == nil {
+		modTime = info.ModTime().UnixNano()
 	}
 
 	content := []byte(inp.ToolResponse.Content)
@@ -51,31 +61,54 @@ func HandleRead(r io.Reader, w io.Writer) error {
 	entry, seen := state.Files[ti.FilePath]
 
 	var out *protocol.HookOutput
+	var action string
 
 	switch {
 	case !seen || !state.SeenAfterCompact(ti.FilePath):
 		// First read (or first read after compaction) — serve full content.
 		out = serveFullContent(ti.FilePath, hash, content, inp.ToolResponse.Content)
+		action = "full"
 
 	case entry.Hash == hash:
 		// Same content — serve §unchanged§ marker.
 		out = serveUnchanged(ti.FilePath, hash, entry.Turn)
+		action = "unchanged"
 
 	default:
 		// Content changed — serve §delta§ with unified diff.
 		out = serveDelta(ti.FilePath, hash, entry.Content, content)
+		action = "delta"
 	}
 
-	// Update cache entry.
-	state.Files[ti.FilePath] = cache.FileEntry{
-		Hash:    hash,
-		Turn:    state.Turn,
-		Content: content,
-	}
+	// Update cache entry with read tracking fields.
+	updatedEntry := state.Files[ti.FilePath]
+	updatedEntry.Hash = hash
+	updatedEntry.Turn = state.Turn
+	updatedEntry.Content = content
+	updatedEntry.ReadCount++
+	updatedEntry.LastReadAt = time.Now().Unix()
+	updatedEntry.ModTime = modTime
+	state.Files[ti.FilePath] = updatedEntry
 
 	if err := cache.Save(inp.SessionID, state); err != nil {
 		fmt.Fprintf(os.Stderr, "qdf-hook: save state: %v\n", err)
 	}
+
+	// Record analytics (best-effort — never block the hook).
+	var bytesOut int
+	if out.HookSpecificOutput != nil {
+		bytesOut = len(out.HookSpecificOutput.UpdatedToolOutput)
+	}
+	_ = analytics.Record(analytics.Event{
+		TS:       time.Now().UnixNano(),
+		SID:      inp.SessionID,
+		Hook:     "read",
+		Action:   action,
+		BytesIn:  len(content),
+		BytesOut: bytesOut,
+		DurNS:    time.Since(start).Nanoseconds(),
+	})
+
 	return protocol.EncodeOutput(w, out)
 }
 

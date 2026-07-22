@@ -3,7 +3,9 @@ package hook
 import (
 	"fmt"
 	"io"
+	"time"
 
+	"github.com/alex60217101990/qdf-hook/internal/analytics"
 	"github.com/alex60217101990/qdf-hook/internal/detect"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 	"github.com/alex60217101990/qdf-hook/internal/summary"
@@ -16,6 +18,8 @@ const minSummaryRatio = 0.5
 // HandleBash processes a PostToolUse hook call for the Bash tool.
 // It tries each detector in priority order; falls back to pass-through.
 func HandleBash(r io.Reader, w io.Writer) error {
+	start := time.Now()
+
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
@@ -30,22 +34,44 @@ func HandleBash(r io.Reader, w io.Writer) error {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
-	// Try detectors in priority order.
+	// Try detectors in priority order; collect action and replacement.
+	var action string
+	var replacement string
+
 	if s := tryJSON(content); s != "" {
-		return protocol.EncodeOutput(w, protocol.Replace(s))
-	}
-	if s := tryGoTest(content); s != "" {
-		return protocol.EncodeOutput(w, protocol.Replace(s))
-	}
-	if s := tryGitLog(content); s != "" {
-		return protocol.EncodeOutput(w, protocol.Replace(s))
-	}
-	if s := tryBench(content); s != "" {
-		return protocol.EncodeOutput(w, protocol.Replace(s))
+		action, replacement = "summary", s
+	} else if s := tryGoTest(content); s != "" {
+		action, replacement = "summary", s
+	} else if s := tryGitLog(content); s != "" {
+		action, replacement = "summary", s
+	} else if s := tryBench(content); s != "" {
+		action, replacement = "summary", s
+	} else {
+		action = "passthrough"
 	}
 
-	// No detector matched — pass through.
-	return protocol.EncodeOutput(w, protocol.Passthrough())
+	var out *protocol.HookOutput
+	var bytesOut int
+	if action == "summary" {
+		out = protocol.Replace(replacement)
+		bytesOut = len(replacement)
+	} else {
+		out = protocol.Passthrough()
+		bytesOut = len(content)
+	}
+
+	// Record analytics (best-effort — never block the hook).
+	_ = analytics.Record(analytics.Event{
+		TS:       time.Now().UnixNano(),
+		SID:      inp.SessionID,
+		Hook:     "bash",
+		Action:   action,
+		BytesIn:  len(content),
+		BytesOut: bytesOut,
+		DurNS:    time.Since(start).Nanoseconds(),
+	})
+
+	return protocol.EncodeOutput(w, out)
 }
 
 func tryJSON(content string) string {
