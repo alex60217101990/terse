@@ -1,0 +1,81 @@
+package hook_test
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/alex60217101990/qdf-hook/internal/hook"
+	"github.com/alex60217101990/qdf-hook/internal/protocol"
+)
+
+func makeWriteInput(t *testing.T, sessionID, path, content string) string {
+	t.Helper()
+	inp := map[string]any{
+		"session_id":    sessionID,
+		"tool_name":     "Write",
+		"tool_input":    map[string]any{"file_path": path},
+		"tool_response": map[string]any{"content": content},
+	}
+	b, _ := json.Marshal(inp)
+	return string(b)
+}
+
+func TestWrite_SmallContent_Passthrough(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var out strings.Builder
+	_ = hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-1", "/f.go", "short")), &out)
+	var resp protocol.HookOutput
+	_ = json.Unmarshal([]byte(out.String()), &resp)
+	if resp.HookSpecificOutput != nil {
+		t.Error("short content should passthrough")
+	}
+}
+
+func TestWrite_LargeContent_Compressed(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	content := strings.Repeat("package main\nfunc foo() {}\n", 20) // 500+ bytes
+	var out strings.Builder
+	_ = hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-2", "/project/main.go", content)), &out)
+	var resp protocol.HookOutput
+	_ = json.Unmarshal([]byte(out.String()), &resp)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("large content should be compressed")
+	}
+	compressed := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(compressed, "[WRITE") {
+		t.Errorf("compressed output should start with [WRITE: %s", compressed)
+	}
+	// Hash prefix must match first 8 bytes of sha256(content).
+	hash := sha256.Sum256([]byte(content))
+	hashHex := fmt.Sprintf("%x", hash[:8])
+	if !strings.Contains(compressed, hashHex) {
+		t.Errorf("compressed output should contain hash %s: %s", hashHex, compressed)
+	}
+}
+
+func TestWrite_CachesContent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	content := bytes.Repeat([]byte("x"), 300)
+	var out strings.Builder
+	err := hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-3", "/a.go", string(content))), &out)
+	if err != nil {
+		t.Fatalf("HandleWrite returned error: %v", err)
+	}
+	// Output must be a valid HookOutput JSON (compressed, not empty).
+	var resp protocol.HookOutput
+	if jsonErr := json.Unmarshal([]byte(out.String()), &resp); jsonErr != nil {
+		t.Fatalf("output is not valid JSON: %v", jsonErr)
+	}
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("content >256 bytes must produce a compressed output")
+	}
+	// The compressed marker must reference the expected path.
+	if !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, "/a.go") {
+		t.Errorf("compressed output must contain the file path: %s",
+			resp.HookSpecificOutput.UpdatedToolOutput)
+	}
+}
