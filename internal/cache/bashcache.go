@@ -14,10 +14,43 @@ import (
 // readOnlyPrefixes are command prefixes considered safe to cache.
 // These commands have no side effects and produce deterministic output
 // for a given working directory state.
+// The cache only ever replaces output when a fresh run is byte-identical to a
+// recent one (see HandleBash), and it runs in PostToolUse *after* the command
+// has already executed. So a prefix here can never suppress a side effect —
+// the worst case for a mis-classified command is a wasted cache write. We
+// still restrict the list to genuinely read-only verbs whose output is stable
+// enough to repeat within the TTL; non-deterministic commands (date, ps, top)
+// simply never hit and are left out to avoid pointless writes.
 var readOnlyPrefixes = []string{
+	// git — read-only porcelain/plumbing.
 	"git status", "git log", "git diff", "git branch", "git show", "git stash list",
-	"ls", "find", "cat", "pwd", "which", "echo",
-	"go env", "go version", "go list",
+	// gh (GitHub CLI) — read-only subcommands only. Mutating verbs (create,
+	// merge, close, edit) and `gh api` (which can carry -X POST/PUT/DELETE)
+	// are deliberately excluded.
+	"gh pr view", "gh pr list", "gh pr diff", "gh pr checks", "gh pr status",
+	"gh issue view", "gh issue list", "gh issue status",
+	"gh repo view", "gh run list", "gh run view",
+	"gh release view", "gh release list", "gh workflow list", "gh workflow view",
+	"gh label list", "gh search", "gh status",
+	// Filesystem inspection.
+	"ls", "find", "cat", "pwd", "which", "echo", "head", "wc", "tree",
+	"stat", "file", "du", "df", "realpath", "basename", "dirname",
+	// Search — large, frequently-repeated output.
+	"grep", "egrep", "fgrep", "rg", "ag",
+	// Content hashing — deterministic by definition.
+	"sha256sum", "shasum", "md5sum",
+	// Go toolchain — read-only queries. `go build`/`go test` are excluded
+	// (they produce artifacts / run code and are non-deterministic).
+	"go env", "go version", "go list", "go doc", "go vet",
+	"go mod why", "go mod graph", "go mod verify",
+	// jq — deterministic transform of its input.
+	"jq",
+	// Container / cluster inspection — read-only queries.
+	"docker ps", "docker images", "docker inspect", "docker version",
+	"kubectl get", "kubectl describe", "kubectl version",
+	// Node package managers — dependency listing.
+	"npm ls", "npm list", "npm view", "pnpm list", "yarn list",
+	// Environment.
 	"printenv", "env",
 }
 
