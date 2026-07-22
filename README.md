@@ -2,7 +2,7 @@
 
 Claude Code hook binary that reduces token consumption by 50–99% on:
 - **Repeated file reads** — a `PreToolUse` interceptor denies re-reading an unchanged file (mtime fast-path); the `PostToolUse` handler returns `§unchanged§` or a unified diff instead of full content
-- **Structured Bash output** — collapses JSON arrays, `go test -v`, `git log`, benchmarks into compact summaries, and returns a `§bash-unchanged§` token when a read-only command repeats byte-identical output within the TTL
+- **Structured Bash output** — collapses JSON arrays, `go test -v`, `git log`, benchmarks into compact summaries; any repeated byte-identical output (any command, any tool, across sessions) collapses to a `§ref:HASH§` token
 - **Write/Edit echoes** — suppresses the full-file echo Claude just wrote, caching it for delta tracking on the next read
 - **Glob listings** — compresses long flat file lists into a directory tree
 - **Post-compaction re-reads** — injects a file-read manifest after compaction so Claude doesn't start from scratch
@@ -46,7 +46,7 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-> **Note:** If you already run sqz for Bash, the two overlap — both compress structured Bash output. Put `qdf-hook bash` *after* sqz in the Bash hooks array, or pick one. qdf-hook's Bash handler is a superset of sqz for structured-data detection and additionally caches read-only command output.
+> **Note:** If you already run sqz for Bash, the two overlap — both compress structured Bash output. Put `qdf-hook bash` *after* sqz in the Bash hooks array, or pick one. qdf-hook's Bash handler is a superset of sqz for structured-data detection and additionally §ref-dedups any repeated byte-identical output.
 
 ## Subcommands
 
@@ -54,14 +54,15 @@ Add to `~/.claude/settings.json`:
 |------------|------|---------|
 | `pretooluse` | PreToolUse (Read) | Deny re-read of an unchanged file (mtime fast-path) |
 | `read` | PostToolUse (Read) | `§unchanged§` / unified-diff compression of file content |
-| `bash` | PostToolUse (Bash) | Structured-output summaries + read-only output cache |
+| `bash` | PostToolUse (Bash) | Structured-output summaries + §ref dedup of repeated output |
 | `write` | PostToolUse (Write/Edit/MultiEdit) | Suppress content echo, prime delta cache |
 | `glob` | PostToolUse (Glob) | Compress flat file list into a tree |
 | `precompact` | PreCompact | Mark session so next reads serve full content |
 | `postcompact` | PostCompact | Inject file-read manifest into fresh context |
 | `sessionstart` | SessionStart | Initialize session state |
 | `stats` | — | Print token-savings analytics (`--json` for machine output) |
-| `gc` | — | Evict low-utility cached sessions (`--dry-run` to preview) |
+| `gc` | — | Evict low-utility cached sessions + prune old §ref blobs (`--dry-run`) |
+| `expand` | — | Print the full content behind a `§ref:HASH§` token |
 | `version` | — | Print version |
 
 Global flags: `--cpuprofile FILE`, `--memprofile FILE` write pprof profiles.
@@ -69,7 +70,7 @@ Global flags: `--cpuprofile FILE`, `--memprofile FILE` write pprof profiles.
 ## State files
 
 - Per-session read cache: `~/.qdf-hook/sessions/{session_id}.qdf` (qdf-compressed).
-- Read-only Bash output cache: `~/.qdf-hook/bash-cache/{hash}.entry` (TTL `QDF_BASH_CACHE_TTL_SEC`, default 30s).
+- Content-addressed §ref blobs: `~/.qdf-hook/refs/{hash}.blob` (qdf OptBalanced; TTL `QDF_REF_TTL_HOURS`, default 168h).
 - Analytics event log: appended JSONL, surfaced via `qdf-hook stats`.
 
 All are safe to delete; qdf-hook recreates them. `qdf-hook gc` prunes stale sessions by a utility score (recency × read frequency with exponential decay).
@@ -83,11 +84,11 @@ All are safe to delete; qdf-hook recreates them. `qdf-hook gc` prunes stale sess
 4. **After compaction:** treat as "not seen" — serve full content on the next read.
 
 ### Bash (PostToolUse)
-1. Read-only command (see whitelist) whose output is byte-identical to a recent run → `§bash-unchanged§` token.
-2. Otherwise try detectors in order: JSON array → columnar summary; `go test -v` → PASS/FAIL counts + failures; `git log` → compact commit table; `go test -bench` → aligned bench table.
-3. Anything else → pass through unchanged.
+1. Try detectors in order: JSON array → columnar summary; `go test -v` → PASS/FAIL counts + failures; `git log` → compact commit table; `go test -bench` → aligned bench table.
+2. Unstructured output that no detector compressed, but which is byte-identical to something already emitted (this or an earlier session) → a compact `§ref:HASH§` token. Resolve with `qdf-hook expand HASH`.
+3. Anything else → pass through unchanged (and registered so a later identical repeat becomes a `§ref`).
 
-The read-only whitelist covers `git`/`gh` read verbs, `grep`/`rg`, `go` queries, `docker`/`kubectl` inspection, `jq`, and other side-effect-free commands. Mutating verbs are excluded; caching runs *after* execution, so a misclassification can never suppress a side effect.
+Dedup is content-addressed and runs *after* execution, so it can never suppress a side effect — a `§ref` is emitted only when the current output's hash already has a stored blob, so the blob always equals the current bytes (no staleness, works across sessions).
 
 ### Write (PostToolUse)
 Replaces the echoed file content with `[WRITE §ref:HASH§ path — N lines written]` and caches the content so the next read of that file is served as a delta.
