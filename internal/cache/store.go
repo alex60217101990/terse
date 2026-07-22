@@ -40,7 +40,12 @@ func Load(sessionID string) (*SessionState, error) {
 		return nil, err
 	}
 	var s SessionState
-	if err := qdf.Unmarshal(data, &s); err != nil {
+	// WithNoCopy: decoded []byte/string fields (notably FileEntry.Content) alias
+	// `data` instead of being copied out. Safe here because `data` is a fresh
+	// os.ReadFile buffer that lives as long as the returned state (the aliases
+	// keep it reachable), is never mutated in place, and never outlives the
+	// hook invocation. Cuts the bulk of the decode allocations.
+	if err := qdf.Unmarshal(data, &s, qdf.WithNoCopy()); err != nil {
 		// Corrupt file — start fresh rather than crash.
 		return NewSessionState(), nil
 	}
