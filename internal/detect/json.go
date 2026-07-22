@@ -1,12 +1,14 @@
 package detect
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
+	"unsafe"
+
+	"github.com/buger/jsonparser"
 )
 
 // ColKind represents the inferred type of a JSON column.
@@ -67,17 +69,6 @@ func IsJSONArray(s string) bool {
 // AnalyzeJSONArray parses up to maxRows rows from data and returns column statistics.
 // data must be a JSON array of objects (IsJSONArray check is the caller's responsibility).
 func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
-	dec := json.NewDecoder(bytes.NewReader(data))
-
-	// Read opening '['.
-	tok, err := dec.Token()
-	if err != nil {
-		return nil, fmt.Errorf("expected '[': %w", err)
-	}
-	if delim, ok := tok.(json.Delim); !ok || delim != '[' {
-		return nil, fmt.Errorf("expected '[', got %v", tok)
-	}
-
 	// Per-column accumulators, keyed by name; order preserved via colOrder.
 	type colAcc struct {
 		strFreq  map[string]int
@@ -96,48 +87,48 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 	var colOrder []string
 	rowCount := 0
 
-	for dec.More() && rowCount < maxRows {
-		var row map[string]json.RawMessage
-		if err := dec.Decode(&row); err != nil {
-			return nil, fmt.Errorf("row %d: %w", rowCount, err)
+	// Single-pass walk over the array with jsonparser: values are returned as
+	// slices into data (zero-copy) and scalars are parsed straight from those
+	// bytes, so there is no per-row map, no per-cell reflective Unmarshal, and
+	// no interface boxing of numbers/bools.
+	_, aerr := jsonparser.ArrayEach(data, func(row []byte, dt jsonparser.ValueType, _ int, _ error) {
+		if dt != jsonparser.Object || rowCount >= maxRows {
+			return
 		}
 		rowCount++
-
-		for name, v := range row {
-			acc, exists := accs[name]
+		_ = jsonparser.ObjectEach(row, func(key, value []byte, vt jsonparser.ValueType, _ int) error {
+			acc, exists := accs[string(key)]
 			if !exists {
+				// Copy the key: it is a persistent map key / colOrder entry.
+				name := string(key)
 				acc = &colAcc{strFreq: make(map[string]int)}
 				accs[name] = acc
 				colOrder = append(colOrder, name)
 			}
 			acc.observed++
 
-			if len(v) == 0 {
-				continue
-			}
-			switch v[0] {
-			case '"':
+			switch vt {
+			case jsonparser.String:
 				acc.hasStr = true
-				var s string
-				if err := json.Unmarshal(v, &s); err == nil {
-					// Cap cardinality at maxDistinct distinct values.
-					if len(acc.strFreq) < maxDistinct {
-						acc.strFreq[s]++
-					} else if _, ok := acc.strFreq[s]; ok {
-						acc.strFreq[s]++
-					}
+				// Copy: distinct values are capped at maxDistinct, so this is a
+				// bounded number of allocations regardless of row count, and it
+				// keeps ConstVal/TopVals from aliasing the caller's data buffer.
+				if len(acc.strFreq) < maxDistinct {
+					acc.strFreq[string(value)]++
+				} else if _, ok := acc.strFreq[string(value)]; ok {
+					acc.strFreq[string(value)]++
 				}
-			case 't', 'f':
+			case jsonparser.Boolean:
 				acc.hasBool = true
-				if v[0] == 't' {
+				if len(value) > 0 && value[0] == 't' {
 					acc.boolTrue++
 				}
-			case 'n':
+			case jsonparser.Null:
 				acc.hasNull = true
 				acc.nulls++
-			default:
-				var f float64
-				if err := json.Unmarshal(v, &f); err == nil {
+			case jsonparser.Number:
+				// Zero-copy parse straight from the value bytes.
+				if f, err := strconv.ParseFloat(unsafe.String(unsafe.SliceData(value), len(value)), 64); err == nil {
 					if f == math.Trunc(f) {
 						acc.hasInt = true
 					} else {
@@ -146,7 +137,14 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 					acc.nums = append(acc.nums, f)
 				}
 			}
-		}
+			// Object/Array values: counted as observed above, left untyped
+			// (matches the old behavior, where a nested value failed the scalar
+			// Unmarshal and was dropped).
+			return nil
+		})
+	})
+	if aerr != nil {
+		return nil, fmt.Errorf("parse array: %w", aerr)
 	}
 
 	stats := &ArrayStats{RowCount: rowCount, Columns: make([]ColStats, 0, len(colOrder))}
