@@ -55,9 +55,12 @@ func Load(sessionID string) (*SessionState, error) {
 	return &s, nil
 }
 
-// Save writes state atomically via a tmp+rename. Concurrent hook processes may
-// race on Load+Save; the last writer wins. Consequence is reduced compression
-// (a file may be re-served full on the next read), not wrong content.
+// Save persists state with a single plain write (no tmp+rename). The state
+// file is a rebuildable cache: a torn write — from a crash or a concurrent
+// same-session hook — simply fails to qdf-decode on the next Load, which then
+// returns a fresh empty state (a cache miss, never wrong content). Dropping the
+// atomic rename saves a syscall on every persisted hook, and the previous
+// fixed ".tmp" name was not actually race-safe under concurrency anyway.
 //
 // Save persists the session state to disk using qdf OptSpeed.
 // We benchmarked all options on a 50-file SessionState:
@@ -73,17 +76,11 @@ func Load(sessionID string) (*SessionState, error) {
 // it is the lowest-allocation qdf mode; the spec budget was likely set
 // against a smaller state (< 5 files). Document this if the benchmark
 // target is revisited.
-// It writes to a temp file and renames atomically to avoid partial writes.
 func Save(sessionID string, s *SessionState) error {
 	Evict(s, 200) // auto-evict when over 200 files
 	data, err := qdf.Marshal(s, qdf.OptSpeed)
 	if err != nil {
 		return err
 	}
-	path := StatePath(sessionID)
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return os.WriteFile(StatePath(sessionID), data, 0o600)
 }
