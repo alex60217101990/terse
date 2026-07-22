@@ -63,7 +63,7 @@ type Header struct {
 
 var magicBytes = [4]byte{'Q', 'D', 'F', 0x00}
 
-// encoderPool reuses Encoder values to reduce allocations.
+// encoderPool reuses Encoder values to minimise heap allocations.
 var encoderPool = sync.Pool{New: func() any { return &Encoder{} }}
 
 // Encoder writes qdf-encoded data to an io.Writer.
@@ -82,7 +82,7 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 // Release returns the Encoder to the pool.  Call after writing is complete.
-func (e *Encoder) Release() { encoderPool.Put(e) }
+func (e *Encoder) Free() { encoderPool.Put(e) }
 
 // Err returns the first error encountered during encoding.
 func (e *Encoder) Err() error { return e.err }
@@ -202,6 +202,8 @@ func (e *Encoder) WriteEnd() {
 	e.buf[0] = byte(TagEnd)
 	_, e.err = e.w.Write(e.buf[:1])
 }
+
+// Flush is a no-op for streaming writers; reserved for buffered future use.
 
 // Decode reads a single field tag from r and dispatches to the appropriate
 // typed read function.  It returns the tag and any error.

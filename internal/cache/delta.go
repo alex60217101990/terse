@@ -156,76 +156,108 @@ func backtrack(a, b []string, trace [][]int, d, offset int) []edit {
 
 // writeHunks writes unified diff hunks to buf.
 func writeHunks(buf *bytes.Buffer, a, b []string, edits []edit, ctx int) {
-	type hunk struct{ start, end int }
-	var hunks []hunk
-
 	n := len(edits)
+
+	// Find hunk ranges (indices into edits slice).
+	type hunkRange struct{ lo, hi int }
+	var hunks []hunkRange
+
 	i := 0
 	for i < n {
 		if edits[i].kind == '=' {
 			i++
 			continue
 		}
-		// Found a change — extend backward with leading context.
-		lo := max(i-ctx, 0)
-		// Find end of change cluster with trailing context.
+		lo := i - ctx
+		if lo < 0 {
+			lo = 0
+		}
 		j := i
 		for j < n {
 			if edits[j].kind != '=' {
 				j++
 				continue
 			}
-			// Count the run of equal lines starting at j.
 			k := j
 			for k < n && edits[k].kind == '=' {
 				k++
 			}
-			// If the gap is small enough and more changes follow, bridge it.
 			if k-j <= ctx && k < n {
 				j = k
 			} else {
 				break
 			}
 		}
-		hi := min(j+ctx, n)
-		hunks = append(hunks, hunk{lo, hi})
+		hi := j + ctx
+		if hi > n {
+			hi = n
+		}
+		hunks = append(hunks, hunkRange{lo, hi})
 		i = hi
 	}
 
+	// Walk the full edit list with running counters to compute hunk positions.
+	oldLine := 0 // 0-based position in old file
+	newLine := 0 // 0-based position in new file
+	editIdx := 0
+
 	for _, h := range hunks {
-		// Compute hunk header: 1-based start line and counts for old and new.
-		oldStart, newStart, oldCount, newCount := 0, 0, 0, 0
-		for _, e := range edits[h.start:h.end] {
-			if e.kind == '=' || e.kind == '-' {
-				if oldStart == 0 {
-					oldStart = e.oldIdx + 1
-				}
-				oldCount++
+		// Advance counters to hunk start.
+		for editIdx < h.lo {
+			e := edits[editIdx]
+			switch e.kind {
+			case '=':
+				oldLine++
+				newLine++
+			case '-':
+				oldLine++
+			case '+':
+				newLine++
 			}
-			if e.kind == '=' || e.kind == '+' {
-				if newStart == 0 {
-					newStart = e.newIdx + 1
-				}
+			editIdx++
+		}
+
+		// Count lines in this hunk.
+		oldCount, newCount := 0, 0
+		for _, e := range edits[h.lo:h.hi] {
+			switch e.kind {
+			case '=':
+				oldCount++
+				newCount++
+			case '-':
+				oldCount++
+			case '+':
 				newCount++
 			}
 		}
-		// Fallback for insertion-only or deletion-only hunks.
-		if oldStart == 0 {
-			oldStart = newStart
+
+		// Write @@ header using 1-based line numbers.
+		// For zero-count sides: position is "after line N" (use N, not N+1).
+		oldStart := oldLine
+		newStart := newLine
+		if oldCount > 0 {
+			oldStart = oldLine + 1
 		}
-		if newStart == 0 {
-			newStart = oldStart
+		if newCount > 0 {
+			newStart = newLine + 1
 		}
 		fmt.Fprintf(buf, "@@ -%d,%d +%d,%d @@\n", oldStart, oldCount, newStart, newCount)
-		for _, e := range edits[h.start:h.end] {
+
+		// Write hunk lines and advance counters.
+		for _, e := range edits[h.lo:h.hi] {
 			switch e.kind {
 			case '=':
 				fmt.Fprintf(buf, " %s\n", a[e.oldIdx])
+				oldLine++
+				newLine++
 			case '-':
 				fmt.Fprintf(buf, "-%s\n", a[e.oldIdx])
+				oldLine++
 			case '+':
 				fmt.Fprintf(buf, "+%s\n", b[e.newIdx])
+				newLine++
 			}
 		}
+		editIdx = h.hi
 	}
 }

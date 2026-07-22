@@ -26,6 +26,9 @@ func TestUnifiedDiff_SingleLineChange(t *testing.T) {
 	if !strings.Contains(got, "+LINE2") {
 		t.Errorf("diff should contain +LINE2:\n%s", got)
 	}
+	if !strings.Contains(got, "@@") {
+		t.Errorf("diff should contain @@ hunk header:\n%s", got)
+	}
 }
 
 func TestUnifiedDiff_AddedLines(t *testing.T) {
@@ -34,6 +37,9 @@ func TestUnifiedDiff_AddedLines(t *testing.T) {
 	got := cache.UnifiedDiff(old, newer, 0)
 	if !strings.Contains(got, "+c") || !strings.Contains(got, "+d") {
 		t.Errorf("diff should show added lines:\n%s", got)
+	}
+	if !strings.Contains(got, "@@") {
+		t.Errorf("diff should contain @@ hunk header:\n%s", got)
 	}
 }
 
@@ -44,6 +50,9 @@ func TestUnifiedDiff_DeletedLines(t *testing.T) {
 	if !strings.Contains(got, "-b") {
 		t.Errorf("diff should show -b:\n%s", got)
 	}
+	if !strings.Contains(got, "@@") {
+		t.Errorf("diff should contain @@ hunk header:\n%s", got)
+	}
 }
 
 func TestUnifiedDiff_PureInsertion(t *testing.T) {
@@ -52,6 +61,16 @@ func TestUnifiedDiff_PureInsertion(t *testing.T) {
 	got := cache.UnifiedDiff(old, newer, 0)
 	if !strings.Contains(got, "+c") {
 		t.Errorf("diff should show +c:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_PureInsertion_HunkHeader(t *testing.T) {
+	old := []byte("a\nb\n")
+	newer := []byte("a\nb\nc\nd\n")
+	got := cache.UnifiedDiff(old, newer, 0)
+	// Should contain @@ -2,0 +3,2 @@ (inserting after line 2, zero old lines, 2 new lines)
+	if !strings.Contains(got, "@@ -2,0 +3,2 @@") {
+		t.Errorf("pure insertion hunk header wrong:\n%s", got)
 	}
 }
 
@@ -119,7 +138,7 @@ func TestIsBinaryContent(t *testing.T) {
 func BenchmarkUnifiedDiff(b *testing.B) {
 	// 500-line file, 10 lines changed
 	var old, newer strings.Builder
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		old.WriteString("func foo() { // line\n")
 		if i >= 100 && i < 110 {
 			newer.WriteString("func bar() { // changed\n")
@@ -129,8 +148,8 @@ func BenchmarkUnifiedDiff(b *testing.B) {
 	}
 	oldB := []byte(old.String())
 	newB := []byte(newer.String())
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = cache.UnifiedDiff(oldB, newB, 3)
 	}
 }
