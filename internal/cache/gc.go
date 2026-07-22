@@ -6,9 +6,21 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
+
+// RefTTLHours is the max age a content-addressed ref blob is kept before gc
+// prunes it (default 168h = 7 days, override via QDF_REF_TTL_HOURS).
+func RefTTLHours() float64 {
+	if v := os.Getenv("QDF_REF_TTL_HOURS"); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil {
+			return n
+		}
+	}
+	return 168
+}
 
 // GCResult holds the outcome of a GC run.
 type GCResult struct {
@@ -65,6 +77,31 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 				if info != nil {
 					result.FreedBytes += info.Size()
 				}
+			}
+			result.Removed++
+		} else {
+			result.Kept++
+		}
+		return nil
+	})
+
+	// Prune content-addressed ref blobs older than the TTL (by mtime, which
+	// RefPut sets fresh on write — no need to decode each blob for its TS).
+	cutoff := time.Now().Add(-time.Duration(RefTTLHours() * float64(time.Hour)))
+	_ = filepath.WalkDir(RefsDir(), func(path string, d fs.DirEntry, werr error) error {
+		if werr != nil || d.IsDir() || !strings.HasSuffix(path, ".blob") {
+			return nil
+		}
+		info, _ := d.Info()
+		if info == nil {
+			return nil
+		}
+		if info.ModTime().Before(cutoff) {
+			if dryRun {
+				fmt.Printf("[dry-run] would remove ref %s\n", filepath.Base(path))
+			} else {
+				_ = os.Remove(path)
+				result.FreedBytes += info.Size()
 			}
 			result.Removed++
 		} else {

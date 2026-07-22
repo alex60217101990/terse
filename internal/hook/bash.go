@@ -1,7 +1,6 @@
 package hook
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -30,36 +29,7 @@ func HandleBash(r io.Reader, w io.Writer) error {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
-	// Parse command and cwd from tool_input for cache lookup.
-	var bi protocol.BashInput
-	_ = json.Unmarshal(inp.ToolInput, &bi)
-
 	content := inp.ToolResponse.Content
-
-	// Bash cache fast-path for read-only commands: if the output is identical
-	// to a recent cached run, return a compact §bash-unchanged§ token instead
-	// of running the full detector pipeline.
-	if cache.IsReadOnlyCommand(bi.Command) {
-		if cached, ok := cache.BashCacheGet(bi.Command, bi.Cwd); ok {
-			if cached == content {
-				hashHex := cache.BashOutputHash(content)
-				compact := fmt.Sprintf("§bash-unchanged:%s§ [%s] — output identical (< 30s ago)",
-					hashHex, bi.Command)
-				_ = analytics.Record(analytics.Event{
-					TS:       time.Now().UnixNano(),
-					SID:      inp.SessionID,
-					Hook:     "bash",
-					Action:   "bash-unchanged",
-					BytesIn:  len(content),
-					BytesOut: len(compact),
-					DurNS:    time.Since(start).Nanoseconds(),
-				})
-				return protocol.EncodeOutput(w, protocol.Replace(compact))
-			}
-		}
-		// Output changed or first run — update cache for next call.
-		cache.BashCacheSet(bi.Command, bi.Cwd, content)
-	}
 
 	if len(content) < 256 {
 		// Too small to bother compressing.
@@ -78,13 +48,18 @@ func HandleBash(r io.Reader, w io.Writer) error {
 		action, replacement = "summary", s
 	} else if s := tryBench(content); s != "" {
 		action, replacement = "summary", s
+	} else if tok, ok := cache.Dedup(content, 256); ok {
+		// Unstructured output byte-identical to something already emitted this
+		// (or an earlier) session — replace with a §ref token instead of the
+		// full bytes. Supersedes the old read-only bash cache.
+		action, replacement = "ref", tok
 	} else {
 		action = "passthrough"
 	}
 
 	var out *protocol.HookOutput
 	var bytesOut int
-	if action == "summary" {
+	if replacement != "" {
 		out = protocol.Replace(replacement)
 		bytesOut = len(replacement)
 	} else {

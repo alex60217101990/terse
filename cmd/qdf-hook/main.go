@@ -82,6 +82,7 @@ func init() {
 		cmdSessionStart(),
 		cmdStats(),
 		cmdGC(),
+		cmdExpand(),
 	)
 }
 
