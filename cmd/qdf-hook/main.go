@@ -75,6 +75,7 @@ func init() {
 		cmdRead(),
 		cmdBash(),
 		cmdGlob(),
+		cmdGrep(),
 		cmdWrite(),
 		cmdPreToolUse(),
 		cmdPreCompact(),
@@ -151,6 +152,14 @@ func cmdGlob() *cobra.Command {
 		Use:   "glob",
 		Short: "Handle PostToolUse hook for Glob tool — compress file list to tree",
 		RunE:  func(cmd *cobra.Command, args []string) error { return hook.HandleGlob(os.Stdin, os.Stdout) },
+	}
+}
+
+func cmdGrep() *cobra.Command {
+	return &cobra.Command{
+		Use:   "grep",
+		Short: "Handle PostToolUse hook for Grep tool — group matches by file",
+		RunE:  func(cmd *cobra.Command, args []string) error { return hook.HandleGrep(os.Stdin, os.Stdout) },
 	}
 }
 
