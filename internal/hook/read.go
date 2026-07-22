@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/alex60217101990/qdf-hook/internal/cache"
@@ -71,7 +72,9 @@ func HandleRead(r io.Reader, w io.Writer) error {
 		Content: content,
 	}
 
-	_ = cache.Save(inp.SessionID, state)
+	if err := cache.Save(inp.SessionID, state); err != nil {
+		fmt.Fprintf(os.Stderr, "qdf-hook: save state: %v\n", err)
+	}
 	return protocol.EncodeOutput(w, out)
 }
 
