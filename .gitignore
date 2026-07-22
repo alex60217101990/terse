@@ -33,3 +33,4 @@ go.work.sum
 .memsearch
 docs/superpowers
 /qdf-hook
+.superpowers/
