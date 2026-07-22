@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alex60217101990/qdf-hook/internal/hook"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 	"github.com/spf13/cobra"
 )
@@ -100,7 +101,7 @@ func runVersion() error {
 
 // stubs — filled in by later tasks
 
-func runRead() error         { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
+func runRead() error         { return hook.HandleRead(os.Stdin, os.Stdout) }
 func runBash() error         { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
 func runPreCompact() error   { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
 func runPostCompact() error  { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
