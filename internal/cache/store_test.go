@@ -3,6 +3,7 @@ package cache_test
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/alex60217101990/qdf-hook/internal/cache"
@@ -60,6 +61,22 @@ func TestStateDirCreated(t *testing.T) {
 	_ = cache.StateDir()
 	if _, err := os.Stat(cache.StateDir()); err != nil {
 		t.Errorf("StateDir not created: %v", err)
+	}
+}
+
+func TestLoadCorruptFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	// Write garbage to the state file location.
+	path := filepath.Join(cache.StateDir(), "corrupt-session.qdf")
+	if err := os.WriteFile(path, []byte("not valid qdf data \x00\xff"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := cache.Load("corrupt-session")
+	if err != nil {
+		t.Fatalf("Load of corrupt file should return empty state, not error: %v", err)
+	}
+	if len(s.Files) != 0 {
+		t.Errorf("expected empty SessionState from corrupt file, got %+v", s)
 	}
 }
 
