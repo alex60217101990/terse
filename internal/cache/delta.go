@@ -2,10 +2,11 @@ package cache
 
 import (
 	"bytes"
-	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
+	"unsafe"
 )
 
 // IsBinaryContent returns true if data is not safe to display as text.
@@ -50,7 +51,13 @@ func splitLines(b []byte) []string {
 	if len(b) == 0 {
 		return nil
 	}
-	lines := strings.Split(string(b), "\n")
+	// Zero-copy view of b: avoids copying the whole file to a string just to
+	// split it. The returned line substrings alias b, so they must not outlive
+	// b and b must not be mutated while they're in use — both hold here (old/
+	// newer come from the cache and the diff output is copied out via
+	// buf.String()).
+	s := unsafe.String(unsafe.SliceData(b), len(b))
+	lines := strings.Split(s, "\n")
 	// strings.Split adds an empty string after a trailing newline; remove it.
 	if len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
@@ -235,20 +242,36 @@ func writeHunks(buf *bytes.Buffer, a, b []string, edits []edit, ctx int) {
 		if newCount > 0 {
 			newStart = newLine + 1
 		}
-		fmt.Fprintf(buf, "@@ -%d,%d +%d,%d @@\n", oldStart, oldCount, newStart, newCount)
+		// @@ -oldStart,oldCount +newStart,newCount @@ — built with direct
+		// writes instead of fmt to keep the hunk loop reflection-free.
+		buf.WriteString("@@ -")
+		buf.WriteString(strconv.Itoa(oldStart))
+		buf.WriteByte(',')
+		buf.WriteString(strconv.Itoa(oldCount))
+		buf.WriteString(" +")
+		buf.WriteString(strconv.Itoa(newStart))
+		buf.WriteByte(',')
+		buf.WriteString(strconv.Itoa(newCount))
+		buf.WriteString(" @@\n")
 
 		// Write hunk lines and advance counters.
 		for _, e := range edits[h.lo:h.hi] {
 			switch e.kind {
 			case '=':
-				fmt.Fprintf(buf, " %s\n", a[e.oldIdx])
+				buf.WriteByte(' ')
+				buf.WriteString(a[e.oldIdx])
+				buf.WriteByte('\n')
 				oldLine++
 				newLine++
 			case '-':
-				fmt.Fprintf(buf, "-%s\n", a[e.oldIdx])
+				buf.WriteByte('-')
+				buf.WriteString(a[e.oldIdx])
+				buf.WriteByte('\n')
 				oldLine++
 			case '+':
-				fmt.Fprintf(buf, "+%s\n", b[e.newIdx])
+				buf.WriteByte('+')
+				buf.WriteString(b[e.newIdx])
+				buf.WriteByte('\n')
 				newLine++
 			}
 		}
