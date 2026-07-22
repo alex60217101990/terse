@@ -53,6 +53,10 @@ func HandleBash(r io.Reader, w io.Writer) error {
 		// (or an earlier) session — replace with a §ref token instead of the
 		// full bytes. Supersedes the old read-only bash cache.
 		action, replacement = "ref", tok
+	} else if sq := detect.SqueezeOutput(content); len(sq) < len(content)*9/10 {
+		// Novel unstructured output — collapse ANSI + repeated lines for at
+		// least a 10% win. Self-describing (⨯N markers), so no expansion needed.
+		action, replacement = "squeezed", sq
 	} else {
 		action = "passthrough"
 	}
