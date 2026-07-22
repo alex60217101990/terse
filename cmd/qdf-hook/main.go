@@ -102,7 +102,7 @@ func runVersion() error {
 // stubs — filled in by later tasks
 
 func runRead() error         { return hook.HandleRead(os.Stdin, os.Stdout) }
-func runBash() error         { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
+func runBash() error         { return hook.HandleBash(os.Stdin, os.Stdout) }
 func runPreCompact() error   { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
 func runPostCompact() error  { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
 func runSessionStart() error { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
