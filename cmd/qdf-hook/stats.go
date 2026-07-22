@@ -1,0 +1,34 @@
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/alex60217101990/qdf-hook/internal/analytics"
+	"github.com/spf13/cobra"
+)
+
+func cmdStats() *cobra.Command {
+	var jsonOut bool
+	var days int
+	cmd := &cobra.Command{
+		Use:   "stats",
+		Short: "Show token savings analytics",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			events, err := analytics.LoadEvents(days)
+			if err != nil {
+				return fmt.Errorf("load events: %w", err)
+			}
+			if len(events) == 0 {
+				fmt.Fprintln(os.Stderr, "qdf-hook: no analytics data found. Run some hooks first.")
+				return nil
+			}
+			stats := analytics.ComputeStats(events)
+			analytics.PrintStats(stats, jsonOut, os.Stdout)
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "output as JSON")
+	cmd.Flags().IntVar(&days, "days", 7, "number of days to include")
+	return cmd
+}
