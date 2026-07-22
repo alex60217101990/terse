@@ -2,7 +2,6 @@ package cache_test
 
 import (
 	"math"
-	"os"
 	"strconv"
 	"testing"
 
@@ -61,7 +60,7 @@ func TestEvict_NoopUnderLimit(t *testing.T) {
 }
 
 func TestDecayLambda_Default(t *testing.T) {
-	os.Unsetenv("QDF_DECAY_LAMBDA")
+	t.Setenv("QDF_DECAY_LAMBDA", "")
 	if cache.DecayLambda() != 0.1 {
 		t.Error("default lambda should be 0.1")
 	}
@@ -98,11 +97,12 @@ func BenchmarkEvict_200Files(b *testing.B) {
 	}
 	b.ResetTimer()
 	for b.Loop() {
-		// Copy state for each iteration (Evict mutates in place)
+		b.StopTimer()
 		s := cache.NewSessionState()
 		for k, v := range base.Files {
 			s.Files[k] = v
 		}
+		b.StartTimer()
 		cache.Evict(s, 200)
 	}
 }
