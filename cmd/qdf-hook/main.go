@@ -20,6 +20,7 @@ func init() {
 		cmdVersion(),
 		cmdRead(),
 		cmdBash(),
+		cmdGlob(),
 		cmdPreToolUse(),
 		cmdPreCompact(),
 		cmdPostCompact(),
@@ -84,6 +85,14 @@ func cmdPostCompact() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPostCompact()
 		},
+	}
+}
+
+func cmdGlob() *cobra.Command {
+	return &cobra.Command{
+		Use:   "glob",
+		Short: "Handle PostToolUse hook for Glob tool — compress file list to tree",
+		RunE:  func(cmd *cobra.Command, args []string) error { return hook.HandleGlob(os.Stdin, os.Stdout) },
 	}
 }
 
