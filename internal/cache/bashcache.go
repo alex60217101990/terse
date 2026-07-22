@@ -3,13 +3,14 @@ package cache
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	qdf "github.com/alex60217101990/qdf"
 )
 
 // ShortHex returns the lowercase hex encoding of b using a stack-resident
@@ -91,11 +92,16 @@ func bashCacheKey(command, cwd string) string {
 	return filepath.Join(bashCacheDir(), fmt.Sprintf("%x.entry", h[:8]))
 }
 
-// bashCacheEntry is the on-disk JSON format.
+// bashCacheEntry is the on-disk format, serialized with qdf OptBalanced —
+// the repetitive-payload default: it decodes ~38x faster than encoding/json
+// on log/command output and allocates less, which matters because the cache is
+// read on every repeated read-only command. (OptCompression would shrink the
+// wire further via FSST/rANS but decodes ~23x slower — the wrong trade for a
+// hot read cache; it's for cold archival.)
 type bashCacheEntry struct {
-	OutputHash string `json:"hash"`
-	Output     string `json:"output"`
-	TS         int64  `json:"ts"` // unix seconds
+	OutputHash string
+	Output     string
+	TS         int64 // unix seconds
 }
 
 // bashCacheTTL returns the cache TTL in seconds (default 30, override via QDF_BASH_CACHE_TTL_SEC).
@@ -116,7 +122,7 @@ func BashCacheGet(command, cwd string) (string, bool) {
 		return "", false
 	}
 	var entry bashCacheEntry
-	if err := json.Unmarshal(data, &entry); err != nil {
+	if err := qdf.Unmarshal(data, &entry); err != nil {
 		return "", false
 	}
 	if time.Now().Unix()-entry.TS >= bashCacheTTL() {
@@ -133,7 +139,7 @@ func BashCacheSet(command, cwd, output string) {
 		Output:     output,
 		TS:         time.Now().Unix(),
 	}
-	data, err := json.Marshal(entry)
+	data, err := qdf.Marshal(&entry, qdf.OptBalanced)
 	if err != nil {
 		return
 	}
