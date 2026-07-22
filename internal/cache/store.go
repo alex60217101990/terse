@@ -70,6 +70,7 @@ func Load(sessionID string) (*SessionState, error) {
 // target is revisited.
 // It writes to a temp file and renames atomically to avoid partial writes.
 func Save(sessionID string, s *SessionState) error {
+	Evict(s, 200) // auto-evict when over 200 files
 	data, err := qdf.Marshal(s, qdf.OptSpeed)
 	if err != nil {
 		return err
