@@ -27,6 +27,7 @@ func init() {
 		cmdPostCompact(),
 		cmdSessionStart(),
 		cmdStats(),
+		cmdGC(),
 	)
 }
 

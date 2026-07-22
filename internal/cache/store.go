@@ -18,9 +18,9 @@ func StateDir() string {
 	return dir
 }
 
-// statePath returns the on-disk path for a session's state file.
+// StatePath returns the on-disk path for a session's state file.
 // sessionID is sanitized via filepath.Base to prevent path traversal.
-func statePath(sessionID string) string {
+func StatePath(sessionID string) string {
 	safe := filepath.Base(sessionID)
 	if safe == "" || safe == "." {
 		safe = "default"
@@ -31,7 +31,7 @@ func statePath(sessionID string) string {
 // Load reads the session state from disk. Returns an empty NewSessionState if
 // the file does not exist. Returns an error only on I/O or decode failures.
 func Load(sessionID string) (*SessionState, error) {
-	path := statePath(sessionID)
+	path := StatePath(sessionID)
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return NewSessionState(), nil
@@ -75,7 +75,7 @@ func Save(sessionID string, s *SessionState) error {
 	if err != nil {
 		return err
 	}
-	path := statePath(sessionID)
+	path := StatePath(sessionID)
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return err
