@@ -3,9 +3,16 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/pprof"
 
 	"github.com/alex60217101990/qdf-hook/internal/hook"
 	"github.com/spf13/cobra"
+)
+
+var (
+	cpuprofile string
+	memprofile string
+	cpuFile    *os.File
 )
 
 var rootCmd = &cobra.Command{
@@ -13,9 +20,56 @@ var rootCmd = &cobra.Command{
 	Short: "Claude Code hook to reduce token consumption via compression",
 	Long: `qdf-hook is a PostToolUse/PreCompact/PostCompact hook for Claude Code.
 It intercepts tool output and compresses it to reduce token consumption.`,
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	// CPU profiling starts here because cobra only parses the
+	// --cpuprofile/--memprofile flags during rootCmd.Execute(); reading them
+	// in main() before Execute() would always see "". Stopping the profile
+	// and writing the heap profile happens back in main() after Execute()
+	// returns — not in a PersistentPostRunE, which cobra skips when the
+	// command's RunE returns an error (we still want the profile then).
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if cpuprofile == "" {
+			return nil
+		}
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			return fmt.Errorf("cpuprofile: %w", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			f.Close()
+			return fmt.Errorf("cpuprofile: %w", err)
+		}
+		cpuFile = f
+		return nil
+	},
+}
+
+// stopProfiling stops any in-progress CPU profile and writes the heap profile.
+// Called from main() after Execute() so profiles are flushed even when a hook
+// command returns an error.
+func stopProfiling() {
+	if cpuFile != nil {
+		pprof.StopCPUProfile()
+		cpuFile.Close()
+	}
+	if memprofile == "" {
+		return
+	}
+	f, err := os.Create(memprofile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "qdf-hook: memprofile:", err)
+		return
+	}
+	defer f.Close()
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		fmt.Fprintln(os.Stderr, "qdf-hook: memprofile:", err)
+	}
 }
 
 func init() {
+	rootCmd.PersistentFlags().StringVar(&cpuprofile, "cpuprofile", "", "write CPU profile to file")
+	rootCmd.PersistentFlags().StringVar(&memprofile, "memprofile", "", "write memory profile to file")
 	rootCmd.AddCommand(
 		cmdVersion(),
 		cmdRead(),
@@ -118,7 +172,9 @@ func cmdSessionStart() *cobra.Command {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	err := rootCmd.Execute()
+	stopProfiling()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "qdf-hook:", err)
 	}
 }
