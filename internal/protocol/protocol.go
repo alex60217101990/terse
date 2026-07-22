@@ -29,6 +29,7 @@ type ReadInput struct {
 // BashInput is the parsed tool_input for the Bash tool.
 type BashInput struct {
 	Command string `json:"command"`
+	Cwd     string `json:"working_directory,omitempty"`
 }
 
 // HookOutput is the JSON written to stdout. Nil HookSpecificOutput = pass-through.
@@ -52,6 +53,25 @@ func DecodeInput(r io.Reader) (*HookInput, error) {
 
 // EncodeOutput writes HookOutput as JSON to w followed by a newline.
 func EncodeOutput(w io.Writer, out *HookOutput) error {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(out)
+}
+
+// EncodePre writes a PreToolUse hook response to w.
+// decision is "allow" or "deny". reason is only used when decision is "deny".
+func EncodePre(w io.Writer, decision, reason string) error {
+	type preOut struct {
+		HookSpecificOutput struct {
+			HookEventName            string `json:"hookEventName"`
+			PermissionDecision       string `json:"permissionDecision"`
+			PermissionDecisionReason string `json:"permissionDecisionReason,omitempty"`
+		} `json:"hookSpecificOutput"`
+	}
+	var out preOut
+	out.HookSpecificOutput.HookEventName = "PreToolUse"
+	out.HookSpecificOutput.PermissionDecision = decision
+	out.HookSpecificOutput.PermissionDecisionReason = reason
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	return enc.Encode(out)

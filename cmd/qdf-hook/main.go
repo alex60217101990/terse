@@ -20,6 +20,7 @@ func init() {
 		cmdVersion(),
 		cmdRead(),
 		cmdBash(),
+		cmdPreToolUse(),
 		cmdPreCompact(),
 		cmdPostCompact(),
 		cmdSessionStart(),
@@ -52,6 +53,16 @@ func cmdBash() *cobra.Command {
 		Short: "Handle PostToolUse hook for the Bash tool",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runBash()
+		},
+	}
+}
+
+func cmdPreToolUse() *cobra.Command {
+	return &cobra.Command{
+		Use:   "pretooluse",
+		Short: "Handle PreToolUse hook for the Read tool (mtime fast-path)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPreToolUse()
 		},
 	}
 }
@@ -102,6 +113,7 @@ func runVersion() error {
 
 func runRead() error         { return hook.HandleRead(os.Stdin, os.Stdout) }
 func runBash() error         { return hook.HandleBash(os.Stdin, os.Stdout) }
+func runPreToolUse() error   { return hook.HandlePreToolUse(os.Stdin, os.Stdout) }
 func runPreCompact() error   { return hook.HandlePreCompact(os.Stdin, os.Stdout) }
 func runPostCompact() error  { return hook.HandlePostCompact(os.Stdin, os.Stdout) }
 func runSessionStart() error { return hook.HandleSessionStart(os.Stdin, os.Stdout) }
