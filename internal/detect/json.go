@@ -25,23 +25,23 @@ const (
 type ColStats struct {
 	Name        string
 	Kind        ColKind
-	Nullable    bool
+	ConstVal    string   // non-empty if all non-null string values are equal
+	TopVals     []string // up to 5 most frequent values (strings)
 	NullCount   int
 	BoolTrue    int
-	Observed    int      // rows where this key was present (sparse-column support)
-	ConstVal    string   // non-empty if all non-null string values are equal
-	ConstCount  int      // how many rows have ConstVal
-	Min, Max    float64  // for numeric kinds
+	Observed    int     // rows where this key was present (sparse-column support)
+	ConstCount  int     // how many rows have ConstVal
+	Min, Max    float64 // for numeric kinds
 	Mean        float64
-	P95         float64  // approximate 95th percentile
-	Cardinality int      // distinct count (capped at maxDistinct)
-	TopVals     []string // up to 5 most frequent values (strings)
+	P95         float64 // approximate 95th percentile
+	Cardinality int     // distinct count (capped at maxDistinct)
+	Nullable    bool
 }
 
 // ArrayStats holds aggregate statistics for a JSON array of objects.
 type ArrayStats struct {
-	RowCount int
 	Columns  []ColStats
+	RowCount int
 }
 
 const maxDistinct = 64 // cap cardinality tracking to save memory
@@ -80,16 +80,16 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 
 	// Per-column accumulators, keyed by name; order preserved via colOrder.
 	type colAcc struct {
+		strFreq  map[string]int
+		nums     []float64
+		nulls    int
+		boolTrue int
+		observed int
 		hasStr   bool
 		hasInt   bool
 		hasFloat bool
 		hasBool  bool
 		hasNull  bool
-		nulls    int
-		boolTrue int
-		observed int
-		strFreq  map[string]int
-		nums     []float64
 	}
 
 	accs := make(map[string]*colAcc)

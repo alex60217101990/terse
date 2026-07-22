@@ -9,10 +9,10 @@ import (
 
 // Event records one hook invocation for analytics purposes.
 type Event struct {
-	TS       int64  `json:"ts"`  // unix nanoseconds
 	SID      string `json:"sid"` // first 16 chars of session_id
 	Hook     string `json:"hook"`
 	Action   string `json:"action"`
+	TS       int64  `json:"ts"` // unix nanoseconds
 	BytesIn  int    `json:"bi"`
 	BytesOut int    `json:"bo"`
 	DurNS    int64  `json:"dur"` // hook duration in nanoseconds
