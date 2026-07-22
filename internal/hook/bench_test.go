@@ -39,6 +39,8 @@ func BenchmarkReadHook_FirstRead(b *testing.B) {
 
 func BenchmarkBashHook_JSONArray(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
+	// HandleBash is stateless (no session cache), so a fixed session_id is safe.
+	// encoder_go_v1.txt lives in internal/cache/testdata, not root testdata.
 	jsonData, _ := os.ReadFile("../../testdata/json_array_1k.json")
 	inp := map[string]any{
 		"session_id":    "bench-bash",
