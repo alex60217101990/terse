@@ -3,6 +3,7 @@ package hook
 import (
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 
@@ -26,7 +27,9 @@ func HandlePreCompact(r io.Reader, w io.Writer) error {
 
 	state.Turn++
 	state.CompactedAt = state.Turn
-	_ = cache.Save(inp.SessionID, state)
+	if err := cache.Save(inp.SessionID, state); err != nil {
+		fmt.Fprintf(os.Stderr, "qdf-hook: save state: %v\n", err)
+	}
 
 	// PreCompact hook doesn't replace tool output — just updates state.
 	return protocol.EncodeOutput(w, protocol.Passthrough())
