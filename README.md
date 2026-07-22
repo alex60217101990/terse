@@ -1,28 +1,58 @@
 # qdf-hook
 
-Claude Code hook binary that reduces token consumption by 50–99% on:
-- **Repeated file reads** — a `PreToolUse` interceptor denies re-reading an unchanged file (mtime fast-path); the `PostToolUse` handler returns `§unchanged§` or a unified diff instead of full content
-- **Structured Bash output** — collapses JSON arrays, `go test -v`, `git log`, benchmarks into compact summaries; any repeated byte-identical output (any command, any tool, across sessions) collapses to a `§ref:HASH§` token
-- **Write/Edit echoes** — suppresses the full-file echo Claude just wrote, caching it for delta tracking on the next read
-- **Glob listings** — compresses long flat file lists into a directory tree
-- **Post-compaction re-reads** — injects a file-read manifest after compaction so Claude doesn't start from scratch
+**Stop paying for the same tokens twice.** `qdf-hook` is a set of
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) hooks that
+intercept tool output and collapse the redundant, repeated, and re-read parts
+before they ever reach the model's context — cutting **50–99 %** of the tokens
+your dev tools would otherwise burn.
 
-## Install
+```text
+Re-read an unchanged 500-line file   →  not read at all  (−100 %)
+1000-row JSON from a Bash command     →  ~300 chars        (−99.5 %)
+Repeated command output (any tool)    →  §ref token        (−98.2 %)
+go test -v, 50 tests pass             →  3 lines           (−99 %)
+```
+
+Measured end-to-end on a realistic mixed session: **−72 % tokens**, trending to
+**90 %+** as a session re-reads and re-runs. Every hot path runs in **tens of
+microseconds** — a sub-1 % sliver of the process-spawn cost, so the savings are
+effectively free.
+
+- ⚡ **Fast** — re-read of an unchanged file: **49 µs**; a `§ref` cache hit:
+  **3.6 µs**; JSON analysis of 1000 rows: **269 µs**.
+- 🧠 **Context-aware** — tracks what the model already saw *this session and
+  across sessions* and serves a reference instead of the bytes.
+- 🔒 **Safe** — never changes what a tool *does*; only compresses what the model
+  *sees*. A cache miss is always a fresh, correct read.
+- 🚀 **One-command install.** No daemon, single static binary, nothing to hand-edit.
+
+---
+
+## Quick start
 
 ```bash
+# 1. install the binary (Go 1.26+)
 go install github.com/alex60217101990/qdf-hook/cmd/qdf-hook@latest
+
+# 2. wire it into Claude Code — idempotent, preserves your existing settings
+qdf-hook init
+
+# 3. restart Claude Code. That's it.
 ```
 
-Or from source:
+`qdf-hook init` merges every hook into your global `~/.claude/settings.json`
+(or `qdf-hook init --project` for the current repo's `.claude/settings.json`),
+using the binary's absolute path so it resolves without PATH juggling. Re-running
+is a no-op; your other hooks and settings are left untouched (and backed up).
+
+Check it's paying off after a few tool calls:
+
 ```bash
-git clone https://github.com/alex60217101990/qdf-hook
-cd qdf-hook
-go build -ldflags="-s -w" -o "$(go env GOPATH)/bin/qdf-hook" ./cmd/qdf-hook/
+qdf-hook stats            # aggregate token savings this session
 ```
 
-## Configure Claude Code
-
-Add to `~/.claude/settings.json`:
+<details>
+<summary>Manual configuration (if you'd rather edit settings.json yourself)</summary>
 
 ```json
 {
@@ -34,92 +64,168 @@ Add to `~/.claude/settings.json`:
       {"matcher": "Read", "hooks": [{"type": "command", "command": "qdf-hook read"}]},
       {"matcher": "Bash", "hooks": [{"type": "command", "command": "qdf-hook bash"}]},
       {"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": "qdf-hook write"}]},
-      {"matcher": "Glob", "hooks": [{"type": "command", "command": "qdf-hook glob"}]}
+      {"matcher": "Glob", "hooks": [{"type": "command", "command": "qdf-hook glob"}]},
+      {"matcher": "Grep", "hooks": [{"type": "command", "command": "qdf-hook grep"}]}
     ],
-    "PreCompact": [
-      {"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook precompact"}]}
-    ],
-    "PostCompact": [
-      {"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook postcompact"}]}
-    ]
+    "PreCompact":  [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook precompact"}]}],
+    "PostCompact": [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook postcompact"}]}]
   }
 }
 ```
+</details>
 
-> **Note:** If you already run sqz for Bash, the two overlap — both compress structured Bash output. Put `qdf-hook bash` *after* sqz in the Bash hooks array, or pick one. qdf-hook's Bash handler is a superset of sqz for structured-data detection and additionally §ref-dedups any repeated byte-identical output.
+---
 
-## Subcommands
+## Why it saves tokens
 
-| Subcommand | Hook | Purpose |
-|------------|------|---------|
-| `pretooluse` | PreToolUse (Read) | Deny re-read of an unchanged file (mtime fast-path) |
-| `read` | PostToolUse (Read) | `§unchanged§` / unified-diff compression of file content |
-| `bash` | PostToolUse (Bash) | Structured-output summaries + §ref dedup of repeated output |
-| `write` | PostToolUse (Write/Edit/MultiEdit) | Suppress content echo, prime delta cache |
-| `glob` | PostToolUse (Glob) | Compress flat file list into a tree |
-| `precompact` | PreCompact | Mark session so next reads serve full content |
-| `postcompact` | PostCompact | Inject file-read manifest into fresh context |
-| `sessionstart` | SessionStart | Initialize session state |
-| `stats` | — | Print token-savings analytics (`--json` for machine output) |
-| `gc` | — | Evict low-utility cached sessions + prune old §ref blobs (`--dry-run`) |
-| `expand` | — | Print the full content behind a `§ref:HASH§` token |
-| `version` | — | Print version |
+Every byte a tool returns to Claude Code enters the model's context **and stays
+there** for the rest of the session — you pay for it again on every turn. The
+three biggest offenders in a normal dev session:
 
-Global flags: `--cpuprofile FILE`, `--memprofile FILE` write pprof profiles.
+1. **Re-reading files.** Read `main.go`, edit elsewhere, read it again — the full
+   file lands in context twice.
+2. **Repeated command output.** `go test`, `git status`, a deploy log — run
+   again, and the identical output is re-ingested in full.
+3. **Structured & noisy dumps.** A 1000-row JSON array, a verbose test log, or a
+   progress bar redrawing 500 times carries far more bytes than *information*.
 
-## State files
+`qdf-hook` attacks all three (see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
+for the deep dive):
 
-- Per-session read cache: `~/.qdf-hook/sessions/{session_id}.qdf` (qdf-compressed).
-- Content-addressed §ref blobs: `~/.qdf-hook/refs/{hash}.blob` (qdf OptBalanced; TTL `QDF_REF_TTL_HOURS`, default 168h).
-- Analytics event log: appended JSONL, surfaced via `qdf-hook stats`.
+- A **`PreToolUse` interceptor** denies re-reading a file whose mtime **and** size
+  are unchanged — the file is **never read**, so the tokens are never spent.
+- A **content-addressed `§ref` store** replaces any byte-identical repeated
+  output (any command, any tool, across sessions) with a 13-token reference.
+- **Structural summarizers** turn JSON arrays, `go test -v`, `git log`, and
+  benchmark output into compact schemas and counts.
+- A **Grep grouper** collapses matches per file; a **squeezer** strips ANSI and
+  run-length-collapses repeated lines; a **delta engine** serves a unified diff
+  when a re-read file changed only slightly.
 
-All are safe to delete; qdf-hook recreates them. `qdf-hook gc` prunes stale sessions by a utility score (recency × read frequency with exponential decay).
+The only lever local tooling has is *how many text tokens enter the context
+window* — that is exactly what `qdf-hook` minimizes.
+
+---
+
+## Benchmarks
+
+Full methodology and raw numbers: **[docs/BENCHMARKS.md](docs/BENCHMARKS.md)**.
+
+### Token savings (measured through the real binary)
+
+| Scenario | Before | After | Reduction |
+| --- | --- | --- | --- |
+| Re-read unchanged 500-line file (PreToolUse deny) | 500 lines | 0 (not read) | **−100 %** |
+| Re-read unchanged file (PostToolUse) | ~12 KB | ~150 B | **~−99 %** |
+| 1000-row JSON array from Bash | ~60 KB | ~300 B | **−99.5 %** |
+| Repeated unstructured output (7 KB log) | 7 179 B | 131 B | **−98.2 %** |
+| `go test -v`, 50 tests pass | 300 lines | 3 lines | **−99 %** |
+| Write a 500-line file | 500 lines | 1 line | **−99.8 %** |
+| **Realistic mixed session (7 ops)** | **216.9 KB** | **60.2 KB** | **−72.3 %** |
+
+### Latency (per hook op, Apple Silicon; `benchstat`, n ≥ 12)
+
+| Operation | Time | Allocs |
+| --- | --- | --- |
+| PreToolUse, unchanged file (deny) | **49 µs** | 54 |
+| `§ref` cache hit | **3.6 µs** | 12 |
+| Session state Save + Load | **69 µs** | 29 |
+| JSON analysis (1000 rows) | **269 µs** | 2 068 |
+
+Launching the hook process itself costs Claude Code **~1–6 ms** of spawn +
+runtime init; qdf-hook's own work is a **sub-1 % sliver** of that.
+
+---
 
 ## How it works
 
-### Read (PreToolUse + PostToolUse)
-1. **PreToolUse:** if the cached file's mtime is unchanged since last read, deny the read with a `§unchanged§` token — Claude never spends tokens re-ingesting it.
-2. **PostToolUse (first read):** cache content, return it in full.
-3. **PostToolUse (seen, changed):** compute a Myers unified diff, return `[§delta:HASH§ path]` + the diff only.
-4. **After compaction:** treat as "not seen" — serve full content on the next read.
+```mermaid
+flowchart LR
+    R[Read] --> PRE{PreToolUse}
+    PRE -->|mtime+size match| DENY["deny — §unchanged§ (file not read)"]
+    PRE -->|changed / new| RD[read handler]
+    RD -->|first read| CACHE[cache + full]
+    RD -->|changed| DELTA[unified diff]
+    RD -->|unchanged| U["§unchanged§"]
+    B[Bash] --> DET{detect}
+    DET -->|structured| SUM[JSON/test/log summary]
+    DET -->|repeat| REF["§ref:HASH§"]
+    DET -->|noisy| SQ[ANSI strip + RLE]
+    G[Grep] --> GRP[group by file + cap]
+    GL[Glob] --> TREE[directory tree]
+    WR[Write/Edit] --> SUP[suppress echo, cache file]
+```
 
-### Bash (PostToolUse)
-1. Try detectors in order: JSON array → columnar summary; `go test -v` → PASS/FAIL counts + failures; `git log` → compact commit table; `go test -bench` → aligned bench table.
-2. Unstructured output that no detector compressed, but which is byte-identical to something already emitted (this or an earlier session) → a compact `§ref:HASH§` token. Resolve with `qdf-hook expand HASH`.
-3. Anything else → pass through unchanged (and registered so a later identical repeat becomes a `§ref`).
+- **Read** — PreToolUse denies unchanged re-reads (mtime+size); PostToolUse serves
+  `§unchanged§`, a unified diff, or full content on first read.
+- **Bash** — structural summarizers → `§ref` dedup of repeats → ANSI/RLE squeeze
+  → pass through.
+- **Grep** — group content matches per file (capped) or delegate a file list to
+  the tree compressor.
+- **Glob** — flat list → directory tree. **Write/Edit** — suppress echo, cache the
+  real file for the next delta. **Compaction** — force full re-read + file
+  manifest.
 
-Dedup is content-addressed and runs *after* execution, so it can never suppress a side effect — a `§ref` is emitted only when the current output's hash already has a stored blob, so the blob always equals the current bytes (no staleness, works across sessions).
+Every persisted store is a rebuildable cache written with a single plain write
+and serialized with [`qdf`](https://github.com/alex60217101990/qdf)
+(~38× faster decode than JSON); decode and hashing are zero-copy. A `§ref` is
+emitted only when the current output's hash already has a stored blob, so it can
+never point at stale or wrong content.
 
-### Write (PostToolUse)
-Replaces the echoed file content with `[WRITE §ref:HASH§ path — N lines written]` and caches the content so the next read of that file is served as a delta.
+---
 
-### Glob (PostToolUse)
-Collapses a flat list of matched paths into an indented directory tree.
+## Subcommands
 
-### Compact hooks
-- `PreCompact`: marks `CompactedAt` in session state so next reads serve full content.
-- `PostCompact`: injects a file-manifest into the fresh context ("you've read these files before").
+| Subcommand | Purpose |
+| --- | --- |
+| `init` | **Install all hooks into Claude Code settings.json** (idempotent) |
+| `pretooluse` | Deny re-read of an unchanged file (mtime+size) |
+| `read` | `§unchanged§` / unified-diff compression |
+| `bash` | Structured summaries + `§ref` dedup + ANSI/RLE squeeze |
+| `write` | Suppress content echo, prime delta cache |
+| `glob` / `grep` | File tree / grouped matches |
+| `precompact` / `postcompact` | Full re-read + file manifest around compaction |
+| `stats` | Token-savings analytics (`--json`) |
+| `gc` | Evict low-utility sessions + old `§ref` blobs (`--dry-run`) |
+| `expand <hash>` | Print the full content behind a `§ref:HASH§` token |
+| `version` | Print version |
 
-## Expected savings
+Global flags: `--cpuprofile FILE`, `--memprofile FILE`.
 
-| Scenario | Before | After | Reduction |
-|----------|--------|-------|-----------|
-| Re-read unchanged 500-line file | 500 lines | 1 line | −99.8% |
-| Re-read file with 5-line change | 500 lines | ~20 lines | −96% |
-| 1000-row JSON array | ~60KB | ~300 chars | −99.5% |
-| `go test -v` 50 tests all pass | 300 lines | 3 lines | −99% |
-| Write a 500-line file | 500 lines | 1 line | −99.8% |
-| Glob 50-file listing | 50 lines | ~15 lines | ~−70% |
-| After compaction (3 files) | 1500 lines | 15 lines | −99% |
+## Configuration
 
-## Development
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `QDF_REF_TTL_HOURS` | `168` (7 d) | Max age of a `§ref` blob before `gc` prunes it |
+| `QDF_DECAY_LAMBDA` | `0.1` | Decay rate for session eviction utility |
+
+State lives under `~/.qdf-hook/` (`sessions/`, `refs/`, `analytics.jsonl`) and is
+a rebuildable cache — safe to delete anytime.
+
+## FAQ
+
+**Does it change what my commands do?** No. Hooks run *after* a tool executes, or
+only *deny* a redundant re-read. Never mutates files or command behavior.
+
+**A `§ref` blob I need is gone?** `qdf-hook expand <hash>`. In practice the model
+rarely needs it — a `§ref` means it already saw that exact output.
+
+**Safe across crashes / concurrent hooks?** Yes — state is content-addressed and
+rebuildable; a torn write is treated as a cache miss.
+
+**Plays nice with other hooks (sqz, atuin, …)?** Yes; `qdf-hook init` preserves
+them. They compose.
+
+## Contributing
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)**. The one hard rule: **measure before
+you optimize** — every perf change is gated by an interleaved `benchstat` run.
 
 ```bash
 go test -race ./...
 go test -bench=. -benchmem -count=6 ./...
-gofmt -w .
-
-# Profile a single hook invocation:
-qdf-hook glob --cpuprofile=cpu.prof < input.json
-go tool pprof -top cpu.prof
 ```
+
+## License
+
+[Apache 2.0](LICENSE) © 2026 the qdf-hook authors.
