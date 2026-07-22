@@ -28,9 +28,10 @@ type ColStats struct {
 	Nullable    bool
 	NullCount   int
 	BoolTrue    int
-	ConstVal    string  // non-empty if all non-null string values are equal
-	ConstCount  int     // how many rows have ConstVal
-	Min, Max    float64 // for numeric kinds
+	Observed    int      // rows where this key was present (sparse-column support)
+	ConstVal    string   // non-empty if all non-null string values are equal
+	ConstCount  int      // how many rows have ConstVal
+	Min, Max    float64  // for numeric kinds
 	Mean        float64
 	P95         float64  // approximate 95th percentile
 	Cardinality int      // distinct count (capped at maxDistinct)
@@ -86,6 +87,7 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 		hasNull  bool
 		nulls    int
 		boolTrue int
+		observed int
 		strFreq  map[string]int
 		nums     []float64
 	}
@@ -108,6 +110,7 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 				accs[name] = acc
 				colOrder = append(colOrder, name)
 			}
+			acc.observed++
 
 			if len(v) == 0 {
 				continue
@@ -154,6 +157,7 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			Nullable:  acc.nulls > 0,
 			NullCount: acc.nulls,
 			BoolTrue:  acc.boolTrue,
+			Observed:  acc.observed,
 		}
 
 		// Determine kind; mixed if multiple base types observed.
@@ -178,7 +182,12 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			cs.Kind = KindNull
 		}
 		if kinds > 1 {
-			cs.Kind = KindMixed
+			// Pure numeric (int + float together) is still KindFloat, not Mixed.
+			if !acc.hasStr && !acc.hasBool {
+				cs.Kind = KindFloat
+			} else {
+				cs.Kind = KindMixed
+			}
 		}
 
 		// String stats: cardinality, constant value, top-5 by frequency.

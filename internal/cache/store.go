@@ -50,6 +50,10 @@ func Load(sessionID string) (*SessionState, error) {
 	return &s, nil
 }
 
+// Save writes state atomically via a tmp+rename. Concurrent hook processes may
+// race on Load+Save; the last writer wins. Consequence is reduced compression
+// (a file may be re-served full on the next read), not wrong content.
+//
 // Save persists the session state to disk using qdf OptSpeed.
 // We benchmarked all options on a 50-file SessionState:
 //

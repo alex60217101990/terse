@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -93,6 +94,10 @@ func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.Hook
 }
 
 func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *protocol.HookOutput {
+	// Guard: very large diffs are O((N+M)²) — serve full content instead.
+	if bytes.Count(oldContent, []byte("\n"))+bytes.Count(newContent, []byte("\n")) > 10000 {
+		return serveFullContent(path, newHash, newContent, string(newContent))
+	}
 	diff := cache.UnifiedDiff(oldContent, newContent, 3)
 	hashHex := fmt.Sprintf("%x", newHash[:8])
 
