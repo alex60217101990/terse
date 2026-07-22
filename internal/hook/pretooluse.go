@@ -21,7 +21,7 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
-		return fmt.Errorf("DecodeInput: %w", err)
+		return protocol.EncodePre(w, "allow", "")
 	}
 
 	var ti protocol.ReadInput
