@@ -84,6 +84,7 @@ func init() {
 		cmdStats(),
 		cmdGC(),
 		cmdExpand(),
+		cmdInit(),
 	)
 }
 
