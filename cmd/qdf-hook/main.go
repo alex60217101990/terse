@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
 	"github.com/spf13/cobra"
 )
 
@@ -103,6 +102,6 @@ func runVersion() error {
 
 func runRead() error         { return hook.HandleRead(os.Stdin, os.Stdout) }
 func runBash() error         { return hook.HandleBash(os.Stdin, os.Stdout) }
-func runPreCompact() error   { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
-func runPostCompact() error  { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
-func runSessionStart() error { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
+func runPreCompact() error   { return hook.HandlePreCompact(os.Stdin, os.Stdout) }
+func runPostCompact() error  { return hook.HandlePostCompact(os.Stdin, os.Stdout) }
+func runSessionStart() error { return hook.HandleSessionStart(os.Stdin, os.Stdout) }
