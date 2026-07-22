@@ -114,13 +114,13 @@ func HandleRead(r io.Reader, w io.Writer) error {
 
 func serveFullContent(path string, hash [32]byte, _ []byte, original string) *protocol.HookOutput {
 	// First read: return original content with a cache-registration header.
-	hashHex := fmt.Sprintf("%x", hash[:8]) // first 8 bytes = 16 hex chars
+	hashHex := cache.ShortHex(hash[:8]) // first 8 bytes = 16 hex chars
 	header := fmt.Sprintf("[READ §ref:%s§ %s — CACHED for delta tracking]\n", hashHex, path)
 	return protocol.Replace(header + original)
 }
 
 func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.HookOutput {
-	hashHex := fmt.Sprintf("%x", hash[:8])
+	hashHex := cache.ShortHex(hash[:8])
 	msg := fmt.Sprintf("[READ §unchanged:%s§ %s — content identical to read at turn %d. Full content available if needed.]",
 		hashHex, path, cachedAtTurn)
 	return protocol.Replace(msg)
@@ -132,7 +132,7 @@ func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *p
 		return serveFullContent(path, newHash, newContent, string(newContent))
 	}
 	diff := cache.UnifiedDiff(oldContent, newContent, 3)
-	hashHex := fmt.Sprintf("%x", newHash[:8])
+	hashHex := cache.ShortHex(newHash[:8])
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "[READ §delta:%s§ %s — showing changes since last read]\n", hashHex, path)

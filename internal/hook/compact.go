@@ -122,8 +122,8 @@ func buildManifest(state *cache.SessionState) string {
 
 	for _, path := range paths {
 		entry := state.Files[path]
-		fmt.Fprintf(&sb, "  §ref:%x§  %s  (read at turn %d, %d bytes)\n",
-			entry.Hash[:8], path, entry.Turn, len(entry.Content))
+		fmt.Fprintf(&sb, "  §ref:%s§  %s  (read at turn %d, %d bytes)\n",
+			cache.ShortHex(entry.Hash[:8]), path, entry.Turn, len(entry.Content))
 	}
 	sb.WriteString("\n[Subsequent reads of these files will show delta or §unchanged§]\n")
 	return sb.String()

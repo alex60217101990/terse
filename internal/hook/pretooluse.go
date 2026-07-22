@@ -48,7 +48,7 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 
 	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() {
 		// mtime unchanged — safe to deny without reading.
-		hashHex := fmt.Sprintf("%x", entry.Hash[:8])
+		hashHex := cache.ShortHex(entry.Hash[:8])
 		reason = fmt.Sprintf(
 			"§unchanged:%s§ %s — mtime unchanged, cached at turn %d. No re-read needed.",
 			hashHex, ti.FilePath, entry.Turn,

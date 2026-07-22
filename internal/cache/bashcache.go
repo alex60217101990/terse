@@ -2,6 +2,7 @@ package cache
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,16 @@ import (
 	"strings"
 	"time"
 )
+
+// ShortHex returns the lowercase hex encoding of b using a stack-resident
+// scratch buffer. Unlike fmt.Sprintf("%x", b) it boxes no interface argument
+// and lets the caller's backing array (e.g. a [32]byte hash) stay on the stack;
+// only the returned string is heap-allocated. b must be at most 32 bytes.
+func ShortHex(b []byte) string {
+	var buf [64]byte // 32 bytes -> 64 hex chars, the max we ever encode
+	n := hex.Encode(buf[:], b)
+	return string(buf[:n])
+}
 
 // readOnlyPrefixes are command prefixes considered safe to cache.
 // These commands have no side effects and produce deterministic output
@@ -118,7 +129,7 @@ func BashCacheGet(command, cwd string) (string, bool) {
 func BashCacheSet(command, cwd, output string) {
 	h := sha256.Sum256([]byte(output))
 	entry := bashCacheEntry{
-		OutputHash: fmt.Sprintf("%x", h[:8]),
+		OutputHash: ShortHex(h[:8]),
 		Output:     output,
 		TS:         time.Now().Unix(),
 	}
@@ -133,5 +144,5 @@ func BashCacheSet(command, cwd, output string) {
 // BashOutputHash returns the SHA-256 hash prefix of output (for compact summary tokens).
 func BashOutputHash(output string) string {
 	h := sha256.Sum256([]byte(output))
-	return fmt.Sprintf("%x", h[:8])
+	return ShortHex(h[:8])
 }

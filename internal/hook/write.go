@@ -47,7 +47,7 @@ func HandleWrite(r io.Reader, w io.Writer) error {
 	_ = json.Unmarshal(inp.ToolInput, &ti)
 
 	hash := sha256.Sum256(content)
-	hashHex := fmt.Sprintf("%x", hash[:8])
+	hashHex := cache.ShortHex(hash[:8])
 	lineCount := bytes.Count(content, []byte("\n"))
 
 	compressed := fmt.Sprintf("[WRITE §ref:%s§ %s — %d lines written, cached for delta tracking]",
