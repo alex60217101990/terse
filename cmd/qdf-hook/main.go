@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alex60217101990/qdf-hook/internal/protocol"
 	"github.com/spf13/cobra"
 )
 
@@ -87,8 +88,7 @@ func cmdSessionStart() *cobra.Command {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fmt.Fprintln(os.Stderr, "qdf-hook:", err)
 	}
 }
 
@@ -100,8 +100,8 @@ func runVersion() error {
 
 // stubs — filled in by later tasks
 
-func runRead() error         { panic("not implemented") }
-func runBash() error         { panic("not implemented") }
-func runPreCompact() error   { panic("not implemented") }
-func runPostCompact() error  { panic("not implemented") }
-func runSessionStart() error { panic("not implemented") }
+func runRead() error         { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
+func runBash() error         { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
+func runPreCompact() error   { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
+func runPostCompact() error  { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
+func runSessionStart() error { return protocol.EncodeOutput(os.Stdout, protocol.Passthrough()) }
