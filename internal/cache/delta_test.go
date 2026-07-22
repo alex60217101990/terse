@@ -1,0 +1,136 @@
+package cache_test
+
+import (
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/alex60217101990/qdf-hook/internal/cache"
+)
+
+func TestUnifiedDiff_NoChange(t *testing.T) {
+	content := []byte("line1\nline2\nline3\n")
+	got := cache.UnifiedDiff(content, content, 3)
+	if got != "" {
+		t.Errorf("identical content should produce empty diff, got:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_SingleLineChange(t *testing.T) {
+	old := []byte("line1\nline2\nline3\n")
+	newer := []byte("line1\nLINE2\nline3\n")
+	got := cache.UnifiedDiff(old, newer, 1)
+	if !strings.Contains(got, "-line2") {
+		t.Errorf("diff should contain -line2:\n%s", got)
+	}
+	if !strings.Contains(got, "+LINE2") {
+		t.Errorf("diff should contain +LINE2:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_AddedLines(t *testing.T) {
+	old := []byte("a\nb\n")
+	newer := []byte("a\nb\nc\nd\n")
+	got := cache.UnifiedDiff(old, newer, 0)
+	if !strings.Contains(got, "+c") || !strings.Contains(got, "+d") {
+		t.Errorf("diff should show added lines:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_DeletedLines(t *testing.T) {
+	old := []byte("a\nb\nc\n")
+	newer := []byte("a\nc\n")
+	got := cache.UnifiedDiff(old, newer, 0)
+	if !strings.Contains(got, "-b") {
+		t.Errorf("diff should show -b:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_PureInsertion(t *testing.T) {
+	old := []byte("a\nb\n")
+	newer := []byte("a\nb\nc\n")
+	got := cache.UnifiedDiff(old, newer, 0)
+	if !strings.Contains(got, "+c") {
+		t.Errorf("diff should show +c:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_PureDeletion(t *testing.T) {
+	old := []byte("a\nb\nc\n")
+	newer := []byte("a\nc\n")
+	got := cache.UnifiedDiff(old, newer, 0)
+	if !strings.Contains(got, "-b") {
+		t.Errorf("diff should show -b:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_EmptyOld(t *testing.T) {
+	old := []byte("")
+	newer := []byte("a\nb\n")
+	got := cache.UnifiedDiff(old, newer, 0)
+	if !strings.Contains(got, "+a") || !strings.Contains(got, "+b") {
+		t.Errorf("diff from empty should show all lines added:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_EmptyNew(t *testing.T) {
+	old := []byte("a\nb\n")
+	newer := []byte("")
+	got := cache.UnifiedDiff(old, newer, 0)
+	if !strings.Contains(got, "-a") || !strings.Contains(got, "-b") {
+		t.Errorf("diff to empty should show all lines deleted:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_LargeFile(t *testing.T) {
+	v1, err := os.ReadFile("testdata/encoder_go_v1.txt")
+	if err != nil {
+		t.Fatalf("read v1: %v", err)
+	}
+	v2, err := os.ReadFile("testdata/encoder_go_v2.txt")
+	if err != nil {
+		t.Fatalf("read v2: %v", err)
+	}
+	got := cache.UnifiedDiff(v1, v2, 3)
+	if got == "" {
+		t.Fatal("expected non-empty diff between v1 and v2")
+	}
+	// v2 has changed lines; diff must contain deletions and insertions.
+	if !strings.Contains(got, "-") {
+		t.Errorf("diff should contain at least one deletion:\n%s", got)
+	}
+	if !strings.Contains(got, "+") {
+		t.Errorf("diff should contain at least one insertion:\n%s", got)
+	}
+}
+
+func TestIsBinaryContent(t *testing.T) {
+	if cache.IsBinaryContent([]byte("hello world\n")) {
+		t.Error("plain text should not be binary")
+	}
+	if !cache.IsBinaryContent([]byte("hello\x00world")) {
+		t.Error("null byte should be binary")
+	}
+	if !cache.IsBinaryContent(append([]byte{0xFF, 0xFE}, []byte("bad utf8")...)) {
+		t.Error("invalid UTF-8 should be binary")
+	}
+}
+
+func BenchmarkUnifiedDiff(b *testing.B) {
+	// 500-line file, 10 lines changed
+	var old, newer strings.Builder
+	for i := 0; i < 500; i++ {
+		old.WriteString("func foo() { // line\n")
+		if i >= 100 && i < 110 {
+			newer.WriteString("func bar() { // changed\n")
+		} else {
+			newer.WriteString("func foo() { // line\n")
+		}
+	}
+	oldB := []byte(old.String())
+	newB := []byte(newer.String())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = cache.UnifiedDiff(oldB, newB, 3)
+	}
+}
