@@ -1,0 +1,8 @@
+a1b2c3d feat: add RLE overflow guard to prevent integer overflow when encoding run-length sequences larger than 255
+e4f5a6b perf: implement FSST cross-batch symbol table caching to avoid redundant recomputation on repeated short strings
+7890abc fix: correct delta encoding truncation in columnar codec when last segment is smaller than the chunk boundary
+def1234 style: resolve gofmt complaints about double blank lines inside function bodies across multiple files in scanner
+5678901 perf: replace naive O(n^2) edit-distance with Myers diff algorithm reducing benchmark from 120ms to 3ms
+c9d8e7f refactor: simplify SARIF parsing logic by extracting location helpers and removing duplicated path normalization
+b6a5f4e feat: implement columnar predicate tree with three-valued logic for null-aware filter pushdown in scan layer
+3210fed fix: prevent race condition in concurrent session handler by switching from sync.Map to channel-based dispatch
