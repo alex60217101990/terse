@@ -14,12 +14,12 @@ import (
 
 // Stats holds aggregated analytics data.
 type Stats struct {
-	TotalInvocations int                       `json:"total_invocations"`
-	TotalBytesIn     int                       `json:"total_bytes_in"`
-	TotalBytesOut    int                       `json:"total_bytes_out"`
 	ByHookAction     map[string]map[string]int `json:"by_hook_action"` // hook -> action -> count
 	Latencies        map[string][]int64        `json:"-"`              // hook/action -> []DurNS (for percentile calc)
 	LatencyStats     map[string]LatStat        `json:"latency_ms"`
+	TotalInvocations int                       `json:"total_invocations"`
+	TotalBytesIn     int                       `json:"total_bytes_in"`
+	TotalBytesOut    int                       `json:"total_bytes_out"`
 }
 
 // LatStat holds latency percentiles in milliseconds.
@@ -29,9 +29,9 @@ type LatStat struct {
 	P99 float64 `json:"p99"`
 }
 
-func (s Stats) SavedBytes() int      { return s.TotalBytesIn - s.TotalBytesOut }
-func (s Stats) SavedTokens() int     { return s.SavedBytes() / 4 }
-func (s Stats) OriginalTokens() int  { return s.TotalBytesIn / 4 }
+func (s Stats) SavedBytes() int     { return s.TotalBytesIn - s.TotalBytesOut }
+func (s Stats) SavedTokens() int    { return s.SavedBytes() / 4 }
+func (s Stats) OriginalTokens() int { return s.TotalBytesIn / 4 }
 
 func (s Stats) SavingsPercent() float64 {
 	if s.TotalBytesIn == 0 {
