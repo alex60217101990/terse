@@ -149,7 +149,8 @@ func BenchmarkUnifiedDiff(b *testing.B) {
 	oldB := []byte(old.String())
 	newB := []byte(newer.String())
 
-	for b.Loop() {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		_ = cache.UnifiedDiff(oldB, newB, 3)
 	}
 }
