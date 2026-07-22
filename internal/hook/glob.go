@@ -58,6 +58,7 @@ func buildGlobTree(content string) string {
 	}
 	groups := make(map[string]*dirGroup)
 	var order []string
+	total := 0
 
 	for _, path := range lines {
 		path = strings.TrimSpace(path)
@@ -70,11 +71,11 @@ func buildGlobTree(content string) string {
 			order = append(order, dir)
 		}
 		groups[dir].files = append(groups[dir].files, filepath.Base(path))
+		total++
 	}
 	sort.Strings(order)
 
 	var sb strings.Builder
-	total := len(lines)
 	for _, dir := range order {
 		g := groups[dir]
 		sort.Strings(g.files)

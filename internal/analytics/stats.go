@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Stats holds aggregated analytics data.
@@ -32,6 +33,18 @@ type LatStat struct {
 func (s Stats) SavedBytes() int     { return s.TotalBytesIn - s.TotalBytesOut }
 func (s Stats) SavedTokens() int    { return s.SavedBytes() / 4 }
 func (s Stats) OriginalTokens() int { return s.TotalBytesIn / 4 }
+
+// humanTokens formats a token count compactly: 1234 -> "1.2k", 4_500_000 -> "4.5M".
+func humanTokens(n int) string {
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(n)/1e6)
+	case n >= 1_000:
+		return fmt.Sprintf("%.1fk", float64(n)/1e3)
+	default:
+		return fmt.Sprintf("%d", n)
+	}
+}
 
 func (s Stats) SavingsPercent() float64 {
 	if s.TotalBytesIn == 0 {
@@ -78,9 +91,14 @@ func pctile(sorted []int64, p float64) float64 {
 	return float64(sorted[idx])
 }
 
-// LoadEvents reads events from analytics.jsonl (and .1 if exists), filtered by days.
+// LoadEvents reads events from analytics.jsonl (and .1 if exists). When days > 0,
+// only events newer than that many days are returned; days <= 0 returns all.
 func LoadEvents(days int) ([]Event, error) {
 	path := AnalyticsPath()
+	var cutoff int64
+	if days > 0 {
+		cutoff = time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixNano()
+	}
 	var events []Event
 	for _, p := range []string{path + ".1", path} {
 		f, err := os.Open(p)
@@ -94,9 +112,16 @@ func LoadEvents(days int) ([]Event, error) {
 			if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
 				continue
 			}
+			if cutoff > 0 && e.TS < cutoff {
+				continue
+			}
 			events = append(events, e)
 		}
-		f.Close()
+		if err := scanner.Err(); err != nil {
+			_ = f.Close()
+			return nil, err
+		}
+		_ = f.Close()
 	}
 	return events, nil
 }
@@ -113,10 +138,10 @@ func PrintStats(s Stats, jsonOut bool, w io.Writer) {
 	fmt.Fprintf(w, "\nqdf-hook  (%d invocations)\n\n", s.TotalInvocations)
 
 	fmt.Fprintf(w, "TOKEN SAVINGS\n")
-	fmt.Fprintf(w, "  Original:  %s  (~%dM tokens)\n", FormatBytes(s.TotalBytesIn), s.OriginalTokens()/1_000_000)
-	fmt.Fprintf(w, "  Emitted:   %s  (~%dM tokens)\n", FormatBytes(s.TotalBytesOut), s.TotalBytesOut/4/1_000_000)
-	fmt.Fprintf(w, "  Saved:     %s  %.1f%%  (~%dM tokens)\n\n",
-		FormatBytes(s.SavedBytes()), s.SavingsPercent(), s.SavedTokens()/1_000_000)
+	fmt.Fprintf(w, "  Original:  %s  (~%s tokens)\n", FormatBytes(s.TotalBytesIn), humanTokens(s.OriginalTokens()))
+	fmt.Fprintf(w, "  Emitted:   %s  (~%s tokens)\n", FormatBytes(s.TotalBytesOut), humanTokens(s.TotalBytesOut/4))
+	fmt.Fprintf(w, "  Saved:     %s  %.1f%%  (~%s tokens)\n\n",
+		FormatBytes(s.SavedBytes()), s.SavingsPercent(), humanTokens(s.SavedTokens()))
 
 	fmt.Fprintf(w, "LATENCY  p50 / p95 / p99\n")
 	keys := make([]string, 0, len(s.LatencyStats))

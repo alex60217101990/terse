@@ -43,10 +43,8 @@ func IsGitLogOutput(s string) bool {
 // Keeps hash (short), and truncates long commit messages to 72 characters.
 func SummarizeGitLog(s string) string {
 	lines := strings.Split(strings.TrimSpace(s), "\n")
-	var sb strings.Builder
-	sb.WriteString("[git log — ")
-	sb.WriteString(itoa(len(lines)))
-	sb.WriteString(" commits]\n")
+	var body strings.Builder
+	commits := 0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -61,14 +59,22 @@ func SummarizeGitLog(s string) string {
 			hash = hash[:8]
 		}
 		msg := strings.Join(fields[1:], " ")
-		// Truncate long messages to keep output compact.
-		if len(msg) > 72 {
-			msg = msg[:69] + "..."
+		// Truncate long messages to keep output compact. Cut on a rune
+		// boundary so multi-byte characters are never split.
+		if r := []rune(msg); len(r) > 72 {
+			msg = string(r[:69]) + "..."
 		}
-		sb.WriteString(hash)
-		sb.WriteString(" ")
-		sb.WriteString(msg)
-		sb.WriteString("\n")
+		body.WriteString(hash)
+		body.WriteString(" ")
+		body.WriteString(msg)
+		body.WriteString("\n")
+		commits++
 	}
+
+	var sb strings.Builder
+	sb.WriteString("[git log — ")
+	sb.WriteString(itoa(commits))
+	sb.WriteString(" commits]\n")
+	sb.WriteString(body.String())
 	return sb.String()
 }

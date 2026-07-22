@@ -51,6 +51,9 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 				lastRead = nowSec - 86400 // default: 1 day old
 			}
 			ageHours := float64(nowSec-lastRead) / 3600.0
+			if ageHours < 0 {
+				ageHours = 0 // clock skew (NTP step back) must not inflate the score
+			}
 			sessionScore = float64(totalReads) * math.Exp(-lambda*ageHours)
 		}
 

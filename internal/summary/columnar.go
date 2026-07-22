@@ -45,7 +45,9 @@ func ColumnarSummary(path string, stats *detect.ArrayStats) string {
 				fmt.Fprintf(&sb, "[%.4g..%.4g] mean=%.4g p95=%.4g", col.Min, col.Max, col.Mean, col.P95)
 			}
 		case detect.KindBool:
-			falseCount := col.Observed - col.BoolTrue
+			// Observed includes rows whose value was JSON null; exclude them
+			// so nulls aren't double-counted as false.
+			falseCount := col.Observed - col.BoolTrue - col.NullCount
 			fmt.Fprintf(&sb, "true=%d false=%d", col.BoolTrue, falseCount)
 		case detect.KindNull:
 			sb.WriteString("null (all rows)")
