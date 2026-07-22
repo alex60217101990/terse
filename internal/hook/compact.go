@@ -84,9 +84,8 @@ func buildManifest(state *cache.SessionState) string {
 
 	for _, path := range paths {
 		entry := state.Files[path]
-		hashHex := fmt.Sprintf("%x", entry.Hash[:8])
-		sb.WriteString(fmt.Sprintf("  §ref:%s§  %s  (read at turn %d, %d bytes)\n",
-			hashHex, path, entry.Turn, len(entry.Content)))
+		fmt.Fprintf(&sb, "  §ref:%x§  %s  (read at turn %d, %d bytes)\n",
+			entry.Hash[:8], path, entry.Turn, len(entry.Content))
 	}
 	sb.WriteString("\n[Subsequent reads of these files will show delta or §unchanged§]\n")
 	return sb.String()
