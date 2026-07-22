@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/analytics"
@@ -46,28 +47,49 @@ func HandleWrite(r io.Reader, w io.Writer) error {
 	var ti protocol.ReadInput // reuse: same {file_path} shape
 	_ = json.Unmarshal(inp.ToolInput, &ti)
 
-	hash := sha256.Sum256(content)
-	hashHex := cache.ShortHex(hash[:8])
-	lineCount := bytes.Count(content, []byte("\n"))
-
-	compressed := fmt.Sprintf("[WRITE §ref:%s§ %s — %d lines written, cached for delta tracking]",
-		hashHex, ti.FilePath, lineCount)
-
-	// Cache written content for delta tracking on next Read.
-	if ti.FilePath != "" && inp.SessionID != "" {
-		state, serr := cache.Load(inp.SessionID)
-		if serr == nil {
-			state.Turn++
-			state.Files[ti.FilePath] = cache.FileEntry{
-				Hash:       hash,
-				Turn:       state.Turn,
-				Content:    content,
-				LastReadAt: time.Now().Unix(),
-				ReadCount:  1,
+	// Cache the ACTUAL file bytes for delta tracking — not inp.ToolResponse
+	// .Content, which is only the tool's confirmation/snippet (a diff for Edit,
+	// a summary for Write). Caching the response would make the next Read hash
+	// the real file, mismatch the cached snippet, and emit a bogus delta.
+	var (
+		hash      [32]byte
+		hashHex   string
+		lineCount int
+	)
+	fileBytes, ferr := os.ReadFile(ti.FilePath)
+	if ferr == nil {
+		hash = sha256.Sum256(fileBytes)
+		hashHex = cache.ShortHex(hash[:8])
+		lineCount = bytes.Count(fileBytes, []byte("\n"))
+		if inp.SessionID != "" {
+			state, serr := cache.Load(inp.SessionID)
+			if serr == nil {
+				state.Turn++
+				var modTime int64
+				if info, e := os.Stat(ti.FilePath); e == nil {
+					modTime = info.ModTime().UnixNano()
+				}
+				state.Files[ti.FilePath] = cache.FileEntry{
+					Hash:       hash,
+					Turn:       state.Turn,
+					Content:    fileBytes,
+					ModTime:    modTime,
+					LastReadAt: time.Now().Unix(),
+					ReadCount:  1,
+				}
+				_ = cache.Save(inp.SessionID, state)
 			}
-			_ = cache.Save(inp.SessionID, state)
 		}
+	} else {
+		// Can't read the file back — emit a marker from the response but do not
+		// cache, so we never poison delta tracking with non-file bytes.
+		hash = sha256.Sum256(content)
+		hashHex = cache.ShortHex(hash[:8])
+		lineCount = bytes.Count(content, []byte("\n"))
 	}
+
+	compressed := fmt.Sprintf("[WRITE §ref:%s§ %s — %d lines, cached for delta tracking]",
+		hashHex, ti.FilePath, lineCount)
 
 	_ = analytics.Record(analytics.Event{
 		TS:       time.Now().UnixNano(),

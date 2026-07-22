@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -54,6 +56,49 @@ func TestWrite_LargeContent_Compressed(t *testing.T) {
 	hashHex := fmt.Sprintf("%x", hash[:8])
 	if !strings.Contains(compressed, hashHex) {
 		t.Errorf("compressed output should contain hash %s: %s", hashHex, compressed)
+	}
+}
+
+// TestWrite_CachesRealFileNotResponse pins the fix for caching the tool
+// response (an Edit snippet) instead of the file's bytes. After a Write, a Read
+// of the same file must resolve to §unchanged§, not a bogus delta between the
+// snippet and the real file.
+func TestWrite_CachesRealFileNotResponse(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dir := t.TempDir()
+	path := filepath.Join(dir, "real.go")
+	fileContent := strings.Repeat("package main\nfunc foo() {}\n", 20) // >256B
+	if err := os.WriteFile(path, []byte(fileContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// tool_response is a snippet that is NOT the file's content.
+	snippet := "Applied 3 edits to real.go:\n" + strings.Repeat("  + added line\n", 20)
+	var wout strings.Builder
+	if err := hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-real", path, snippet)), &wout); err != nil {
+		t.Fatalf("HandleWrite: %v", err)
+	}
+
+	// Now Read the file with its ACTUAL content.
+	rin := map[string]any{
+		"session_id":    "sess-w-real",
+		"tool_name":     "Read",
+		"tool_input":    map[string]any{"file_path": path},
+		"tool_response": map[string]any{"content": fileContent},
+	}
+	rb, _ := json.Marshal(rin)
+	var rout strings.Builder
+	if err := hook.HandleRead(strings.NewReader(string(rb)), &rout); err != nil {
+		t.Fatalf("HandleRead: %v", err)
+	}
+	var resp protocol.HookOutput
+	_ = json.Unmarshal([]byte(rout.String()), &resp)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("expected a compressed read output")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "§unchanged") {
+		t.Errorf("Read after Write of the same file must be §unchanged§, got:\n%s", got)
 	}
 }
 

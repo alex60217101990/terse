@@ -46,11 +46,19 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 	decision := "allow"
 	reason := ""
 
-	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() {
-		// mtime unchanged — safe to deny without reading.
+	// Deny only when BOTH mtime and size match the cached copy. mtime alone is
+	// not sufficient: cp -p, rsync --times, os.Chtimes, tar extraction and
+	// coarse-resolution filesystems (NFS, some bind mounts) can leave mtime
+	// unchanged across a content change. Requiring the size to match as well is
+	// free (already stat'd) and closes the common cases. Residual risk — an
+	// edit that preserves both mtime and size — is rare and only costs a missed
+	// compression, never wrong content beyond that window.
+	sizeMatch := info.Size() == int64(len(entry.Content))
+	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() && sizeMatch {
+		// mtime + size unchanged — safe to deny without reading.
 		hashHex := cache.ShortHex(entry.Hash[:8])
 		reason = fmt.Sprintf(
-			"§unchanged:%s§ %s — mtime unchanged, cached at turn %d. No re-read needed.",
+			"§unchanged:%s§ %s — mtime+size unchanged, cached at turn %d. No re-read needed.",
 			hashHex, ti.FilePath, entry.Turn,
 		)
 		decision = "deny"
