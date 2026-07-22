@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -209,13 +209,10 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			for k, v := range acc.strFreq {
 				top = append(top, kv{k, v})
 			}
-			sort.Slice(top, func(i, j int) bool {
-				return top[i].v > top[j].v
+			slices.SortFunc(top, func(a, b kv) int {
+				return b.v - a.v
 			})
-			limit := 5
-			if len(top) < limit {
-				limit = len(top)
-			}
+			limit := min(5, len(top))
 			for _, pair := range top[:limit] {
 				cs.TopVals = append(cs.TopVals, fmt.Sprintf("%q×%d", pair.k, pair.v))
 			}
@@ -223,9 +220,7 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 
 		// Numeric stats: min, max, mean, p95.
 		if len(acc.nums) > 0 {
-			sort.Slice(acc.nums, func(i, j int) bool {
-				return acc.nums[i] < acc.nums[j]
-			})
+			slices.Sort(acc.nums)
 			cs.Min = acc.nums[0]
 			cs.Max = acc.nums[len(acc.nums)-1]
 
@@ -236,13 +231,7 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			cs.Mean = sum / float64(len(acc.nums))
 
 			// P95: ceiling-index into sorted slice.
-			p95idx := int(math.Ceil(0.95*float64(len(acc.nums)))) - 1
-			if p95idx < 0 {
-				p95idx = 0
-			}
-			if p95idx >= len(acc.nums) {
-				p95idx = len(acc.nums) - 1
-			}
+			p95idx := min(max(int(math.Ceil(0.95*float64(len(acc.nums))))-1, 0), len(acc.nums)-1)
 			cs.P95 = acc.nums[p95idx]
 		}
 
