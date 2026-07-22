@@ -83,15 +83,15 @@ func TestLoadCorruptFile(t *testing.T) {
 func BenchmarkSaveLoad(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
 	s := cache.NewSessionState()
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		s.Files[fmt.Sprintf("file%d.go", i)] = cache.FileEntry{
 			Hash:    [32]byte{byte(i)},
 			Turn:    i,
 			Content: []byte("package main\nfunc foo() {}\n"),
 		}
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		_ = cache.Save("bench-session", s)
 		_, _ = cache.Load("bench-session")
 	}

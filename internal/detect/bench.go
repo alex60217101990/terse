@@ -20,7 +20,7 @@ func SummarizeGoBench(s string) string {
 	}
 	var rows []row
 
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		if !strings.HasPrefix(line, "Benchmark") {
 			continue
 		}

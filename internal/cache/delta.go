@@ -168,10 +168,7 @@ func writeHunks(buf *bytes.Buffer, a, b []string, edits []edit, ctx int) {
 			i++
 			continue
 		}
-		lo := i - ctx
-		if lo < 0 {
-			lo = 0
-		}
+		lo := max(i-ctx, 0)
 		j := i
 		for j < n {
 			if edits[j].kind != '=' {
@@ -188,10 +185,7 @@ func writeHunks(buf *bytes.Buffer, a, b []string, edits []edit, ctx int) {
 				break
 			}
 		}
-		hi := j + ctx
-		if hi > n {
-			hi = n
-		}
+		hi := min(j+ctx, n)
 		hunks = append(hunks, hunkRange{lo, hi})
 		i = hi
 	}

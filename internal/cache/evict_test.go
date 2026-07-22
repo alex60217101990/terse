@@ -1,6 +1,7 @@
 package cache_test
 
 import (
+	"maps"
 	"math"
 	"strconv"
 	"testing"
@@ -99,9 +100,7 @@ func BenchmarkEvict_200Files(b *testing.B) {
 	for b.Loop() {
 		b.StopTimer()
 		s := cache.NewSessionState()
-		for k, v := range base.Files {
-			s.Files[k] = v
-		}
+		maps.Copy(s.Files, base.Files)
 		b.StartTimer()
 		cache.Evict(s, 200)
 	}
