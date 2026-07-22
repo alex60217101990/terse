@@ -63,7 +63,7 @@ func BenchmarkWrite_Compress(b *testing.B) {
 	inp := map[string]any{
 		"session_id":    "bench-write",
 		"tool_name":     "Write",
-		"tool_input":    map[string]any{"file_path": "/project/main.go"},
+		"tool_input":    map[string]any{}, // no file_path: measures compression path only, bypasses cache I/O
 		"tool_response": map[string]any{"content": content},
 	}
 	bs, _ := json.Marshal(inp)
