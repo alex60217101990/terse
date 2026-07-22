@@ -64,13 +64,14 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 		decision = "deny"
 		action = "pretool-unchanged"
 
-		// Update usage stats.
-		entry.ReadCount++
-		entry.LastReadAt = time.Now().Unix()
-		state.Files[ti.FilePath] = entry
-		if err := cache.Save(inp.SessionID, state); err != nil {
-			fmt.Fprintf(os.Stderr, "qdf-hook: save state: %v\n", err)
-		}
+		// Deliberately do NOT Save here. This is the hottest path (every
+		// repeated read of an unchanged file) and the only mutation would be a
+		// ReadCount/LastReadAt bump for gc's utility score — not worth an
+		// atomic full-state rewrite (~160µs of syscalls) on every re-read. The
+		// cost is only slightly staler eviction scoring: a file that is only
+		// ever re-read (never re-served by the PostToolUse handler) may be
+		// evicted sooner, which just causes a one-off re-cache, never wrong
+		// content.
 	}
 
 	_ = analytics.Record(analytics.Event{
