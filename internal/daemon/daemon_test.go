@@ -1,0 +1,147 @@
+package daemon_test
+
+import (
+	"encoding/json"
+	"io"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/alex60217101990/qdf-hook/internal/daemon"
+	"github.com/alex60217101990/qdf-hook/internal/protocol"
+)
+
+// tempSock returns a short-path unix socket for the test. It deliberately
+// avoids t.TempDir(): on darwin the sockaddr_un.sun_path limit is 104 bytes,
+// and t.TempDir() embeds the (long) test name, so a long test name overruns
+// the limit and net.Listen fails silently. os.MkdirTemp with a short prefix
+// keeps the whole path well under 104.
+func tempSock(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "qd")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return filepath.Join(dir, "s")
+}
+
+// waitForSock polls for sockPath to exist, up to ~1s.
+func waitForSock(t *testing.T, sockPath string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(sockPath); err == nil {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("socket %s never appeared", sockPath)
+}
+
+// roundtrip dials sockPath, writes payload, half-closes the write side, and
+// returns everything read back before the daemon closes the connection.
+func roundtrip(t *testing.T, sockPath, payload string) string {
+	t.Helper()
+	c, err := net.Dial("unix", sockPath)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer c.Close()
+	if _, err := io.WriteString(c, payload); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if cw, ok := c.(interface{ CloseWrite() error }); ok {
+		if err := cw.CloseWrite(); err != nil {
+			t.Fatalf("CloseWrite: %v", err)
+		}
+	}
+	out, err := io.ReadAll(c)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	return string(out)
+}
+
+// bashPayload builds a PostToolUse JSON payload for the Bash tool with output.
+func bashPayload(output string) string {
+	inp := map[string]any{
+		"session_id":    "sess-daemon-1",
+		"tool_name":     "Bash",
+		"tool_input":    map[string]any{"command": "echo hi"},
+		"tool_response": map[string]any{"content": output},
+	}
+	b, _ := json.Marshal(inp)
+	return string(b)
+}
+
+func TestDaemon_ServesAndDedups(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	sock := tempSock(t)
+	go func() { _ = daemon.Serve(sock, time.Minute) }()
+	waitForSock(t, sock)
+
+	payload := bashPayload(strings.Repeat("log line here\n", 40))
+
+	first := roundtrip(t, sock, payload) // 1st: registers
+	var out protocol.HookOutput
+	if err := json.Unmarshal([]byte(first), &out); err != nil {
+		t.Fatalf("invalid HookOutput JSON: %v (body: %s)", err, first)
+	}
+
+	second := roundtrip(t, sock, payload) // 2nd: identical -> §ref
+	if !strings.Contains(second, "§ref:") {
+		t.Fatalf("expected ref, got %s", second)
+	}
+}
+
+// TestDaemon_IdleTimeoutExits checks that Serve returns on its own once no
+// connection has arrived for the idle duration, and that it stops accepting
+// after doing so.
+func TestDaemon_IdleTimeoutExits(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	sock := tempSock(t)
+
+	done := make(chan error, 1)
+	go func() { done <- daemon.Serve(sock, 50*time.Millisecond) }()
+	waitForSock(t, sock)
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Serve returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Serve did not exit after idle timeout")
+	}
+
+	if _, err := net.Dial("unix", sock); err == nil {
+		t.Fatal("expected dial to fail after daemon exited")
+	}
+}
+
+// TestDaemon_MalformedRequestClosesWithoutPanic checks that a request the
+// hook pipeline can't decode just closes the connection (no reply, no
+// daemon crash) and that the daemon keeps serving afterward.
+func TestDaemon_MalformedRequestClosesWithoutPanic(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	sock := tempSock(t)
+	go func() { _ = daemon.Serve(sock, time.Minute) }()
+	waitForSock(t, sock)
+
+	garbage := roundtrip(t, sock, "not json at all {{{")
+	if garbage != "" {
+		t.Fatalf("expected empty reply for malformed request, got %q", garbage)
+	}
+
+	// Daemon must still be alive and serving valid requests.
+	payload := bashPayload(strings.Repeat("still alive\n", 40))
+	out := roundtrip(t, sock, payload)
+	var resp protocol.HookOutput
+	if err := json.Unmarshal([]byte(out), &resp); err != nil {
+		t.Fatalf("daemon did not recover after malformed request: %v (body: %s)", err, out)
+	}
+}
