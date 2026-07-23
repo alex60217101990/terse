@@ -45,6 +45,7 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 	action := "pretool-allow"
 	decision := "allow"
 	reason := ""
+	var bytesIn, bytesOut int
 
 	// Deny only when BOTH mtime and size match the cached copy. mtime alone is
 	// not sufficient: cp -p, rsync --times, os.Chtimes, tar extraction and
@@ -63,6 +64,10 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 		)
 		decision = "deny"
 		action = "pretool-unchanged"
+		// Credit the saving: the whole cached file would have been re-read and
+		// re-ingested; instead Claude receives only the short deny reason.
+		bytesIn = len(entry.Content)
+		bytesOut = len(reason)
 
 		// Deliberately do NOT Save here. This is the hottest path (every
 		// repeated read of an unchanged file) and the only mutation would be a
@@ -75,11 +80,13 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 	}
 
 	_ = analytics.Record(analytics.Event{
-		TS:     time.Now().UnixNano(),
-		SID:    inp.SessionID,
-		Hook:   "pretooluse",
-		Action: action,
-		DurNS:  time.Since(start).Nanoseconds(),
+		TS:       time.Now().UnixNano(),
+		SID:      inp.SessionID,
+		Hook:     "pretooluse",
+		Action:   action,
+		BytesIn:  bytesIn,
+		BytesOut: bytesOut,
+		DurNS:    time.Since(start).Nanoseconds(),
 	})
 
 	return protocol.EncodePre(w, decision, reason)

@@ -65,8 +65,11 @@ func HandleRead(r io.Reader, w io.Writer) error {
 
 	switch {
 	case !seen || !state.SeenAfterCompact(ti.FilePath):
-		// First read (or first read after compaction) — serve full content.
-		out = serveFullContent(ti.FilePath, hash, content, inp.ToolResponse.Content)
+		// First read (or first after compaction) — pass the content through
+		// unchanged. No token overhead; the cache is still populated below so
+		// later reads become §unchanged§/delta. (A previous version prepended a
+		// registration header, which made every first read net-negative.)
+		out = protocol.Passthrough()
 		action = "full"
 
 	case entry.Hash == hash:
@@ -94,8 +97,10 @@ func HandleRead(r io.Reader, w io.Writer) error {
 		fmt.Fprintf(os.Stderr, "qdf-hook: save state: %v\n", err)
 	}
 
-	// Record analytics (best-effort — never block the hook).
-	var bytesOut int
+	// Record analytics (best-effort — never block the hook). Passthrough emits
+	// the full content, so its emitted size is len(content) (a neutral 0%
+	// saving) — not 0, which would falsely read as 100% saved.
+	bytesOut := len(content)
 	if out.HookSpecificOutput != nil {
 		bytesOut = len(out.HookSpecificOutput.UpdatedToolOutput)
 	}
@@ -112,12 +117,6 @@ func HandleRead(r io.Reader, w io.Writer) error {
 	return protocol.EncodeOutput(w, out)
 }
 
-func serveFullContent(path string, hash [32]byte, _ []byte, original string) *protocol.HookOutput {
-	// First read: return original content with a cache-registration header.
-	hashHex := cache.ShortHex(hash[:8]) // first 8 bytes = 16 hex chars
-	header := fmt.Sprintf("[READ §ref:%s§ %s — CACHED for delta tracking]\n", hashHex, path)
-	return protocol.Replace(header + original)
-}
 
 func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.HookOutput {
 	hashHex := cache.ShortHex(hash[:8])
@@ -127,9 +126,9 @@ func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.Hook
 }
 
 func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *protocol.HookOutput {
-	// Guard: very large diffs are O((N+M)²) — serve full content instead.
+	// Guard: very large diffs are O((N+M)²) — pass the full content through.
 	if bytes.Count(oldContent, []byte("\n"))+bytes.Count(newContent, []byte("\n")) > 10000 {
-		return serveFullContent(path, newHash, newContent, string(newContent))
+		return protocol.Passthrough()
 	}
 	diff := cache.UnifiedDiff(oldContent, newContent, 3)
 	hashHex := cache.ShortHex(newHash[:8])
