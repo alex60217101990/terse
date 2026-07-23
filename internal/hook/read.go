@@ -83,6 +83,14 @@ func HandleRead(r io.Reader, w io.Writer) error {
 		action = "delta"
 	}
 
+	// Never-worse: if the compact form (unchanged marker / delta) is not
+	// actually smaller than the raw content, pass the content through instead —
+	// otherwise a tiny file's marker can be longer than the file itself.
+	if out.HookSpecificOutput != nil && len(out.HookSpecificOutput.UpdatedToolOutput) >= len(content) {
+		out = protocol.Passthrough()
+		action = "passthrough"
+	}
+
 	// Update cache entry with read tracking fields.
 	updatedEntry := state.Files[ti.FilePath]
 	updatedEntry.Hash = hash
