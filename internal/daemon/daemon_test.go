@@ -81,7 +81,7 @@ func bashPayload(output string) string {
 func TestDaemon_ServesAndDedups(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	sock := tempSock(t)
-	go func() { _ = daemon.Serve(sock, time.Minute) }()
+	go func() { _ = daemon.Serve(sock, time.Minute, "test") }()
 	waitForSock(t, sock)
 
 	payload := bashPayload(strings.Repeat("log line here\n", 40))
@@ -106,7 +106,7 @@ func TestDaemon_IdleTimeoutExits(t *testing.T) {
 	sock := tempSock(t)
 
 	done := make(chan error, 1)
-	go func() { done <- daemon.Serve(sock, 50*time.Millisecond) }()
+	go func() { done <- daemon.Serve(sock, 50*time.Millisecond, "test") }()
 	waitForSock(t, sock)
 
 	select {
@@ -131,7 +131,7 @@ func TestDaemon_IdleTimeoutExits(t *testing.T) {
 func TestDaemon_MalformedRequestClosesGracefully(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	sock := tempSock(t)
-	go func() { _ = daemon.Serve(sock, time.Minute) }()
+	go func() { _ = daemon.Serve(sock, time.Minute, "test") }()
 	waitForSock(t, sock)
 
 	garbage := roundtrip(t, sock, "not json at all {{{")
@@ -156,7 +156,7 @@ func TestDaemon_MalformedRequestClosesGracefully(t *testing.T) {
 func TestDaemon_ContinuousTrafficNeverDropsConn(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	sock := tempSock(t)
-	go func() { _ = daemon.Serve(sock, 40*time.Millisecond) }()
+	go func() { _ = daemon.Serve(sock, 40*time.Millisecond, "test") }()
 	waitForSock(t, sock)
 
 	for i := range 15 {

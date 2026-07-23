@@ -28,6 +28,12 @@ var (
 	cpuFile    *os.File
 )
 
+// appVersion is the single source of truth for qdf-hook's version string:
+// printed by `qdf-hook version` and reported by qdf-hookd's PING handshake
+// (see daemon.Ensure), so a running daemon can be detected as stale after an
+// upgrade.
+const appVersion = "v0.1.0"
+
 var rootCmd = &cobra.Command{
 	Use:   "qdf-hook",
 	Short: "Claude Code hook to reduce token consumption via compression",
@@ -99,6 +105,7 @@ func init() {
 		cmdGC(),
 		cmdExpand(),
 		cmdInit(),
+		cmdDaemon(),
 	)
 }
 
@@ -216,7 +223,7 @@ func main() {
 
 // runVersion prints the current version.
 func runVersion() error {
-	fmt.Println("qdf-hook v0.1.0")
+	fmt.Println("qdf-hook " + appVersion)
 	return nil
 }
 
