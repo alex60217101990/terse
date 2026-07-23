@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -27,6 +29,20 @@ var qdfHooks = []hookSpec{
 	{"PreCompact", ".*", "precompact"},
 	{"PostCompact", ".*", "postcompact"},
 }
+
+// Typed views of the settings.json hook schema — no interface{} anywhere.
+type hookCmd struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+}
+
+type hookEntry struct {
+	Matcher string    `json:"matcher,omitempty"`
+	Hooks   []hookCmd `json:"hooks"`
+}
+
+// hooksBlock is the "hooks" object: event name -> ordered entries.
+type hooksBlock map[string][]hookEntry
 
 func cmdInit() *cobra.Command {
 	var project bool
@@ -70,14 +86,13 @@ func settingsPath(project bool, dir string) (string, error) {
 	return filepath.Join(home, ".claude", "settings.json"), nil
 }
 
-// hookCommand returns the absolute command string for a subcommand, using the
-// running binary's own path so the hook resolves regardless of PATH.
-func hookCommand(sub string) string {
-	exe, err := os.Executable()
-	if err != nil || exe == "" {
-		return "qdf-hook " + sub
+// execPath returns the running binary's absolute path so installed hooks
+// resolve regardless of PATH; it falls back to the bare name.
+func execPath() string {
+	if exe, err := os.Executable(); err == nil && exe != "" {
+		return exe
 	}
-	return exe + " " + sub
+	return "qdf-hook"
 }
 
 func runInit(project bool, dir string, printOnly bool) error {
@@ -86,35 +101,60 @@ func runInit(project bool, dir string, printOnly bool) error {
 		return err
 	}
 
-	// Load existing settings (preserve everything), or start fresh.
-	settings := map[string]any{}
+	// Top level is kept as raw JSON per key so unknown settings (model, other
+	// tools' config, …) survive untouched.
+	top := map[string]json.RawMessage{}
 	if data, rerr := os.ReadFile(path); rerr == nil {
-		if jerr := json.Unmarshal(data, &settings); jerr != nil {
+		if jerr := json.Unmarshal(data, &top); jerr != nil {
 			return fmt.Errorf("existing %s is not valid JSON: %w", path, jerr)
 		}
 	}
 
-	added := mergeHooks(settings)
+	hb := hooksBlock{}
+	if raw, ok := top["hooks"]; ok && len(raw) > 0 {
+		if jerr := json.Unmarshal(raw, &hb); jerr != nil {
+			return fmt.Errorf("existing hooks block is not valid: %w", jerr)
+		}
+	}
 
-	out, err := json.MarshalIndent(settings, "", "  ")
+	added := mergeHooks(hb, execPath())
+
+	hooksRaw, err := json.Marshal(hb)
 	if err != nil {
 		return err
 	}
-	out = append(out, '\n')
+	top["hooks"] = hooksRaw
+
+	// Marshal compactly, then indent the whole document (json.Indent reaches
+	// into the embedded hooks JSON that a plain MarshalIndent would leave flat).
+	compact, err := json.Marshal(top)
+	if err != nil {
+		return err
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, compact, "", "  "); err != nil {
+		return err
+	}
+	pretty.WriteByte('\n')
+	out := pretty.Bytes()
 
 	if printOnly {
 		fmt.Print(string(out))
 		return nil
 	}
 
+	// Nothing new to add — leave the file (and its formatting) untouched, no
+	// backup churn.
+	if added == 0 {
+		fmt.Printf("qdf-hook already installed in %s (nothing to do)\n", path)
+		return nil
+	}
+
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	// Back up an existing file before overwriting, then write atomically.
-	if _, serr := os.Stat(path); serr == nil {
-		if data, rerr := os.ReadFile(path); rerr == nil {
-			_ = os.WriteFile(path+".bak", data, 0o600)
-		}
+	if data, rerr := os.ReadFile(path); rerr == nil {
+		_ = os.WriteFile(path+".bak", data, 0o600)
 	}
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, out, 0o600); err != nil {
@@ -124,82 +164,53 @@ func runInit(project bool, dir string, printOnly bool) error {
 		return err
 	}
 
-	if added == 0 {
-		fmt.Printf("qdf-hook already installed in %s (nothing to do)\n", path)
-	} else {
-		fmt.Printf("qdf-hook: installed %d hook(s) into %s\n", added, path)
-		if _, serr := os.Stat(path + ".bak"); serr == nil {
-			fmt.Printf("  (previous settings backed up to %s.bak)\n", path)
-		}
-		fmt.Println("  Restart Claude Code (or start a new session) for the hooks to load.")
-	}
+	fmt.Printf("qdf-hook: installed %d hook(s) into %s\n", added, path)
+	fmt.Println("  Restart Claude Code (or start a new session) for the hooks to load.")
 	return nil
 }
 
-// mergeHooks idempotently adds every qdfHooks entry to settings["hooks"],
-// returning how many were newly added. Existing entries (any command) are
-// preserved; a qdf-hook subcommand already present for its event is skipped.
-func mergeHooks(settings map[string]any) int {
-	hooks, ok := settings["hooks"].(map[string]any)
-	if !ok {
-		hooks = map[string]any{}
-		settings["hooks"] = hooks
-	}
-
+// mergeHooks idempotently adds every qdfHooks entry to hb, using exe as the
+// command binary. Returns how many were newly added; existing entries (from any
+// tool) are preserved, and a qdf-hook subcommand already wired for its event is
+// skipped so re-running is a no-op.
+func mergeHooks(hb hooksBlock, exe string) int {
 	added := 0
 	for _, h := range qdfHooks {
-		cmdStr := hookCommand(h.sub)
-
-		arr, _ := hooks[h.event].([]any)
-		if commandPresent(arr, h.sub) {
-			continue // idempotent: this qdf-hook subcommand is already wired
+		if commandPresent(hb[h.event], h.sub) {
+			continue
 		}
-		entry := map[string]any{
-			"matcher": h.matcher,
-			"hooks": []any{
-				map[string]any{"type": "command", "command": cmdStr},
-			},
-		}
-		hooks[h.event] = append(arr, entry)
+		hb[h.event] = append(hb[h.event], hookEntry{
+			Matcher: h.matcher,
+			Hooks:   []hookCmd{{Type: "command", Command: exe + " " + h.sub}},
+		})
 		added++
 	}
 	return added
 }
 
-// commandPresent reports whether any hook command in the event array already
-// invokes the given qdf-hook subcommand (matched by the " <sub>" suffix so it
-// works whether the command is bare "qdf-hook read" or an absolute path).
-func commandPresent(arr []any, sub string) bool {
-	suffix := " " + sub
-	for _, e := range arr {
-		em, ok := e.(map[string]any)
-		if !ok {
-			continue
-		}
-		hs, ok := em["hooks"].([]any)
-		if !ok {
-			continue
-		}
-		for _, hh := range hs {
-			hm, ok := hh.(map[string]any)
-			if !ok {
-				continue
-			}
-			if c, ok := hm["command"].(string); ok {
-				if c == "qdf-hook "+sub || hasSuffixWord(c, suffix) {
-					return true
-				}
+// commandPresent reports whether any entry already invokes THIS tool's given
+// subcommand. It matches only qdf-hook's own command (binary basename
+// "qdf-hook"), so another tool ending in the same word — e.g. sqz's
+// "hook precompact" — is not mistaken for qdf-hook's "precompact".
+func commandPresent(entries []hookEntry, sub string) bool {
+	for _, e := range entries {
+		for _, h := range e.Hooks {
+			if isQdfHookCommand(h.Command, sub) {
+				return true
 			}
 		}
 	}
 	return false
 }
 
-// hasSuffixWord reports whether s ends with suffix and suffix is preceded by a
-// path/word boundary — i.e. the command's final token is the subcommand.
-func hasSuffixWord(s, suffix string) bool {
-	if len(s) < len(suffix) {
+// isQdfHookCommand reports whether command c invokes `qdf-hook <sub>`: its
+// binary (bare or absolute) has basename "qdf-hook" (a ".test" build counts too,
+// so tests are deterministic) and its first argument is sub.
+func isQdfHookCommand(c, sub string) bool {
+	f := strings.Fields(c)
+	if len(f) < 2 || f[1] != sub {
 		return false
 	}
-	return s[len(s)-len(suffix):] == suffix
+	base := filepath.Base(f[0])
+	return base == "qdf-hook" || strings.HasPrefix(base, "qdf-hook.")
 }
