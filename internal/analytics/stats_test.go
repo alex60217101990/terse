@@ -50,7 +50,7 @@ func TestComputeStats_SavingsPercent(t *testing.T) {
 func TestPrintStats_JSON(t *testing.T) {
 	stats := analytics.ComputeStats(makeEvents())
 	var buf strings.Builder
-	analytics.PrintStats(stats, true, &buf)
+	analytics.PrintStats(stats, true, "blocks", &buf)
 	var m map[string]any
 	if err := json.Unmarshal([]byte(buf.String()), &m); err != nil {
 		t.Fatalf("invalid JSON output: %v\n%s", err, buf.String())
@@ -63,7 +63,7 @@ func TestPrintStats_JSON(t *testing.T) {
 func TestPrintStats_Text(t *testing.T) {
 	stats := analytics.ComputeStats(makeEvents())
 	var buf strings.Builder
-	analytics.PrintStats(stats, false, &buf)
+	analytics.PrintStats(stats, false, "blocks", &buf)
 	out := buf.String()
 	if !strings.Contains(out, "TOKEN SAVINGS") {
 		t.Error("text output should contain TOKEN SAVINGS section")

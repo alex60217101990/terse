@@ -11,6 +11,7 @@ import (
 func cmdStats() *cobra.Command {
 	var jsonOut bool
 	var days int
+	var style string
 	cmd := &cobra.Command{
 		Use:   "stats",
 		Short: "Show token savings analytics",
@@ -24,11 +25,12 @@ func cmdStats() *cobra.Command {
 				return nil
 			}
 			stats := analytics.ComputeStats(events)
-			analytics.PrintStats(stats, jsonOut, os.Stdout)
+			analytics.PrintStats(stats, jsonOut, style, os.Stdout)
 			return nil
 		},
 	}
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "output as JSON")
 	cmd.Flags().IntVar(&days, "days", 7, "number of days to include")
+	cmd.Flags().StringVar(&style, "style", "line", "bar style: blocks|line|shade|braille")
 	return cmd
 }

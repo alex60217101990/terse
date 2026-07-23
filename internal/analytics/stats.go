@@ -165,54 +165,125 @@ func (c colorizer) dim(s string) string  { return c.wrap("2", s) }
 // giving a fractional final cell so the bar length is smooth, not chunky.
 var partialBlocks = [8]string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉"}
 
-// meter renders a rounded "pill" progress bar: half-circle end caps (◖ ◗) around
-// a fractional eighth-block fill. Filled cells use a teal→green truecolor
-// gradient when supported, else solid green; the remainder is dim. Always
-// exactly `width` cells wide so table columns stay aligned.
+// meter renders the default progress bar: a fractional eighth-block fill with a
+// teal→green truecolor gradient (solid green without truecolor, plain when not
+// a TTY); the remainder is a dim track. Always exactly `width` cells wide.
 func (c colorizer) meter(frac float64, width int) string {
-	if frac < 0 {
-		frac = 0
-	} else if frac > 1 {
-		frac = 1
-	}
-	if width < 3 {
-		return strings.Repeat("█", width)
-	}
-	inner := width - 2 // two cells go to the rounded caps
-
-	units := frac * float64(inner)
+	frac = clamp01(frac)
+	units := frac * float64(width)
 	full := int(units)
 	rem := int((units-float64(full))*8 + 0.5)
 	if rem == 8 {
 		full++
 		rem = 0
 	}
-
 	var b strings.Builder
-	// Left cap: part of the fill when there's any progress, else dim track.
-	if frac > 0 {
-		b.WriteString(c.barCell("◖", 0, width))
-	} else {
-		b.WriteString(c.dim("◖"))
-	}
 	cells := 0
-	for ; cells < full && cells < inner; cells++ {
-		b.WriteString(c.barCell("█", cells+1, width))
+	for ; cells < full && cells < width; cells++ {
+		b.WriteString(c.barCell("█", cells, width))
 	}
-	if rem > 0 && cells < inner {
-		b.WriteString(c.barCell(partialBlocks[rem], cells+1, width))
+	if rem > 0 && cells < width {
+		b.WriteString(c.barCell(partialBlocks[rem], cells, width))
 		cells++
 	}
-	if cells < inner {
-		b.WriteString(c.dim(strings.Repeat("░", inner-cells)))
-	}
-	// Right cap: filled colour only when the bar is (essentially) full.
-	if frac >= 0.999 {
-		b.WriteString(c.barCell("◗", width-1, width))
-	} else {
-		b.WriteString(c.dim("◗"))
+	if cells < width {
+		b.WriteString(c.dim(strings.Repeat("░", width-cells)))
 	}
 	return b.String()
+}
+
+func clamp01(f float64) float64 {
+	if f < 0 {
+		return 0
+	}
+	if f > 1 {
+		return 1
+	}
+	return f
+}
+
+// --- alternate bar styles (for `barsdemo`) ---
+
+// meterLine: a thick bar rule (▬, ~50% heavier than ━) fading to a thin dim
+// track (─); the thick→thin boundary reads as a soft tip. Cargo/npm-ish.
+func (c colorizer) meterLine(frac float64, width int) string {
+	frac = clamp01(frac)
+	full := int(frac * float64(width))
+	var b strings.Builder
+	i := 0
+	for ; i < full && i < width; i++ {
+		b.WriteString(c.barCell("▬", i, width))
+	}
+	if i < width {
+		b.WriteString(c.dim(strings.Repeat("─", width-i)))
+	}
+	return b.String()
+}
+
+// meterShade: solid fill fading through ▓▒░ at the boundary.
+func (c colorizer) meterShade(frac float64, width int) string {
+	frac = clamp01(frac)
+	full := int(frac * float64(width))
+	var b strings.Builder
+	for i := 0; i < width; i++ {
+		switch {
+		case i < full:
+			b.WriteString(c.barCell("█", i, width))
+		case i == full:
+			b.WriteString(c.barCell("▓", i, width))
+		case i == full+1:
+			b.WriteString(c.dim("▒"))
+		default:
+			b.WriteString(c.dim("░"))
+		}
+	}
+	return b.String()
+}
+
+// meterBraille: braille dot-matrix fill (finest sub-cell resolution).
+func (c colorizer) meterBraille(frac float64, width int) string {
+	frac = clamp01(frac)
+	full := int(frac * float64(width))
+	var b strings.Builder
+	i := 0
+	for ; i < full && i < width; i++ {
+		b.WriteString(c.barCell("⣿", i, width))
+	}
+	if i < width && frac > 0 && frac < 1 {
+		b.WriteString(c.barCell("⣄", i, width))
+		i++
+	}
+	if i < width {
+		b.WriteString(c.dim(strings.Repeat("⠄", width-i)))
+	}
+	return b.String()
+}
+
+// RenderBarGallery prints every bar style at several fill levels so the user can
+// pick one by eye in their own terminal (with real color/gradient).
+func RenderBarGallery(w io.Writer) {
+	c := newColorizer()
+	const width = 22
+	fracs := []float64{0.12, 0.37, 0.65, 0.88, 1.0}
+	styles := []struct {
+		n    int
+		name string
+		fn   func(float64, int) string
+	}{
+		{1, "blocks  (smooth eighth-block fill)", c.meter},
+		{2, "line    (heavy rule + soft tip)", c.meterLine},
+		{3, "shade   (solid, ▓▒░ fade tail)", c.meterShade},
+		{4, "braille (dot-matrix, finest)", c.meterBraille},
+	}
+	fmt.Fprintf(w, "\n  %s — pick a style number\n\n", c.bold("qdf-hook bar styles"))
+	for _, s := range styles {
+		fmt.Fprintf(w, "  %s %s\n", c.bold(fmt.Sprintf("[%d]", s.n)), s.name)
+		for _, f := range fracs {
+			fmt.Fprintf(w, "       %s  %3.0f%%\n", s.fn(f, width), f*100)
+		}
+		fmt.Fprintln(w)
+	}
+	fmt.Fprintf(w, "  Set with: %s\n\n", c.dim("qdf-hook stats --style=<blocks|line|shade|braille>  (or tell me your pick)"))
 }
 
 // barCell colors one filled cell: a teal→green gradient across the bar under
@@ -232,8 +303,23 @@ func (c colorizer) barCell(ch string, i, width int) string {
 	}
 }
 
-// PrintStats writes formatted stats to w. If jsonOut, writes JSON.
-func PrintStats(s Stats, jsonOut bool, w io.Writer) {
+// meterFn returns the bar renderer for a style name (default "blocks").
+func (c colorizer) meterFn(style string) func(float64, int) string {
+	switch style {
+	case "line":
+		return c.meterLine
+	case "shade":
+		return c.meterShade
+	case "braille":
+		return c.meterBraille
+	default:
+		return c.meter
+	}
+}
+
+// PrintStats writes formatted stats to w. If jsonOut, writes JSON. style selects
+// the progress-bar look (blocks|line|shade|braille).
+func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) {
 	if jsonOut {
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
@@ -242,6 +328,7 @@ func PrintStats(s Stats, jsonOut bool, w io.Writer) {
 	}
 
 	c := newColorizer()
+	meter := c.meterFn(style)
 
 	fmt.Fprintf(w, "\n  %s  ·  %d invocations\n\n", c.bold("qdf-hook"), s.TotalInvocations)
 
@@ -250,7 +337,7 @@ func PrintStats(s Stats, jsonOut bool, w io.Writer) {
 	fmt.Fprintf(w, "    Original    %9s   ~%s tok\n", FormatBytes(s.TotalBytesIn), humanTokens(s.OriginalTokens()))
 	fmt.Fprintf(w, "    Emitted     %9s   ~%s tok\n", FormatBytes(s.TotalBytesOut), humanTokens(s.TotalBytesOut/4))
 	fmt.Fprintf(w, "    Saved       %9s   ~%s tok\n", FormatBytes(s.SavedBytes()), humanTokens(s.SavedTokens()))
-	fmt.Fprintf(w, "    Efficiency  %s  %.1f%%\n\n", c.meter(s.SavingsPercent()/100, 24), s.SavingsPercent())
+	fmt.Fprintf(w, "    Efficiency  %s  %.1f%%\n\n", meter(s.SavingsPercent()/100, 24), s.SavingsPercent())
 
 	// Per-hook table with impact bars (impact = saved bytes relative to the
 	// busiest hook). Impact is the last column so its ANSI codes don't throw
@@ -276,7 +363,7 @@ func PrintStats(s Stats, jsonOut bool, w io.Writer) {
 				pct = float64(saved) / float64(a.BytesIn) * 100
 			}
 			fmt.Fprintf(tw, "    %s\t%d\t%s\t%.0f%%\t%s\n",
-				h, a.Count, FormatBytes(saved), pct, c.meter(float64(saved)/float64(maxSaved), 12))
+				h, a.Count, FormatBytes(saved), pct, meter(float64(saved)/float64(maxSaved), 12))
 		}
 		_ = tw.Flush()
 		fmt.Fprintln(w)
