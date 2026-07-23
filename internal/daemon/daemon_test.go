@@ -123,10 +123,12 @@ func TestDaemon_IdleTimeoutExits(t *testing.T) {
 	}
 }
 
-// TestDaemon_MalformedRequestClosesWithoutPanic checks that a request the
-// hook pipeline can't decode just closes the connection (no reply, no
-// daemon crash) and that the daemon keeps serving afterward.
-func TestDaemon_MalformedRequestClosesWithoutPanic(t *testing.T) {
+// TestDaemon_MalformedRequestClosesGracefully checks that a request the hook
+// pipeline can't decode just closes the connection (empty reply, no crash)
+// and that the daemon keeps serving afterward. (handleConn's recover is
+// defensive against a future Dispatch panic; malformed JSON returns an
+// ordinary error, so this exercises the error-return path, not the recover.)
+func TestDaemon_MalformedRequestClosesGracefully(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	sock := tempSock(t)
 	go func() { _ = daemon.Serve(sock, time.Minute) }()
@@ -143,5 +145,27 @@ func TestDaemon_MalformedRequestClosesWithoutPanic(t *testing.T) {
 	var resp protocol.HookOutput
 	if err := json.Unmarshal([]byte(out), &resp); err != nil {
 		t.Fatalf("daemon did not recover after malformed request: %v (body: %s)", err, out)
+	}
+}
+
+// TestDaemon_ContinuousTrafficNeverDropsConn is a regression test for the
+// accept/idle-exit race: a connection landing at the idle boundary must be
+// served, never abandoned. With a short idle, we drive connections spaced
+// under the idle window but spanning well past it in total; every one must
+// get a valid reply and none may hang (each arrival resets the idle timer).
+func TestDaemon_ContinuousTrafficNeverDropsConn(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	sock := tempSock(t)
+	go func() { _ = daemon.Serve(sock, 40*time.Millisecond) }()
+	waitForSock(t, sock)
+
+	for i := range 15 {
+		payload := bashPayload(strings.Repeat("traffic line\n", 40))
+		out := roundtrip(t, sock, payload) // roundtrip fails the test if it hangs/errors
+		var resp protocol.HookOutput
+		if err := json.Unmarshal([]byte(out), &resp); err != nil {
+			t.Fatalf("request %d got invalid reply (daemon dropped conn / exited?): %v (body: %s)", i, err, out)
+		}
+		time.Sleep(15 * time.Millisecond) // < 40ms idle, so daemon must stay up
 	}
 }

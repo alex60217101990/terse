@@ -6,12 +6,12 @@ package daemon
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/hook"
@@ -23,90 +23,86 @@ const flushInterval = 5 * time.Second
 
 // Serve listens on a unix socket at sockPath and answers hook requests until
 // no connection has arrived for idle, then does a final flush and returns
-// nil. Any stale socket file at sockPath (left behind by a killed prior
-// daemon) is removed before listening. Serve blocks the calling goroutine;
-// callers that want it in the background must run it in its own goroutine.
+// nil. Serve blocks the calling goroutine; callers that want it in the
+// background must run it in its own goroutine.
+//
+// If a live daemon already owns sockPath, Serve returns an error rather than
+// clobbering it (probed by dialing); a stale socket left by a dead daemon is
+// removed and recreated.
 //
 // One hookcore.MemStore is shared by every connection (they are already
 // race-safe against each other per Task 2); each accepted connection is
 // handled in its own goroutine so slow/blocked clients never stall others.
-// Dirty state is flushed to disk on a ~5s ticker and once more before Serve
-// returns.
+//
+// Timing is single-threaded and race-free by construction: the accept loop
+// runs in the calling goroutine and the listener's own deadline is the idle
+// timer. Accept returns either a connection or a timeout — never both — so a
+// connection can never be accepted-but-abandoned, and there is no separate
+// accept goroutine to leak. Dirty state is flushed at least every
+// flushInterval and once more before Serve returns.
 func Serve(sockPath string, idle time.Duration) error {
-	// Remove a stale socket file from a prior, no-longer-running daemon.
-	// net.Listen fails with "address already in use" if we don't.
-	if _, err := os.Stat(sockPath); err == nil {
-		_ = os.Remove(sockPath)
+	// A unix socket file lingers after its owner dies. Distinguish a live
+	// daemon (dial succeeds) — which we must not clobber — from a stale file
+	// (dial refused/absent), which we remove so net.Listen won't fail with
+	// "address already in use".
+	if c, derr := net.DialTimeout("unix", sockPath, 100*time.Millisecond); derr == nil {
+		_ = c.Close()
+		return fmt.Errorf("daemon already running at %s", sockPath)
 	}
+	_ = os.Remove(sockPath)
 
 	ln, err := net.Listen("unix", sockPath)
 	if err != nil {
 		return err
 	}
 	defer ln.Close()
+	ul := ln.(*net.UnixListener)
 
 	store := hookcore.NewMemStore()
-
-	var lastActivity atomic.Int64
-	lastActivity.Store(time.Now().UnixNano())
-
-	// acceptCh delivers newly-accepted connections from the accept loop
-	// (running in its own goroutine) to the main select loop below, which
-	// also owns the flush ticker and idle check — keeping all timing
-	// decisions single-threaded and race-free.
-	acceptCh := make(chan net.Conn)
-	acceptErrCh := make(chan error, 1)
-
-	go func() {
-		for {
-			c, err := ln.Accept()
-			if err != nil {
-				acceptErrCh <- err
-				return
-			}
-			acceptCh <- c
-		}
-	}()
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
-	ticker := time.NewTicker(flushInterval)
-	defer ticker.Stop()
-
-	// idleCheck fires often enough to notice an idle timeout promptly
-	// without busy-looping; the actual idle decision compares against
-	// lastActivity regardless of how often this fires. Clamped to
-	// [10ms, 1s] so both very short (test) and very long (production)
-	// idle durations get a sane check cadence.
-	idleCheckInterval := max(min(idle/10, time.Second), 10*time.Millisecond)
-	idleTicker := time.NewTicker(idleCheckInterval)
-	defer idleTicker.Stop()
+	start := time.Now()
+	lastActivity := start
+	lastFlush := start
 
 	for {
-		select {
-		case c := <-acceptCh:
-			lastActivity.Store(time.Now().UnixNano())
-			wg.Go(func() {
-				handleConn(c, store)
-			})
-
-		case err := <-acceptErrCh:
-			// Listener died (e.g. socket removed out from under us); flush
-			// and report the error.
+		now := time.Now()
+		if now.Sub(lastFlush) >= flushInterval {
 			store.FlushDirty()
-			return err
-
-		case <-ticker.C:
-			store.FlushDirty()
-
-		case <-idleTicker.C:
-			last := time.Unix(0, lastActivity.Load())
-			if time.Since(last) >= idle {
-				store.FlushDirty()
-				return nil
-			}
+			lastFlush = now
 		}
+		if now.Sub(lastActivity) >= idle {
+			store.FlushDirty()
+			return nil
+		}
+
+		// Wake no later than whichever comes first: the next flush or the
+		// idle deadline. Accept blocks until a connection arrives or that
+		// deadline elapses (a Timeout error), so the deadline doubles as both
+		// the flush ticker and the idle timer — no second goroutine, no racy
+		// select, and an accepted connection is never abandoned.
+		wake := lastFlush.Add(flushInterval)
+		if d := lastActivity.Add(idle); d.Before(wake) {
+			wake = d
+		}
+		_ = ul.SetDeadline(wake)
+
+		c, aerr := ul.Accept()
+		if aerr != nil {
+			if ne, ok := aerr.(net.Error); ok && ne.Timeout() {
+				// Nothing arrived before the deadline; loop re-evaluates the
+				// flush and idle checks at the top.
+				continue
+			}
+			store.FlushDirty()
+			return aerr
+		}
+		lastActivity = time.Now()
+		wg.Go(func() {
+			handleConn(c, store)
+		})
 	}
 }
 
