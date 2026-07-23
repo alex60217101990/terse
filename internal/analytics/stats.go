@@ -142,12 +142,14 @@ func LoadEvents(days int) ([]Event, error) {
 }
 
 // colorizer emits ANSI styling, gated so piped/redirected output stays plain.
-type colorizer struct{ on bool }
+type colorizer struct{ on, truecolor bool }
 
 func newColorizer() colorizer {
 	fi, err := os.Stdout.Stat()
 	tty := err == nil && fi.Mode()&os.ModeCharDevice != 0
-	return colorizer{on: tty && os.Getenv("NO_COLOR") == ""}
+	on := tty && os.Getenv("NO_COLOR") == ""
+	ct := os.Getenv("COLORTERM")
+	return colorizer{on: on, truecolor: on && (strings.Contains(ct, "truecolor") || strings.Contains(ct, "24bit"))}
 }
 
 func (c colorizer) wrap(code, s string) string {
@@ -159,16 +161,58 @@ func (c colorizer) wrap(code, s string) string {
 func (c colorizer) bold(s string) string { return c.wrap("1", s) }
 func (c colorizer) dim(s string) string  { return c.wrap("2", s) }
 
-// meter renders an RGB-free progress bar; the filled part is green, the rest dim.
+// partialBlocks are the left-aligned eighth-width block glyphs, index 1..7
+// giving a fractional final cell so the bar length is smooth, not chunky.
+var partialBlocks = [8]string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉"}
+
+// meter renders a progress bar with a fractional (eighth-block) tail. Filled
+// cells use a teal→green truecolor gradient when the terminal supports it,
+// otherwise solid green; the remainder is dim. Every rendering is exactly
+// `width` cells wide so table columns stay aligned.
 func (c colorizer) meter(frac float64, width int) string {
 	if frac < 0 {
 		frac = 0
-	}
-	if frac > 1 {
+	} else if frac > 1 {
 		frac = 1
 	}
-	full := int(frac*float64(width) + 0.5)
-	return c.wrap("32", strings.Repeat("█", full)) + c.dim(strings.Repeat("░", width-full))
+	units := frac * float64(width)
+	full := int(units)
+	rem := int((units-float64(full))*8 + 0.5)
+	if rem == 8 {
+		full++
+		rem = 0
+	}
+
+	var b strings.Builder
+	cells := 0
+	for ; cells < full && cells < width; cells++ {
+		b.WriteString(c.barCell("█", cells, width))
+	}
+	if rem > 0 && cells < width {
+		b.WriteString(c.barCell(partialBlocks[rem], cells, width))
+		cells++
+	}
+	if cells < width {
+		b.WriteString(c.dim(strings.Repeat("░", width-cells)))
+	}
+	return b.String()
+}
+
+// barCell colors one filled cell: a teal→green gradient across the bar under
+// truecolor, plain green otherwise, and uncolored when color is off.
+func (c colorizer) barCell(ch string, i, width int) string {
+	switch {
+	case !c.on:
+		return ch
+	case !c.truecolor:
+		return "\x1b[32m" + ch + "\x1b[0m"
+	default:
+		t := float64(i) / float64(max(width-1, 1))
+		r := int(40 + (120-40)*t)
+		g := int(200 + (235-200)*t)
+		bl := int(165 + (120-165)*t)
+		return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[0m", r, g, bl, ch)
+	}
 }
 
 // PrintStats writes formatted stats to w. If jsonOut, writes JSON.
