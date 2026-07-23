@@ -10,12 +10,21 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"text/tabwriter"
 	"time"
 )
+
+// HookAgg aggregates calls and bytes for one hook.
+type HookAgg struct {
+	Count    int `json:"count"`
+	BytesIn  int `json:"bytes_in"`
+	BytesOut int `json:"bytes_out"`
+}
 
 // Stats holds aggregated analytics data.
 type Stats struct {
 	ByHookAction     map[string]map[string]int `json:"by_hook_action"` // hook -> action -> count
+	ByHook           map[string]HookAgg        `json:"by_hook"`        // hook -> calls + bytes
 	Latencies        map[string][]int64        `json:"-"`              // hook/action -> []DurNS (for percentile calc)
 	LatencyStats     map[string]LatStat        `json:"latency_ms"`
 	TotalInvocations int                       `json:"total_invocations"`
@@ -57,6 +66,7 @@ func (s Stats) SavingsPercent() float64 {
 func ComputeStats(events []Event) Stats {
 	s := Stats{
 		ByHookAction: make(map[string]map[string]int),
+		ByHook:       make(map[string]HookAgg),
 		Latencies:    make(map[string][]int64),
 		LatencyStats: make(map[string]LatStat),
 	}
@@ -69,6 +79,11 @@ func ComputeStats(events []Event) Stats {
 			s.ByHookAction[e.Hook] = make(map[string]int)
 		}
 		s.ByHookAction[e.Hook][e.Action]++
+		agg := s.ByHook[e.Hook]
+		agg.Count++
+		agg.BytesIn += e.BytesIn
+		agg.BytesOut += e.BytesOut
+		s.ByHook[e.Hook] = agg
 		s.Latencies[key] = append(s.Latencies[key], e.DurNS)
 	}
 	// Compute latency percentiles.
@@ -126,6 +141,36 @@ func LoadEvents(days int) ([]Event, error) {
 	return events, nil
 }
 
+// colorizer emits ANSI styling, gated so piped/redirected output stays plain.
+type colorizer struct{ on bool }
+
+func newColorizer() colorizer {
+	fi, err := os.Stdout.Stat()
+	tty := err == nil && fi.Mode()&os.ModeCharDevice != 0
+	return colorizer{on: tty && os.Getenv("NO_COLOR") == ""}
+}
+
+func (c colorizer) wrap(code, s string) string {
+	if !c.on {
+		return s
+	}
+	return "\x1b[" + code + "m" + s + "\x1b[0m"
+}
+func (c colorizer) bold(s string) string { return c.wrap("1", s) }
+func (c colorizer) dim(s string) string  { return c.wrap("2", s) }
+
+// meter renders an RGB-free progress bar; the filled part is green, the rest dim.
+func (c colorizer) meter(frac float64, width int) string {
+	if frac < 0 {
+		frac = 0
+	}
+	if frac > 1 {
+		frac = 1
+	}
+	full := int(frac*float64(width) + 0.5)
+	return c.wrap("32", strings.Repeat("█", full)) + c.dim(strings.Repeat("░", width-full))
+}
+
 // PrintStats writes formatted stats to w. If jsonOut, writes JSON.
 func PrintStats(s Stats, jsonOut bool, w io.Writer) {
 	if jsonOut {
@@ -135,43 +180,59 @@ func PrintStats(s Stats, jsonOut bool, w io.Writer) {
 		return
 	}
 
-	fmt.Fprintf(w, "\nqdf-hook  (%d invocations)\n\n", s.TotalInvocations)
+	c := newColorizer()
 
-	fmt.Fprintf(w, "TOKEN SAVINGS\n")
-	fmt.Fprintf(w, "  Original:  %s  (~%s tokens)\n", FormatBytes(s.TotalBytesIn), humanTokens(s.OriginalTokens()))
-	fmt.Fprintf(w, "  Emitted:   %s  (~%s tokens)\n", FormatBytes(s.TotalBytesOut), humanTokens(s.TotalBytesOut/4))
-	fmt.Fprintf(w, "  Saved:     %s  %.1f%%  (~%s tokens)\n\n",
-		FormatBytes(s.SavedBytes()), s.SavingsPercent(), humanTokens(s.SavedTokens()))
+	fmt.Fprintf(w, "\n  %s  ·  %d invocations\n\n", c.bold("qdf-hook"), s.TotalInvocations)
 
-	fmt.Fprintf(w, "LATENCY  p50 / p95 / p99\n")
-	keys := make([]string, 0, len(s.LatencyStats))
-	for k := range s.LatencyStats {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		ls := s.LatencyStats[k]
-		fmt.Fprintf(w, "  %-30s %.1fms / %.1fms / %.1fms\n", k+":", ls.P50, ls.P95, ls.P99)
-	}
+	// Token savings + efficiency meter.
+	fmt.Fprintf(w, "  %s\n", c.bold("TOKEN SAVINGS"))
+	fmt.Fprintf(w, "    Original    %9s   ~%s tok\n", FormatBytes(s.TotalBytesIn), humanTokens(s.OriginalTokens()))
+	fmt.Fprintf(w, "    Emitted     %9s   ~%s tok\n", FormatBytes(s.TotalBytesOut), humanTokens(s.TotalBytesOut/4))
+	fmt.Fprintf(w, "    Saved       %9s   ~%s tok\n", FormatBytes(s.SavedBytes()), humanTokens(s.SavedTokens()))
+	fmt.Fprintf(w, "    Efficiency  %s  %.1f%%\n\n", c.meter(s.SavingsPercent()/100, 24), s.SavingsPercent())
 
-	fmt.Fprintf(w, "\nBY HOOK\n")
-	hooks := make([]string, 0, len(s.ByHookAction))
-	for h := range s.ByHookAction {
-		hooks = append(hooks, h)
-	}
-	sort.Strings(hooks)
-	for _, h := range hooks {
-		actions := s.ByHookAction[h]
-		total := 0
-		for _, n := range actions {
-			total += n
+	// Per-hook table with impact bars (impact = saved bytes relative to the
+	// busiest hook). Impact is the last column so its ANSI codes don't throw
+	// off tabwriter's column alignment.
+	if len(s.ByHook) > 0 {
+		fmt.Fprintf(w, "  %s\n", c.bold("BY HOOK"))
+		hooks := make([]string, 0, len(s.ByHook))
+		maxSaved := 1
+		for h, a := range s.ByHook {
+			hooks = append(hooks, h)
+			if sv := a.BytesIn - a.BytesOut; sv > maxSaved {
+				maxSaved = sv
+			}
 		}
-		var parts []string
-		for action, n := range actions {
-			parts = append(parts, fmt.Sprintf("%s: %d", action, n))
+		sort.Strings(hooks)
+		tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
+		fmt.Fprintln(tw, "    hook\tcalls\tsaved\t%\timpact")
+		for _, h := range hooks {
+			a := s.ByHook[h]
+			saved := a.BytesIn - a.BytesOut
+			pct := 0.0
+			if a.BytesIn > 0 {
+				pct = float64(saved) / float64(a.BytesIn) * 100
+			}
+			fmt.Fprintf(tw, "    %s\t%d\t%s\t%.0f%%\t%s\n",
+				h, a.Count, FormatBytes(saved), pct, c.meter(float64(saved)/float64(maxSaved), 12))
 		}
-		sort.Strings(parts)
-		fmt.Fprintf(w, "  %-15s %5d  (%s)\n", h+":", total, strings.Join(parts, "  "))
+		_ = tw.Flush()
+		fmt.Fprintln(w)
 	}
-	fmt.Fprintln(w)
+
+	// Latency percentiles.
+	if len(s.LatencyStats) > 0 {
+		fmt.Fprintf(w, "  %s  p50 / p95 / p99\n", c.bold("LATENCY"))
+		keys := make([]string, 0, len(s.LatencyStats))
+		for k := range s.LatencyStats {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			ls := s.LatencyStats[k]
+			fmt.Fprintf(w, "    %-28s %.1f / %.1f / %.1f ms\n", k, ls.P50, ls.P95, ls.P99)
+		}
+		fmt.Fprintln(w)
+	}
 }
