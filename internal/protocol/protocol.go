@@ -14,9 +14,37 @@ type HookInput struct {
 	ToolInput    json.RawMessage `json:"tool_input"`
 }
 
-// ToolResponse holds the raw tool output Claude Code produced.
+// ToolResponse holds the raw tool output Claude Code produced. Different tools
+// expose their output under different keys: Read/Glob/Grep/Write use "content",
+// while Bash uses "stdout"/"stderr". Text() returns whichever is present.
 type ToolResponse struct {
 	Content string `json:"content"`
+	Stdout  string `json:"stdout"`
+	Stderr  string `json:"stderr"`
+	Output  string `json:"output"` // some tools use a generic "output" key
+}
+
+// Text returns the tool's textual output, preferring "content", then a generic
+// "output", then combined stdout+stderr (the Bash shape).
+func (t *ToolResponse) Text() string {
+	switch {
+	case t.Content != "":
+		return t.Content
+	case t.Output != "":
+		return t.Output
+	case t.Stdout != "" && t.Stderr != "":
+		return t.Stdout + "\n" + t.Stderr
+	case t.Stderr != "":
+		return t.Stderr
+	default:
+		return t.Stdout
+	}
+}
+
+// HasOutput reports whether any output field is populated (used to distinguish
+// a missing tool_response from an empty one).
+func (t *ToolResponse) HasOutput() bool {
+	return t.Content != "" || t.Output != "" || t.Stdout != "" || t.Stderr != ""
 }
 
 // ReadInput is the parsed tool_input for the Read tool.

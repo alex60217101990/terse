@@ -29,7 +29,10 @@ func HandleBash(r io.Reader, w io.Writer) error {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
-	content := inp.ToolResponse.Content
+	// Bash exposes output as stdout/stderr, not content — use Text() so the
+	// handler sees the real output (otherwise every Bash call looked empty and
+	// was silently skipped).
+	content := inp.ToolResponse.Text()
 
 	if len(content) < 256 {
 		// Too small to bother compressing.
