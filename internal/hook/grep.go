@@ -5,6 +5,8 @@ import (
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 )
 
 // grepFileCap is the max matching lines shown per file before eliding.
@@ -12,7 +14,7 @@ const grepFileCap = 8
 
 // HandleGrep is retained for backward compatibility; Grep is handled by the
 // generic pipeline via Dispatch (buildGrepSummary is its tool-specific step).
-func HandleGrep(r io.Reader, w io.Writer) error { return Dispatch(r, w) }
+func HandleGrep(r io.Reader, w io.Writer) error { return Dispatch(hookcore.NewDiskStore(), r, w) }
 
 type grepMatch struct {
 	line string // line number as text (kept as-is)

@@ -11,6 +11,7 @@ import (
 	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/detect"
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
@@ -18,19 +19,21 @@ import (
 // routes by tool name: Read and Write keep their file-specific handlers; every
 // other tool (Bash, Glob, Grep, mcp__*, anything new) flows through the generic
 // pipeline so it gets dedup / delta / noise-strip / squeeze / structural
-// summaries for free — no per-tool hardcoding.
-func Dispatch(r io.Reader, w io.Writer) error {
+// summaries for free — no per-tool hardcoding. store is the pipeline's session
+// and cache backend (the on-disk cache for the CLI, an in-memory store for a
+// future daemon).
+func Dispatch(store hookcore.StateStore, r io.Reader, w io.Writer) error {
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
 	}
 	switch inp.ToolName {
 	case "Read":
-		return handleRead(inp, w)
+		return handleRead(store, inp, w)
 	case "Write", "Edit", "MultiEdit":
-		return handleWrite(inp, w)
+		return handleWrite(store, inp, w)
 	default:
-		return handleGeneric(inp.ToolName, inp, w)
+		return handleGeneric(store, inp.ToolName, inp, w)
 	}
 }
 
@@ -54,7 +57,7 @@ func skipTool(tool string) bool {
 // handleGeneric applies the tool-agnostic compression pipeline to any tool's
 // output. All steps are never-worse (emit the compact form only when strictly
 // smaller).
-func handleGeneric(toolName string, inp *protocol.HookInput, w io.Writer) error {
+func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.HookInput, w io.Writer) error {
 	start := time.Now()
 	if inp.ToolResponse == nil || skipTool(toolName) {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
@@ -104,9 +107,9 @@ func handleGeneric(toolName string, inp *protocol.HookInput, w io.Writer) error 
 			action, replacement = "summary", s
 		} else if s := tryBench(content); s != "" {
 			action, replacement = "summary", s
-		} else if tok, ok := cache.Dedup(content, 256); ok {
+		} else if tok, ok := dedupWithStore(store, content, 256); ok {
 			action, replacement = "ref", tok
-		} else if d, ok := tryRerunDelta(toolName, key, content); ok {
+		} else if d, ok := tryRerunDelta(store, toolName, key, content); ok {
 			action, replacement = "rerun-delta", d
 		} else if sq := detect.SqueezeOutput(content); len(sq) < len(content)*9/10 {
 			action, replacement = "squeezed", sq
@@ -117,7 +120,7 @@ func handleGeneric(toolName string, inp *protocol.HookInput, w io.Writer) error 
 
 	// Remember this output for the next run's delta on the unstructured paths.
 	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" {
-		cache.LastOutputPut(key, content)
+		store.LastPut(key, content)
 	}
 
 	if replacement != "" {
@@ -130,8 +133,8 @@ func handleGeneric(toolName string, inp *protocol.HookInput, w io.Writer) error 
 
 // tryRerunDelta returns a unified diff of content against the previous run under
 // key, when strictly smaller. Diff inputs are zero-copy views (read-only).
-func tryRerunDelta(toolName, key, content string) (string, bool) {
-	prev, ok := cache.LastOutputGet(key)
+func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (string, bool) {
+	prev, ok := store.LastGet(key)
 	if !ok || prev == content {
 		return "", false
 	}
@@ -144,4 +147,24 @@ func tryRerunDelta(toolName, key, content string) (string, bool) {
 		return "", false
 	}
 	return out, true
+}
+
+// dedupWithStore is the store-backed equivalent of cache.Dedup: it replaces
+// content that was already emitted (this or an earlier session, byte-
+// identical) with a compact §ref token, or registers it and returns ("",
+// false) so the caller emits it in full this first time. minSize gates tiny
+// outputs where a ~60-byte token would not pay off. The token format and hash
+// (cache.RefHashOf, the same sha256[:16] hex cache.Dedup uses) match
+// cache.Dedup exactly for parity.
+func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) {
+	if len(content) < minSize {
+		return "", false
+	}
+	hash := cache.RefHashOf(content)
+	if store.RefSeen(hash) {
+		return fmt.Sprintf("§ref:%s§ (%d bytes, identical to earlier output — qdf-hook expand %s)",
+			hash, len(content), hash), true
+	}
+	store.RefPut(hash, content)
+	return "", false
 }

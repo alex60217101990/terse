@@ -8,6 +8,7 @@ import (
 	"runtime/pprof"
 
 	"github.com/alex60217101990/qdf-hook/internal/hook"
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/spf13/cobra"
 )
 
@@ -173,7 +174,9 @@ func cmdPost() *cobra.Command {
 	return &cobra.Command{
 		Use:   "post",
 		Short: "Universal PostToolUse hook — routes any tool through the pipeline",
-		RunE:  func(cmd *cobra.Command, args []string) error { return hook.Dispatch(os.Stdin, os.Stdout) },
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return hook.Dispatch(hookcore.NewDiskStore(), os.Stdin, os.Stdout)
+		},
 	}
 }
 

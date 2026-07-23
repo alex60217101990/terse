@@ -13,6 +13,7 @@ import (
 	"github.com/alex60217101990/qdf-hook/internal/analytics"
 	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
@@ -24,12 +25,12 @@ func HandleRead(r io.Reader, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
 	}
-	return handleRead(inp, w)
+	return handleRead(hookcore.NewDiskStore(), inp, w)
 }
 
 // handleRead is the Read logic over an already-decoded input (so Dispatch can
 // route without re-decoding).
-func handleRead(inp *protocol.HookInput, w io.Writer) error {
+func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
 	start := time.Now()
 	if inp.ToolResponse == nil {
 		// No tool response (error case from Claude) — pass through.
@@ -59,8 +60,8 @@ func handleRead(inp *protocol.HookInput, w io.Writer) error {
 	}
 
 	// Load session state.
-	state, err := cache.Load(inp.SessionID)
-	if err != nil {
+	state := store.LoadSession(inp.SessionID)
+	if state == nil {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 	state.Turn++
@@ -109,9 +110,7 @@ func handleRead(inp *protocol.HookInput, w io.Writer) error {
 	updatedEntry.ModTime = modTime
 	state.Files[ti.FilePath] = updatedEntry
 
-	if err := cache.Save(inp.SessionID, state); err != nil {
-		fmt.Fprintf(os.Stderr, "qdf-hook: save state: %v\n", err)
-	}
+	store.SaveSession(inp.SessionID, state)
 
 	// Record analytics (best-effort — never block the hook). Passthrough emits
 	// the full content, so its emitted size is len(content) (a neutral 0%

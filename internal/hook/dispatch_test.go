@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alex60217101990/qdf-hook/internal/hook"
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
@@ -26,7 +27,7 @@ func runDispatch(t *testing.T, tool, content string) *protocol.HookOutput {
 	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 	var out strings.Builder
-	if err := hook.Dispatch(strings.NewReader(dispatchInput(t, tool, content)), &out); err != nil {
+	if err := hook.Dispatch(hookcore.NewDiskStore(), strings.NewReader(dispatchInput(t, tool, content)), &out); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 	var resp protocol.HookOutput
@@ -72,10 +73,11 @@ func TestDispatch_GenericRefDedup(t *testing.T) {
 	out := strings.Repeat("unstructured mcp output line here\n", 40)
 	in := dispatchInput(t, "mcp__x__y", out)
 
+	store := hookcore.NewDiskStore()
 	var o1 strings.Builder
-	_ = hook.Dispatch(strings.NewReader(in), &o1)
+	_ = hook.Dispatch(store, strings.NewReader(in), &o1)
 	var o2 strings.Builder
-	_ = hook.Dispatch(strings.NewReader(in), &o2)
+	_ = hook.Dispatch(store, strings.NewReader(in), &o2)
 
 	var resp protocol.HookOutput
 	_ = json.Unmarshal([]byte(o2.String()), &resp)

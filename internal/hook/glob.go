@@ -6,11 +6,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 )
 
 // HandleGlob is retained for backward compatibility; Glob is handled by the
 // generic pipeline via Dispatch (buildGlobTree is its tool-specific step).
-func HandleGlob(r io.Reader, w io.Writer) error { return Dispatch(r, w) }
+func HandleGlob(r io.Reader, w io.Writer) error { return Dispatch(hookcore.NewDiskStore(), r, w) }
 
 // buildGlobTree converts a newline-separated list of file paths into a compact
 // directory-tree summary grouped by the top two path components.

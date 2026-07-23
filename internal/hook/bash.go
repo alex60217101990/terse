@@ -5,6 +5,7 @@ import (
 
 	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/detect"
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/summary"
 )
 
@@ -15,7 +16,7 @@ const minSummaryRatio = 0.5
 // HandleBash is retained for backward compatibility. PostToolUse routing now
 // goes through Dispatch, which handles Bash (and every non-Read/Write tool) via
 // the generic pipeline.
-func HandleBash(r io.Reader, w io.Writer) error { return Dispatch(r, w) }
+func HandleBash(r io.Reader, w io.Writer) error { return Dispatch(hookcore.NewDiskStore(), r, w) }
 
 // The try* detectors are content-sniffed and tool-agnostic: the generic pipeline
 // runs them for any tool whose output matches the shape.

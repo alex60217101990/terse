@@ -44,6 +44,12 @@ func refHash(content string) string {
 	return hex.EncodeToString(h[:16])
 }
 
+// RefHashOf is the exported form of refHash: the content-address used to key
+// RefPut/RefGet/RefSeen. Exposed so callers building their own dedup logic
+// against a StateStore (rather than calling Dedup directly) hash content
+// identically to this package.
+func RefHashOf(content string) string { return refHash(content) }
+
 // RefPath is the blob file path for a hash.
 func RefPath(hash string) string { return filepath.Join(RefsDir(), hash+".blob") }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/alex60217101990/qdf-hook/internal/analytics"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
@@ -24,11 +25,11 @@ func HandleWrite(r io.Reader, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
 	}
-	return handleWrite(inp, w)
+	return handleWrite(hookcore.NewDiskStore(), inp, w)
 }
 
 // handleWrite is the Write/Edit logic over an already-decoded input.
-func handleWrite(inp *protocol.HookInput, w io.Writer) error {
+func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
 	start := time.Now()
 	if inp.ToolResponse == nil {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
@@ -67,8 +68,8 @@ func handleWrite(inp *protocol.HookInput, w io.Writer) error {
 		hashHex = cache.ShortHex(hash[:8])
 		lineCount = bytes.Count(fileBytes, []byte("\n"))
 		if inp.SessionID != "" {
-			state, serr := cache.Load(inp.SessionID)
-			if serr == nil {
+			state := store.LoadSession(inp.SessionID)
+			if state != nil {
 				state.Turn++
 				var modTime int64
 				if info, e := os.Stat(ti.FilePath); e == nil {
@@ -82,7 +83,7 @@ func handleWrite(inp *protocol.HookInput, w io.Writer) error {
 					LastReadAt: time.Now().Unix(),
 					ReadCount:  1,
 				}
-				_ = cache.Save(inp.SessionID, state)
+				store.SaveSession(inp.SessionID, state)
 			}
 		}
 	} else {
