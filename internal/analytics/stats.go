@@ -165,17 +165,22 @@ func (c colorizer) dim(s string) string  { return c.wrap("2", s) }
 // giving a fractional final cell so the bar length is smooth, not chunky.
 var partialBlocks = [8]string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉"}
 
-// meter renders a progress bar with a fractional (eighth-block) tail. Filled
-// cells use a teal→green truecolor gradient when the terminal supports it,
-// otherwise solid green; the remainder is dim. Every rendering is exactly
-// `width` cells wide so table columns stay aligned.
+// meter renders a rounded "pill" progress bar: half-circle end caps (◖ ◗) around
+// a fractional eighth-block fill. Filled cells use a teal→green truecolor
+// gradient when supported, else solid green; the remainder is dim. Always
+// exactly `width` cells wide so table columns stay aligned.
 func (c colorizer) meter(frac float64, width int) string {
 	if frac < 0 {
 		frac = 0
 	} else if frac > 1 {
 		frac = 1
 	}
-	units := frac * float64(width)
+	if width < 3 {
+		return strings.Repeat("█", width)
+	}
+	inner := width - 2 // two cells go to the rounded caps
+
+	units := frac * float64(inner)
 	full := int(units)
 	rem := int((units-float64(full))*8 + 0.5)
 	if rem == 8 {
@@ -184,16 +189,28 @@ func (c colorizer) meter(frac float64, width int) string {
 	}
 
 	var b strings.Builder
-	cells := 0
-	for ; cells < full && cells < width; cells++ {
-		b.WriteString(c.barCell("█", cells, width))
+	// Left cap: part of the fill when there's any progress, else dim track.
+	if frac > 0 {
+		b.WriteString(c.barCell("◖", 0, width))
+	} else {
+		b.WriteString(c.dim("◖"))
 	}
-	if rem > 0 && cells < width {
-		b.WriteString(c.barCell(partialBlocks[rem], cells, width))
+	cells := 0
+	for ; cells < full && cells < inner; cells++ {
+		b.WriteString(c.barCell("█", cells+1, width))
+	}
+	if rem > 0 && cells < inner {
+		b.WriteString(c.barCell(partialBlocks[rem], cells+1, width))
 		cells++
 	}
-	if cells < width {
-		b.WriteString(c.dim(strings.Repeat("░", width-cells)))
+	if cells < inner {
+		b.WriteString(c.dim(strings.Repeat("░", inner-cells)))
+	}
+	// Right cap: filled colour only when the bar is (essentially) full.
+	if frac >= 0.999 {
+		b.WriteString(c.barCell("◗", width-1, width))
+	} else {
+		b.WriteString(c.dim("◗"))
 	}
 	return b.String()
 }
