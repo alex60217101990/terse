@@ -35,7 +35,17 @@ func HandleBash(r io.Reader, w io.Writer) error {
 	content := inp.ToolResponse.Text()
 
 	if len(content) < 256 {
-		// Too small to bother compressing.
+		// Too small to bother compressing, but still record the invocation so
+		// every Bash call is visible in stats.
+		_ = analytics.Record(analytics.Event{
+			TS:       time.Now().UnixNano(),
+			SID:      inp.SessionID,
+			Hook:     "bash",
+			Action:   "passthrough",
+			BytesIn:  len(content),
+			BytesOut: len(content),
+			DurNS:    time.Since(start).Nanoseconds(),
+		})
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
