@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -30,9 +31,12 @@ func HandleBash(r io.Reader, w io.Writer) error {
 	}
 
 	// Bash exposes output as stdout/stderr, not content — use Text() so the
-	// handler sees the real output (otherwise every Bash call looked empty and
-	// was silently skipped).
-	content := inp.ToolResponse.Text()
+	// handler sees the real output. StripNoise drops shell/build chatter first.
+	content := detect.StripNoise(inp.ToolResponse.Text())
+
+	// command+cwd identify the re-run delta store.
+	var bi protocol.BashInput
+	_ = json.Unmarshal(inp.ToolInput, &bi)
 
 	if len(content) < 256 {
 		// Too small to bother compressing, but still record the invocation so
@@ -66,12 +70,22 @@ func HandleBash(r io.Reader, w io.Writer) error {
 		// (or an earlier) session — replace with a §ref token instead of the
 		// full bytes. Supersedes the old read-only bash cache.
 		action, replacement = "ref", tok
+	} else if d, ok := tryBashDelta(bi.Command, bi.Cwd, content); ok {
+		// Re-run of the same command with near-identical output — send only the
+		// diff against the previous run.
+		action, replacement = "rerun-delta", d
 	} else if sq := detect.SqueezeOutput(content); len(sq) < len(content)*9/10 {
 		// Novel unstructured output — collapse ANSI + repeated lines for at
 		// least a 10% win. Self-describing (⨯N markers), so no expansion needed.
 		action, replacement = "squeezed", sq
 	} else {
 		action = "passthrough"
+	}
+
+	// Remember this output for the next run's delta (only for the unstructured
+	// paths where a delta could actually fire).
+	if bi.Command != "" && (action == "passthrough" || action == "squeezed" || action == "rerun-delta") {
+		cache.BashLastPut(bi.Command, bi.Cwd, content)
 	}
 
 	var out *protocol.HookOutput
@@ -96,6 +110,29 @@ func HandleBash(r io.Reader, w io.Writer) error {
 	})
 
 	return protocol.EncodeOutput(w, out)
+}
+
+// tryBashDelta returns a unified diff of content against the previous run of the
+// same command+cwd, when that is strictly smaller than the full output. Returns
+// ("", false) on the first run, an identical re-run (handled by §ref), or when
+// the diff wouldn't save anything.
+func tryBashDelta(command, cwd, content string) (string, bool) {
+	if command == "" {
+		return "", false
+	}
+	prev, ok := cache.BashLastGet(command, cwd)
+	if !ok || prev == content {
+		return "", false
+	}
+	diff := cache.UnifiedDiff([]byte(prev), []byte(content), 3)
+	if diff == "" {
+		return "", false
+	}
+	out := "[BASH §rerun-delta§ " + command + " — changes since last run]\n" + diff
+	if len(out) >= len(content) {
+		return "", false // never-worse
+	}
+	return out, true
 }
 
 func tryJSON(content string) string {

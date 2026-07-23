@@ -85,29 +85,31 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 		return nil
 	})
 
-	// Prune content-addressed ref blobs older than the TTL (by mtime, which
-	// RefPut sets fresh on write — no need to decode each blob for its TS).
+	// Prune blob stores older than the TTL (by mtime, set fresh on each write —
+	// no need to decode each blob for its timestamp).
 	cutoff := time.Now().Add(-time.Duration(RefTTLHours() * float64(time.Hour)))
-	_ = filepath.WalkDir(RefsDir(), func(path string, d fs.DirEntry, werr error) error {
-		if werr != nil || d.IsDir() || !strings.HasSuffix(path, ".blob") {
-			return nil
-		}
-		info, _ := d.Info()
-		if info == nil {
-			return nil
-		}
-		if info.ModTime().Before(cutoff) {
-			if dryRun {
-				fmt.Printf("[dry-run] would remove ref %s\n", filepath.Base(path))
-			} else {
-				_ = os.Remove(path)
-				result.FreedBytes += info.Size()
+	for _, dir := range []string{RefsDir(), BashLastDir()} {
+		_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, werr error) error {
+			if werr != nil || d.IsDir() || !strings.HasSuffix(path, ".blob") {
+				return nil
 			}
-			result.Removed++
-		} else {
-			result.Kept++
-		}
-		return nil
-	})
+			info, _ := d.Info()
+			if info == nil {
+				return nil
+			}
+			if info.ModTime().Before(cutoff) {
+				if dryRun {
+					fmt.Printf("[dry-run] would remove blob %s\n", filepath.Base(path))
+				} else {
+					_ = os.Remove(path)
+					result.FreedBytes += info.Size()
+				}
+				result.Removed++
+			} else {
+				result.Kept++
+			}
+			return nil
+		})
+	}
 	return result, err
 }
