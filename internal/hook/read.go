@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/analytics"
+	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
@@ -19,12 +20,17 @@ import (
 // It reads the hook JSON from r, applies delta/unchanged logic, and writes
 // the hook output JSON to w.
 func HandleRead(r io.Reader, w io.Writer) error {
-	start := time.Now()
-
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
 	}
+	return handleRead(inp, w)
+}
+
+// handleRead is the Read logic over an already-decoded input (so Dispatch can
+// route without re-decoding).
+func handleRead(inp *protocol.HookInput, w io.Writer) error {
+	start := time.Now()
 	if inp.ToolResponse == nil {
 		// No tool response (error case from Claude) — pass through.
 		return protocol.EncodeOutput(w, protocol.Passthrough())
@@ -43,7 +49,9 @@ func HandleRead(r io.Reader, w io.Writer) error {
 		modTime = info.ModTime().UnixNano()
 	}
 
-	content := []byte(inp.ToolResponse.Content)
+	// Zero-copy view: content is only read (hashed, diffed, cached) within this
+	// call; the cache copies it out on Save.
+	content := bytesconv.S2B(inp.ToolResponse.Content)
 
 	// Binary content: always pass through, no diff.
 	if cache.IsBinaryContent(content) {

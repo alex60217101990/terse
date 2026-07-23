@@ -6,46 +6,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
-
-	"github.com/alex60217101990/qdf-hook/internal/analytics"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
-// HandleGlob compresses Glob tool output from a flat file list to a compact directory tree.
-func HandleGlob(r io.Reader, w io.Writer) error {
-	start := time.Now()
-	inp, err := protocol.DecodeInput(r)
-	if err != nil {
-		return fmt.Errorf("DecodeInput: %w", err)
-	}
-	if inp.ToolResponse == nil {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	content := inp.ToolResponse.Content
-	// Short content: passthrough — no benefit from compression.
-	if len(content) <= 256 {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	tree := buildGlobTree(content)
-	// Only replace if the tree is actually shorter than the original.
-	if len(tree) >= len(content) {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	_ = analytics.Record(analytics.Event{
-		TS:      time.Now().UnixNano(),
-		SID:     inp.SessionID,
-		Hook:    "glob",
-		Action:  "tree",
-		BytesIn: len(content),
-		BytesOut: len(tree),
-		DurNS:   time.Since(start).Nanoseconds(),
-	})
-	return protocol.EncodeOutput(w, protocol.Replace(tree))
-}
+// HandleGlob is retained for backward compatibility; Glob is handled by the
+// generic pipeline via Dispatch (buildGlobTree is its tool-specific step).
+func HandleGlob(r io.Reader, w io.Writer) error { return Dispatch(r, w) }
 
 // buildGlobTree converts a newline-separated list of file paths into a compact
 // directory-tree summary grouped by the top two path components.

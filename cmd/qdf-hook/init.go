@@ -18,14 +18,13 @@ type hookSpec struct {
 	sub     string // qdf-hook subcommand
 }
 
-// qdfHooks is the full set installed by `qdf-hook init`.
+// qdfHooks is the full set installed by `qdf-hook init`. A single catch-all
+// PostToolUse hook routes every tool (Read/Write/Bash/Glob/Grep/mcp__*/…)
+// through `post`, which dispatches internally — so new tools are covered with
+// no config change.
 var qdfHooks = []hookSpec{
 	{"PreToolUse", "Read", "pretooluse"},
-	{"PostToolUse", "Read", "read"},
-	{"PostToolUse", "Bash", "bash"},
-	{"PostToolUse", "Write|Edit|MultiEdit", "write"},
-	{"PostToolUse", "Glob", "glob"},
-	{"PostToolUse", "Grep", "grep"},
+	{"PostToolUse", ".*", "post"},
 	{"PreCompact", ".*", "precompact"},
 	{"PostCompact", ".*", "postcompact"},
 }
@@ -117,6 +116,10 @@ func runInit(project bool, dir string, printOnly bool) error {
 		}
 	}
 
+	// Migrate: the single catch-all `post` supersedes the old per-tool
+	// PostToolUse hooks (read/bash/write/glob/grep). Drop them so upgrading
+	// doesn't double-process every tool.
+	pruned := pruneSuperseded(hb)
 	added := mergeHooks(hb, execPath())
 
 	hooksRaw, err := json.Marshal(hb)
@@ -143,9 +146,8 @@ func runInit(project bool, dir string, printOnly bool) error {
 		return nil
 	}
 
-	// Nothing new to add — leave the file (and its formatting) untouched, no
-	// backup churn.
-	if added == 0 {
+	// Nothing new to add and nothing stale to remove — leave the file untouched.
+	if added == 0 && pruned == 0 {
 		fmt.Printf("qdf-hook already installed in %s (nothing to do)\n", path)
 		return nil
 	}
@@ -201,6 +203,48 @@ func commandPresent(entries []hookEntry, sub string) bool {
 		}
 	}
 	return false
+}
+
+// supersededSubs are the old per-tool PostToolUse subcommands now covered by
+// the single catch-all `post`.
+var supersededSubs = []string{"read", "bash", "write", "glob", "grep"}
+
+// pruneSuperseded removes PostToolUse entries that consist solely of superseded
+// qdf-hook commands (from an older install). Returns how many were removed.
+func pruneSuperseded(hb hooksBlock) int {
+	entries := hb["PostToolUse"]
+	kept := entries[:0]
+	removed := 0
+	for _, e := range entries {
+		if entryAllSuperseded(e) {
+			removed++
+			continue
+		}
+		kept = append(kept, e)
+	}
+	hb["PostToolUse"] = kept
+	return removed
+}
+
+// entryAllSuperseded reports whether every hook in e is a superseded qdf-hook
+// command (so dropping the whole entry can't remove another tool's hook).
+func entryAllSuperseded(e hookEntry) bool {
+	if len(e.Hooks) == 0 {
+		return false
+	}
+	for _, h := range e.Hooks {
+		super := false
+		for _, sub := range supersededSubs {
+			if isQdfHookCommand(h.Command, sub) {
+				super = true
+				break
+			}
+		}
+		if !super {
+			return false
+		}
+	}
+	return true
 }
 
 // isQdfHookCommand reports whether command c invokes `qdf-hook <sub>`: its

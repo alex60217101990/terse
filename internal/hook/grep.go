@@ -5,51 +5,14 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"time"
-
-	"github.com/alex60217101990/qdf-hook/internal/analytics"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
 // grepFileCap is the max matching lines shown per file before eliding.
 const grepFileCap = 8
 
-// HandleGrep compresses Grep tool output. Content-mode output (file:line:text)
-// is regrouped so each file path is printed once, with its matching lines
-// capped per file. files_with_matches output (bare paths) is delegated to the
-// same directory-tree compressor Glob uses.
-func HandleGrep(r io.Reader, w io.Writer) error {
-	start := time.Now()
-	inp, err := protocol.DecodeInput(r)
-	if err != nil {
-		return fmt.Errorf("DecodeInput: %w", err)
-	}
-	if inp.ToolResponse == nil {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	content := inp.ToolResponse.Content
-	if len(content) <= 256 {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	summary, action := buildGrepSummary(content)
-	// Never-worse: only replace when the summary is actually shorter.
-	if summary == "" || len(summary) >= len(content) {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	_ = analytics.Record(analytics.Event{
-		TS:       time.Now().UnixNano(),
-		SID:      inp.SessionID,
-		Hook:     "grep",
-		Action:   action,
-		BytesIn:  len(content),
-		BytesOut: len(summary),
-		DurNS:    time.Since(start).Nanoseconds(),
-	})
-	return protocol.EncodeOutput(w, protocol.Replace(summary))
-}
+// HandleGrep is retained for backward compatibility; Grep is handled by the
+// generic pipeline via Dispatch (buildGrepSummary is its tool-specific step).
+func HandleGrep(r io.Reader, w io.Writer) error { return Dispatch(r, w) }
 
 type grepMatch struct {
 	line string // line number as text (kept as-is)

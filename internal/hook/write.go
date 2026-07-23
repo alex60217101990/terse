@@ -20,11 +20,16 @@ const writePassthroughThreshold = 256
 // Claude just wrote this content — no need to see the full file again.
 // Also caches the written content for delta tracking on next Read.
 func HandleWrite(r io.Reader, w io.Writer) error {
-	start := time.Now()
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
 	}
+	return handleWrite(inp, w)
+}
+
+// handleWrite is the Write/Edit logic over an already-decoded input.
+func handleWrite(inp *protocol.HookInput, w io.Writer) error {
+	start := time.Now()
 	if inp.ToolResponse == nil {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}

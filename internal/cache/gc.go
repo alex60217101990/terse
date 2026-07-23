@@ -88,7 +88,7 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 	// Prune blob stores older than the TTL (by mtime, set fresh on each write —
 	// no need to decode each blob for its timestamp).
 	cutoff := time.Now().Add(-time.Duration(RefTTLHours() * float64(time.Hour)))
-	for _, dir := range []string{RefsDir(), BashLastDir()} {
+	for _, dir := range []string{RefsDir(), LastOutDir()} {
 		_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, werr error) error {
 			if werr != nil || d.IsDir() || !strings.HasSuffix(path, ".blob") {
 				return nil

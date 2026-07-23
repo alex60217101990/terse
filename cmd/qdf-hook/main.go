@@ -72,6 +72,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&memprofile, "memprofile", "", "write memory profile to file")
 	rootCmd.AddCommand(
 		cmdVersion(),
+		cmdPost(),
 		cmdRead(),
 		cmdBash(),
 		cmdGlob(),
@@ -153,6 +154,14 @@ func cmdGlob() *cobra.Command {
 		Use:   "glob",
 		Short: "Handle PostToolUse hook for Glob tool — compress file list to tree",
 		RunE:  func(cmd *cobra.Command, args []string) error { return hook.HandleGlob(os.Stdin, os.Stdout) },
+	}
+}
+
+func cmdPost() *cobra.Command {
+	return &cobra.Command{
+		Use:   "post",
+		Short: "Universal PostToolUse hook — routes any tool through the pipeline",
+		RunE:  func(cmd *cobra.Command, args []string) error { return hook.Dispatch(os.Stdin, os.Stdout) },
 	}
 }
 

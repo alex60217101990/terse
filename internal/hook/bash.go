@@ -1,149 +1,35 @@
 package hook
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
-	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/analytics"
-	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/detect"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
 	"github.com/alex60217101990/qdf-hook/internal/summary"
 )
 
-// minSummaryRatio: only replace tool output if the summary is at most this fraction of the original.
-// Below this threshold, compression isn't worth the overhead.
+// minSummaryRatio: only replace tool output if the summary is at most this
+// fraction of the original. Below this, compression isn't worth the overhead.
 const minSummaryRatio = 0.5
 
-// HandleBash processes a PostToolUse hook call for the Bash tool.
-// It tries each detector in priority order; falls back to pass-through.
-func HandleBash(r io.Reader, w io.Writer) error {
-	start := time.Now()
+// HandleBash is retained for backward compatibility. PostToolUse routing now
+// goes through Dispatch, which handles Bash (and every non-Read/Write tool) via
+// the generic pipeline.
+func HandleBash(r io.Reader, w io.Writer) error { return Dispatch(r, w) }
 
-	inp, err := protocol.DecodeInput(r)
-	if err != nil {
-		return fmt.Errorf("DecodeInput: %w", err)
-	}
-	if inp.ToolResponse == nil {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	// Bash exposes output as stdout/stderr, not content — use Text() so the
-	// handler sees the real output. StripNoise drops shell/build chatter first.
-	content := detect.StripNoise(inp.ToolResponse.Text())
-
-	// command+cwd identify the re-run delta store.
-	var bi protocol.BashInput
-	_ = json.Unmarshal(inp.ToolInput, &bi)
-
-	if len(content) < 256 {
-		// Too small to bother compressing, but still record the invocation so
-		// every Bash call is visible in stats.
-		_ = analytics.Record(analytics.Event{
-			TS:       time.Now().UnixNano(),
-			SID:      inp.SessionID,
-			Hook:     "bash",
-			Action:   "passthrough",
-			BytesIn:  len(content),
-			BytesOut: len(content),
-			DurNS:    time.Since(start).Nanoseconds(),
-		})
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	// Try detectors in priority order; collect action and replacement.
-	var action string
-	var replacement string
-
-	if s := tryJSON(content); s != "" {
-		action, replacement = "summary", s
-	} else if s := tryGoTest(content); s != "" {
-		action, replacement = "summary", s
-	} else if s := tryGitLog(content); s != "" {
-		action, replacement = "summary", s
-	} else if s := tryBench(content); s != "" {
-		action, replacement = "summary", s
-	} else if tok, ok := cache.Dedup(content, 256); ok {
-		// Unstructured output byte-identical to something already emitted this
-		// (or an earlier) session — replace with a §ref token instead of the
-		// full bytes. Supersedes the old read-only bash cache.
-		action, replacement = "ref", tok
-	} else if d, ok := tryBashDelta(bi.Command, bi.Cwd, content); ok {
-		// Re-run of the same command with near-identical output — send only the
-		// diff against the previous run.
-		action, replacement = "rerun-delta", d
-	} else if sq := detect.SqueezeOutput(content); len(sq) < len(content)*9/10 {
-		// Novel unstructured output — collapse ANSI + repeated lines for at
-		// least a 10% win. Self-describing (⨯N markers), so no expansion needed.
-		action, replacement = "squeezed", sq
-	} else {
-		action = "passthrough"
-	}
-
-	// Remember this output for the next run's delta (only for the unstructured
-	// paths where a delta could actually fire).
-	if bi.Command != "" && (action == "passthrough" || action == "squeezed" || action == "rerun-delta") {
-		cache.BashLastPut(bi.Command, bi.Cwd, content)
-	}
-
-	var out *protocol.HookOutput
-	var bytesOut int
-	if replacement != "" {
-		out = protocol.Replace(replacement)
-		bytesOut = len(replacement)
-	} else {
-		out = protocol.Passthrough()
-		bytesOut = len(content)
-	}
-
-	// Record analytics (best-effort — never block the hook).
-	_ = analytics.Record(analytics.Event{
-		TS:       time.Now().UnixNano(),
-		SID:      inp.SessionID,
-		Hook:     "bash",
-		Action:   action,
-		BytesIn:  len(content),
-		BytesOut: bytesOut,
-		DurNS:    time.Since(start).Nanoseconds(),
-	})
-
-	return protocol.EncodeOutput(w, out)
-}
-
-// tryBashDelta returns a unified diff of content against the previous run of the
-// same command+cwd, when that is strictly smaller than the full output. Returns
-// ("", false) on the first run, an identical re-run (handled by §ref), or when
-// the diff wouldn't save anything.
-func tryBashDelta(command, cwd, content string) (string, bool) {
-	if command == "" {
-		return "", false
-	}
-	prev, ok := cache.BashLastGet(command, cwd)
-	if !ok || prev == content {
-		return "", false
-	}
-	diff := cache.UnifiedDiff([]byte(prev), []byte(content), 3)
-	if diff == "" {
-		return "", false
-	}
-	out := "[BASH §rerun-delta§ " + command + " — changes since last run]\n" + diff
-	if len(out) >= len(content) {
-		return "", false // never-worse
-	}
-	return out, true
-}
+// The try* detectors are content-sniffed and tool-agnostic: the generic pipeline
+// runs them for any tool whose output matches the shape.
 
 func tryJSON(content string) string {
 	if !detect.IsJSONArray(content) {
 		return ""
 	}
-	stats, err := detect.AnalyzeJSONArray([]byte(content), 2000)
+	// Zero-copy view: AnalyzeJSONArray only reads the bytes.
+	stats, err := detect.AnalyzeJSONArray(bytesconv.S2B(content), 2000)
 	if err != nil || stats.RowCount < 5 {
 		return ""
 	}
-	s := summary.ColumnarSummary("(bash output)", stats)
+	s := summary.ColumnarSummary("(tool output)", stats)
 	if float64(len(s)) > float64(len(content))*minSummaryRatio {
 		return ""
 	}
