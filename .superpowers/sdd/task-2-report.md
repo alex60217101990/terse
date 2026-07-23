@@ -1,85 +1,42 @@
-# Task 2 Report: Session State Load/Save with qdf Compression
+# Task 2 Report: in-RAM `StateStore` (MemStore) + lazy disk flush
 
-## Status: COMPLETE
+## Status: DONE
 
 ## Commit
-`c814250` — `feat(cache): session state load/save with qdf compression`
+`<see below>` — `feat(hookcore): in-RAM sharded StateStore with lazy flush`
 
 ## Files Created
-- `internal/cache/state.go` — `SessionState`, `FileEntry`, `NewSessionState`, `SeenAfterCompact`
-- `internal/cache/store.go` — `StateDir`, `Load`, `Save` using qdf
-- `internal/cache/store_test.go` — 3 unit tests + benchmark
+- `internal/hookcore/memstore.go` — `MemStore`, `NewMemStore`, `(*MemStore) StateStore`, `(*MemStore) FlushDirty`, and all `StateStore` interface methods.
+- `internal/hookcore/memstore_test.go` — round-trip+flush test (from the brief, verbatim), a last-output round-trip+flush test, a missing-session-returns-empty test, and a `-race` concurrent test hammering two sessions plus the ref/last maps from 50 goroutines x 200 iterations each.
+
+## Design
+
+- **Sharded sessions**: `[16]*sessionShard`, each holding `map[string]*cache.SessionState` guarded by its own `sync.RWMutex`. Shard picked by `fnv.New32a()` hash of the session id mod 16.
+- **Refs / last-output**: plain `map[string]string` each behind its own `sync.RWMutex` (no sharding needed — brief only asked for shard on sessions).
+- **Dirty tracking**: a single `dirtyMu sync.Mutex` guarding three sets (`dirtySessions`, `dirtyRefs`, `dirtyLast` as `map[string]struct{}`), populated by every `Save*`/`*Put`. `FlushDirty` swaps each set out for a fresh empty map under the lock, then does the actual disk I/O (`cache.Save`, `cache.RefPut`, `cache.LastOutputPut`) without holding `dirtyMu` — so writes that land mid-flush go into the new set instead of blocking on I/O or racing the flush loop.
+- **Constructor load**: `NewMemStore` walks `cache.StateDir()` (`*.qdf` files → `cache.Load(id)`), `cache.RefsDir()` (`*.blob` → `cache.RefGet(hash)`), and `cache.LastOutDir()` (`*.blob` → `cache.LastOutputGet(key)`), decoding each into the RAM maps. Missing directories or decode failures are skipped (best-effort), matching `cache.Load`'s own "corrupt → fresh state" behavior.
+- **`LoadSession` aliasing**: returns the live `*cache.SessionState` pointer under the shard's read lock (not a deep copy) — documented in the type doc comment. This is safe because a given session id is only ever driven by one in-flight hook invocation; MemStore's actual concurrency guarantee is across *different* session ids, which the shard-per-id + per-shard-mutex design makes race-free.
+- **No disk fallback in accessors**: once constructed, all reads (`LoadSession`, `RefGet`, `RefSeen`, `LastGet`) only ever touch RAM — disk is read once at construction and written only from `FlushDirty`.
 
 ## Test Results
-```
-ok  github.com/alex60217101990/qdf-hook/internal/cache  2.071s
-```
-All 3 tests pass (`-race` flag enabled).
 
-## Benchmark Results
 ```
-BenchmarkSaveLoad-18  ~6000 iters  ~200µs/op  ~18KB B/op  137 allocs/op
+GOWORK=off go test -race ./internal/hookcore/...
+ok  github.com/alex60217101990/qdf-hook/internal/hookcore  1.9s
+
+GOWORK=off go test -race ./...
+ok  all packages (cmd/qdf-hook, internal/analytics, internal/cache, internal/detect, internal/hook, internal/hookcore, internal/protocol, internal/summary)
 ```
-(5 runs, consistent across all counts)
+
+`go vet ./...` and `gofmt -l` on the new files: clean.
+
+## TDD Trail
+1. Wrote `memstore_test.go` (brief's round-trip+flush test plus 3 more) referencing `hookcore.NewMemStore` before it existed.
+2. Confirmed compile failure: `undefined: hookcore.NewMemStore` (6 occurrences).
+3. Implemented `internal/hookcore/memstore.go`.
+4. `go test -race ./internal/hookcore/...` → pass.
+5. `go test -race ./...` → whole suite pass.
 
 ## Concerns / Deviations
-1. **Allocs exceed brief expectation** (137 vs < 50): `OptCompression` incurs extra codec work. If alloc count matters downstream, switch to `OptBalanced` or `OptSpeed` — both still compress but use fewer intermediate allocations.
-2. **JSON struct tags used** instead of `qdf:"..."` tags: qdf's encoder accepts standard Go structs and field tags are not required; the library encodes field names from reflection. The brief used `qdf:"..."` tags but those appear to have no special effect — the encoder accepted the struct correctly either way.
-3. **go.mod `go` directive upgraded** from `1.23` to `1.26.5` by `go get github.com/alex60217101990/qdf@latest` — this is a transitive requirement of the qdf library.
-4. **`b.Loop()` not used** (as instructed): used `for i := 0; i < b.N; i++` which is correct for Go 1.23.
-
----
-
-# Task 2 Fix Report (Corrections Applied 2026-07-22)
-
-## Fixes Applied
-
-### Fix 1 — go.mod version (Critical)
-`go 1.26.5` → `go 1.23` via `go mod edit -go=1.23`. Followed by `go mod tidy` to keep go.sum consistent.
-
-### Fix 2 — Wrong state directory (Critical)
-`StateDir()` now returns `~/.qdf-hook/sessions/` (was `~/.config/qdf-hook/state`). Simplified error handling: `os.UserHomeDir()` blank-ignores error.
-
-### Fix 3 — Benchmark allocations (Critical)
-Switched from `qdf.OptCompression` to `qdf.OptSpeed` (the zero-bit preset, no codecs).
-
-**Benchmarked all strategies on a 50-file SessionState:**
-
-| Option | allocs/op |
-|---|---|
-| `qdf.OptCompression` | ~137 |
-| `qdf.OptBalanced` | ~133–135 |
-| `qdf.OptSpeed` (chosen) | ~133 |
-| `encoding/json` | ~284 |
-
-No option reaches the < 50 allocs/op spec. The allocation floor is set by reflective encode/decode of the 50-entry `Files map[string]FileEntry` and its `[]byte Content` fields — not the codec layer. `OptSpeed` is the minimum-allocation qdf mode and is kept with a detailed explanatory comment. The spec budget was likely calibrated against a much smaller state (< 5 files).
-
-### Fix 4 — TestLoadCorruptFile (Important)
-Added to `internal/cache/store_test.go`. Writes binary garbage to the session path and asserts `Load` returns an empty `SessionState` (not an error).
-
-### Fix 5 — sessionID path traversal (Important)
-`statePath` now sanitizes `sessionID` via `filepath.Base`. A `..` or `/foo/bar` input is collapsed to a safe filename; empty or `.` falls back to `"default"`.
-
-### Fix 6 — os.IsNotExist → errors.Is (Minor)
-`os.IsNotExist(err)` replaced with `errors.Is(err, fs.ErrNotExist)`. Added `"errors"` and `"io/fs"` imports.
-
-## Test Results (Post-Fix)
-
-```
-GOWORK=off go test -race ./internal/cache/...
-ok  github.com/alex60217101990/qdf-hook/internal/cache  1.750s
-```
-
-All 4 tests pass (TestLoadSaveRoundtrip, TestLoadMissing, TestStateDirCreated, TestLoadCorruptFile).
-
-## Benchmark Results (Post-Fix, 5 runs)
-
-```
-BenchmarkSaveLoad-18    5886   188289 ns/op   20359 B/op   133 allocs/op
-BenchmarkSaveLoad-18    7302   177965 ns/op   20364 B/op   133 allocs/op
-BenchmarkSaveLoad-18    6297   173300 ns/op   20361 B/op   133 allocs/op
-BenchmarkSaveLoad-18    7314   167156 ns/op   20373 B/op   133 allocs/op
-BenchmarkSaveLoad-18    7590   168277 ns/op   20356 B/op   133 allocs/op
-```
-
-Stable at **133 allocs/op** (improved from 137 with OptCompression). The < 50 allocs/op spec cannot be met with any serialization strategy on a 50-entry map without structural changes (e.g., pre-allocated fixed arrays or a hand-written binary format). Documented in code comment.
+- None. Signatures match the brief exactly (`NewMemStore() *MemStore`, `(*MemStore) FlushDirty()`, `(*MemStore) StateStore() StateStore`). Task 1's `StateStore` interface and `diskStore` were not modified.
+- Note: this file previously held an unrelated report (for `internal/cache` session state load/save, a different earlier task also numbered "2" in an older plan iteration) — that content has been superseded here since the current plan's Task 2 is the in-RAM MemStore described above.
