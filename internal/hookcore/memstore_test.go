@@ -67,11 +67,11 @@ func TestMemStore_ConcurrentSessionsAndRefs(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(g int) {
 			defer wg.Done()
 			id := sessions[g%len(sessions)]
-			for i := 0; i < perGoroutine; i++ {
+			for i := range perGoroutine {
 				st := cache.NewSessionState()
 				st.Turn = i
 				s.SaveSession(id, st)
@@ -124,10 +124,10 @@ func TestMemStore_ConcurrentLoadMutateSaveSameSession(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(g int) {
 			defer wg.Done()
-			for i := 0; i < perGoroutine; i++ {
+			for i := range perGoroutine {
 				state := s.LoadSession(sessionID)
 				state.Turn++
 				path := fmt.Sprintf("/file-%d-%d.go", g, i%5)
@@ -145,9 +145,7 @@ func TestMemStore_ConcurrentLoadMutateSaveSameSession(t *testing.T) {
 	// the same race.
 	stop := make(chan struct{})
 	var flushWg sync.WaitGroup
-	flushWg.Add(1)
-	go func() {
-		defer flushWg.Done()
+	flushWg.Go(func() {
 		for {
 			select {
 			case <-stop:
@@ -157,7 +155,7 @@ func TestMemStore_ConcurrentLoadMutateSaveSameSession(t *testing.T) {
 				m.FlushDirty()
 			}
 		}
-	}()
+	})
 
 	wg.Wait()
 	close(stop)

@@ -45,7 +45,7 @@ func skipTool(tool string) bool {
 		return true
 	}
 	if env := os.Getenv("QDF_SKIP_TOOLS"); env != "" {
-		for _, t := range strings.Split(env, ",") {
+		for t := range strings.SplitSeq(env, ",") {
 			if strings.TrimSpace(t) == tool {
 				return true
 			}

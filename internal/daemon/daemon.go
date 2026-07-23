@@ -87,11 +87,9 @@ func Serve(sockPath string, idle time.Duration) error {
 		select {
 		case c := <-acceptCh:
 			lastActivity.Store(time.Now().UnixNano())
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				handleConn(c, store)
-			}()
+			})
 
 		case err := <-acceptErrCh:
 			// Listener died (e.g. socket removed out from under us); flush

@@ -2,6 +2,7 @@ package hookcore
 
 import (
 	"hash/fnv"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -17,8 +18,8 @@ const shardCount = 16
 // sessionShard is one shard of the session map, independently locked so
 // operations on sessions in different shards never contend.
 type sessionShard struct {
-	mu       sync.RWMutex
 	sessions map[string]*cache.SessionState
+	mu       sync.RWMutex
 }
 
 // MemStore is a fully in-RAM implementation of StateStore for the qdf-hookd
@@ -42,16 +43,19 @@ type sessionShard struct {
 type MemStore struct {
 	shards [shardCount]*sessionShard
 
-	refsMu sync.RWMutex
-	refs   map[string]string
+	refs map[string]string
 
-	lastMu sync.RWMutex
-	last   map[string]string
+	last map[string]string
 
-	dirtyMu       sync.Mutex
 	dirtySessions map[string]struct{}
 	dirtyRefs     map[string]struct{}
 	dirtyLast     map[string]struct{}
+
+	refsMu sync.RWMutex
+
+	lastMu sync.RWMutex
+
+	dirtyMu sync.Mutex
 }
 
 // NewMemStore builds a MemStore and loads any existing on-disk state
@@ -178,9 +182,7 @@ func (m *MemStore) LoadSession(id string) *cache.SessionState {
 		CompactedAt: st.CompactedAt,
 		Files:       make(map[string]cache.FileEntry, len(st.Files)),
 	}
-	for path, entry := range st.Files {
-		cp.Files[path] = entry
-	}
+	maps.Copy(cp.Files, st.Files)
 	sh.mu.RUnlock()
 	return cp
 }
