@@ -161,37 +161,6 @@ func (c colorizer) wrap(code, s string) string {
 func (c colorizer) bold(s string) string { return c.wrap("1", s) }
 func (c colorizer) dim(s string) string  { return c.wrap("2", s) }
 
-// partialBlocks are the left-aligned eighth-width block glyphs, index 1..7
-// giving a fractional final cell so the bar length is smooth, not chunky.
-var partialBlocks = [8]string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉"}
-
-// meter renders the default progress bar: a fractional eighth-block fill with a
-// teal→green truecolor gradient (solid green without truecolor, plain when not
-// a TTY); the remainder is a dim track. Always exactly `width` cells wide.
-func (c colorizer) meter(frac float64, width int) string {
-	frac = clamp01(frac)
-	units := frac * float64(width)
-	full := int(units)
-	rem := int((units-float64(full))*8 + 0.5)
-	if rem == 8 {
-		full++
-		rem = 0
-	}
-	var b strings.Builder
-	cells := 0
-	for ; cells < full && cells < width; cells++ {
-		b.WriteString(c.barCell("█", cells, width))
-	}
-	if rem > 0 && cells < width {
-		b.WriteString(c.barCell(partialBlocks[rem], cells, width))
-		cells++
-	}
-	if cells < width {
-		b.WriteString(c.dim(strings.Repeat("░", width-cells)))
-	}
-	return b.String()
-}
-
 func clamp01(f float64) float64 {
 	if f < 0 {
 		return 0
@@ -220,26 +189,6 @@ func (c colorizer) meterLine(frac float64, width int) string {
 	return b.String()
 }
 
-// meterShade: solid fill fading through ▓▒░ at the boundary.
-func (c colorizer) meterShade(frac float64, width int) string {
-	frac = clamp01(frac)
-	full := int(frac * float64(width))
-	var b strings.Builder
-	for i := 0; i < width; i++ {
-		switch {
-		case i < full:
-			b.WriteString(c.barCell("█", i, width))
-		case i == full:
-			b.WriteString(c.barCell("▓", i, width))
-		case i == full+1:
-			b.WriteString(c.dim("▒"))
-		default:
-			b.WriteString(c.dim("░"))
-		}
-	}
-	return b.String()
-}
-
 // meterBraille: braille dot-matrix fill (finest sub-cell resolution).
 func (c colorizer) meterBraille(frac float64, width int) string {
 	frac = clamp01(frac)
@@ -259,33 +208,6 @@ func (c colorizer) meterBraille(frac float64, width int) string {
 	return b.String()
 }
 
-// RenderBarGallery prints every bar style at several fill levels so the user can
-// pick one by eye in their own terminal (with real color/gradient).
-func RenderBarGallery(w io.Writer) {
-	c := newColorizer()
-	const width = 22
-	fracs := []float64{0.12, 0.37, 0.65, 0.88, 1.0}
-	styles := []struct {
-		n    int
-		name string
-		fn   func(float64, int) string
-	}{
-		{1, "blocks  (smooth eighth-block fill)", c.meter},
-		{2, "line    (heavy rule + soft tip)", c.meterLine},
-		{3, "shade   (solid, ▓▒░ fade tail)", c.meterShade},
-		{4, "braille (dot-matrix, finest)", c.meterBraille},
-	}
-	fmt.Fprintf(w, "\n  %s — pick a style number\n\n", c.bold("qdf-hook bar styles"))
-	for _, s := range styles {
-		fmt.Fprintf(w, "  %s %s\n", c.bold(fmt.Sprintf("[%d]", s.n)), s.name)
-		for _, f := range fracs {
-			fmt.Fprintf(w, "       %s  %3.0f%%\n", s.fn(f, width), f*100)
-		}
-		fmt.Fprintln(w)
-	}
-	fmt.Fprintf(w, "  Set with: %s\n\n", c.dim("qdf-hook stats --style=<blocks|line|shade|braille>  (or tell me your pick)"))
-}
-
 // barCell colors one filled cell: a teal→green gradient across the bar under
 // truecolor, plain green otherwise, and uncolored when color is off.
 func (c colorizer) barCell(ch string, i, width int) string {
@@ -303,18 +225,13 @@ func (c colorizer) barCell(ch string, i, width int) string {
 	}
 }
 
-// meterFn returns the bar renderer for a style name (default "blocks").
+// meterFn returns the bar renderer for a style name. Default is the thick line;
+// "braille" switches to the dot-matrix style.
 func (c colorizer) meterFn(style string) func(float64, int) string {
-	switch style {
-	case "line":
-		return c.meterLine
-	case "shade":
-		return c.meterShade
-	case "braille":
+	if style == "braille" {
 		return c.meterBraille
-	default:
-		return c.meter
 	}
+	return c.meterLine
 }
 
 // PrintStats writes formatted stats to w. If jsonOut, writes JSON. style selects

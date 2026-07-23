@@ -85,7 +85,6 @@ func init() {
 		cmdGC(),
 		cmdExpand(),
 		cmdInit(),
-		cmdBarsDemo(),
 	)
 }
 
