@@ -3,11 +3,23 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 
 	"github.com/alex60217101990/qdf-hook/internal/hook"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// qdf-hook is a one-shot CLI: it does a single unit of work and exits in
+	// microseconds. Pin to a single P and disable the GC so the runtime doesn't
+	// spin up extra scheduler/GC machinery it will never need — a measurable
+	// cut in per-invocation startup. Safe: nothing runs long enough to GC, and
+	// peak memory is bounded by the one input being processed.
+	runtime.GOMAXPROCS(1)
+	debug.SetGCPercent(-1)
+}
 
 var (
 	cpuprofile string
