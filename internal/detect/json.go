@@ -110,12 +110,16 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			switch vt {
 			case jsonparser.String:
 				acc.hasStr = true
-				// Copy: distinct values are capped at maxDistinct, so this is a
-				// bounded number of allocations regardless of row count, and it
-				// keeps ConstVal/TopVals from aliasing the caller's data buffer.
-				if len(acc.strFreq) < maxDistinct {
-					acc.strFreq[string(value)]++
-				} else if _, ok := acc.strFreq[string(value)]; ok {
+				// Look up with a zero-copy view of the value bytes (no alloc for
+				// an existing key — the map compares by content). Only allocate
+				// an owned copy when inserting a new distinct value (capped at
+				// maxDistinct), which also keeps ConstVal/TopVals from aliasing
+				// the caller's data buffer. m[string(value)]++ would otherwise
+				// allocate the key string on EVERY string cell.
+				vk := unsafe.String(unsafe.SliceData(value), len(value))
+				if _, ok := acc.strFreq[vk]; ok {
+					acc.strFreq[vk]++
+				} else if len(acc.strFreq) < maxDistinct {
 					acc.strFreq[string(value)]++
 				}
 			case jsonparser.Boolean:
