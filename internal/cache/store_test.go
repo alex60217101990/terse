@@ -56,17 +56,23 @@ func TestLoadMissing(t *testing.T) {
 }
 
 func TestStateDirCreated(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
-	_ = cache.StateDir()
+	t.Setenv("HOME", t.TempDir())
+	// The directory is created lazily on the first Save, not by StateDir().
+	if err := cache.Save("s", cache.NewSessionState()); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
 	if _, err := os.Stat(cache.StateDir()); err != nil {
-		t.Errorf("StateDir not created: %v", err)
+		t.Errorf("StateDir not created after Save: %v", err)
 	}
 }
 
 func TestLoadCorruptFile(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	// Write garbage to the state file location.
+	// Write garbage to the state file location (dir is no longer auto-created
+	// by StateDir(), so create it here).
+	if err := os.MkdirAll(cache.StateDir(), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(cache.StateDir(), "corrupt-session.qdf")
 	if err := os.WriteFile(path, []byte("not valid qdf data \x00\xff"), 0o600); err != nil {
 		t.Fatal(err)

@@ -9,13 +9,10 @@ import (
 	qdf "github.com/alex60217101990/qdf"
 )
 
-// StateDir returns (and creates) the directory where session state files live.
-// It is $HOME/.qdf-hook/sessions.
+// StateDir returns the session state directory (created lazily on first write).
 func StateDir() string {
 	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".qdf-hook", "sessions")
-	_ = os.MkdirAll(dir, 0o700)
-	return dir
+	return filepath.Join(home, ".qdf-hook", "sessions")
 }
 
 // StatePath returns the on-disk path for a session's state file.
@@ -82,5 +79,5 @@ func Save(sessionID string, s *SessionState) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(StatePath(sessionID), data, 0o600)
+	return writeFileLazy(StatePath(sessionID), data)
 }

@@ -30,12 +30,10 @@ type refEntry struct {
 	TS      int64 // unix seconds, for gc age
 }
 
-// RefsDir returns (and creates) the content-addressed blob directory.
+// RefsDir returns the content-addressed blob directory (created lazily on write).
 func RefsDir() string {
 	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".qdf-hook", "refs")
-	_ = os.MkdirAll(dir, 0o700)
-	return dir
+	return filepath.Join(home, ".qdf-hook", "refs")
 }
 
 // refHash returns sha256(content)[:16] as 32 hex chars. The input is hashed via
@@ -63,7 +61,7 @@ func RefPut(hash, content string) {
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(RefPath(hash), data, 0o600)
+	_ = writeFileLazy(RefPath(hash), data)
 }
 
 // RefGet returns the content stored under hash. Decodes zero-copy (the returned

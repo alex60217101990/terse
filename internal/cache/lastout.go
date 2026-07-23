@@ -18,12 +18,10 @@ type lastEntry struct {
 	TS     int64
 }
 
-// LastOutDir returns (and creates) the per-tool-call last-output directory.
+// LastOutDir returns the per-tool-call last-output directory (created lazily on write).
 func LastOutDir() string {
 	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".qdf-hook", "lastout")
-	_ = os.MkdirAll(dir, 0o700)
-	return dir
+	return filepath.Join(home, ".qdf-hook", "lastout")
 }
 
 // LastOutputKey builds a tool-agnostic store key: sha256(tool \x00 input)[:16].
@@ -62,5 +60,5 @@ func LastOutputPut(key, output string) {
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(lastPath(key), data, 0o600)
+	_ = writeFileLazy(lastPath(key), data)
 }
