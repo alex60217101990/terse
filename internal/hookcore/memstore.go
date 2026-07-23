@@ -28,13 +28,17 @@ type sessionShard struct {
 // internal/cache writers the CLI's diskStore uses (qdf OptSpeed/OptBalanced,
 // never encoding/json).
 //
-// Safe for concurrent use by multiple goroutines. LoadSession returns the
-// live *cache.SessionState pointer under the shard's read lock (not a deep
-// copy) — cheap, but callers must not mutate a session concurrently from two
-// goroutines at once. In practice a given session id is only ever driven by
-// one in-flight hook invocation at a time, so cross-goroutine mutation of the
-// same session's Files map does not happen; concurrency across *different*
-// session ids is what MemStore actually parallelizes, and that is race-free.
+// Safe for concurrent use by multiple goroutines. LoadSession returns a copy
+// of the stored session (made under the shard's lock, with its own Files
+// map), never the live pointer, so callers are always free to mutate the
+// returned state in place. SaveSession is the only way a stored session
+// changes: it atomically swaps in the given pointer under the shard's write
+// lock, so a stored session is never mutated after being stored — safe for
+// FlushDirty to read/marshal it outside the lock. There is no enforced
+// single-writer-per-session invariant: two concurrent LoadSession/SaveSession
+// round trips for the *same* id race at the application level and the later
+// SaveSession simply overwrites the earlier one (last-writer-wins); neither
+// call panics or corrupts memory, but one caller's edits can be lost.
 type MemStore struct {
 	shards [shardCount]*sessionShard
 
@@ -53,9 +57,13 @@ type MemStore struct {
 // NewMemStore builds a MemStore and loads any existing on-disk state
 // (sessions under cache.StateDir, refs under cache.RefsDir, last-output blobs
 // under cache.LastOutDir) into RAM. Loading is best-effort: missing
-// directories and individual decode failures are skipped rather than failing
-// construction, matching cache.Load's own "corrupt file -> fresh state"
-// behavior.
+// directories fail open (nothing is loaded for that store), and construction
+// never fails because of them. Session files are handled differently: a
+// corrupt session file is not skipped — cache.Load returns err == nil for a
+// decode failure and hands back a fresh, empty SessionState, so a corrupt
+// on-disk session is loaded into RAM as that empty state (matching
+// cache.Load's own "corrupt file -> fresh state" behavior) rather than being
+// left out of the map entirely.
 func NewMemStore() *MemStore {
 	m := &MemStore{
 		refs:          make(map[string]string),
@@ -145,17 +153,36 @@ func (m *MemStore) loadFromDisk() {
 	}
 }
 
-// LoadSession returns the session state for id, or a fresh empty state if
-// none is in RAM yet. See the MemStore doc comment for the aliasing contract.
+// LoadSession returns a copy of the session state for id, or a fresh empty
+// state if none is in RAM yet. The copy has its own Files map, populated
+// under the shard lock, so the caller can freely mutate the returned state
+// (including its Files map) without racing a concurrent FlushDirty or another
+// LoadSession/SaveSession round trip on the same id.
+//
+// This is last-writer-wins, not single-writer: if two goroutines both load
+// the same session, mutate their copies, and save, the second SaveSession
+// wins and the first goroutine's edits are silently lost. That is a callers'
+// concern (real callers currently only drive one hook invocation per session
+// id at a time); LoadSession/SaveSession themselves never panic or corrupt
+// state no matter how many goroutines race on the same id.
 func (m *MemStore) LoadSession(id string) *cache.SessionState {
 	sh := m.shardFor(id)
 	sh.mu.RLock()
 	st, ok := sh.sessions[id]
-	sh.mu.RUnlock()
-	if ok {
-		return st
+	if !ok {
+		sh.mu.RUnlock()
+		return cache.NewSessionState()
 	}
-	return cache.NewSessionState()
+	cp := &cache.SessionState{
+		Turn:        st.Turn,
+		CompactedAt: st.CompactedAt,
+		Files:       make(map[string]cache.FileEntry, len(st.Files)),
+	}
+	for path, entry := range st.Files {
+		cp.Files[path] = entry
+	}
+	sh.mu.RUnlock()
+	return cp
 }
 
 // SaveSession stores s as the current state for id and marks it dirty.

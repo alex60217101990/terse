@@ -98,3 +98,72 @@ func TestMemStore_ConcurrentSessionsAndRefs(t *testing.T) {
 		}
 	}
 }
+
+// TestMemStore_ConcurrentLoadMutateSaveSameSession reproduces the real
+// load->mutate-in-place->save pattern used by internal/hook/read.go and
+// internal/hook/write.go: N goroutines all drive the SAME session id, each
+// loading the session, mutating the returned state's Files map in place, and
+// saving it back — while a concurrent goroutine repeatedly calls
+// FlushDirty(), which reads/ranges that same Files map to marshal it.
+//
+// Before the fix, LoadSession returned the live pointer, so two goroutines
+// racing on the same id shared one Files map: concurrent writes to it panic
+// with "concurrent map writes", and a concurrent FlushDirty ranging the map
+// while a handler writes it panics with "concurrent map iteration and map
+// write". Under -race those show up as data races even when the panic
+// doesn't fire on a given run. After the fix (LoadSession returns a copy),
+// this must be race-free.
+func TestMemStore_ConcurrentLoadMutateSaveSameSession(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	const sessionID = "shared-session"
+
+	const goroutines = 50
+	const perGoroutine = 200
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := 0; g < goroutines; g++ {
+		go func(g int) {
+			defer wg.Done()
+			for i := 0; i < perGoroutine; i++ {
+				state := s.LoadSession(sessionID)
+				state.Turn++
+				path := fmt.Sprintf("/file-%d-%d.go", g, i%5)
+				state.Files[path] = cache.FileEntry{
+					Content: []byte("content"),
+					Turn:    state.Turn,
+				}
+				s.SaveSession(sessionID, state)
+			}
+		}(g)
+	}
+
+	// Concurrent flusher: FlushDirty ranges the stored session's Files map to
+	// marshal it (via cache.Save -> qdf.Marshal), exercising the read side of
+	// the same race.
+	stop := make(chan struct{})
+	var flushWg sync.WaitGroup
+	flushWg.Add(1)
+	go func() {
+		defer flushWg.Done()
+		for {
+			select {
+			case <-stop:
+				m.FlushDirty()
+				return
+			default:
+				m.FlushDirty()
+			}
+		}
+	}()
+
+	wg.Wait()
+	close(stop)
+	flushWg.Wait()
+
+	if got := s.LoadSession(sessionID); got == nil {
+		t.Fatal("session missing after concurrent load/mutate/save")
+	}
+}
