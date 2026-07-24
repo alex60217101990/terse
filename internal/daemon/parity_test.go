@@ -49,7 +49,7 @@ func jsonArrayPayloadContent() string {
 	sb.WriteString("[")
 	id, first := 0, true
 	for name, n := range counts {
-		for k := 0; k < n; k++ {
+		for range n {
 			if !first {
 				sb.WriteString(",")
 			}
@@ -67,10 +67,14 @@ func jsonArrayPayloadContent() string {
 // path.
 func goTestOutputContent() string {
 	var sb strings.Builder
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		name := "TestThing" + strconv.Itoa(i)
-		sb.WriteString("=== RUN   " + name + "\n")
-		sb.WriteString("--- PASS: " + name + " (0.00s)\n")
+		sb.WriteString("=== RUN   ")
+		sb.WriteString(name)
+		sb.WriteString("\n")
+		sb.WriteString("--- PASS: ")
+		sb.WriteString(name)
+		sb.WriteString(" (0.00s)\n")
 	}
 	sb.WriteString("PASS\n")
 	sb.WriteString("ok  \tgithub.com/alex60217101990/qdf-hook/internal/hook\t0.012s\n")
@@ -91,8 +95,11 @@ func globPathListContent() string {
 	var sb strings.Builder
 	dirs := []string{"internal/hook", "internal/cache", "internal/hookcore", "cmd/qdf-hook"}
 	for _, d := range dirs {
-		for i := 0; i < 8; i++ {
-			sb.WriteString(d + "/file" + strconv.Itoa(i) + ".go\n")
+		for i := range 8 {
+			sb.WriteString(d)
+			sb.WriteString("/file")
+			sb.WriteString(strconv.Itoa(i))
+			sb.WriteString(".go\n")
 		}
 	}
 	return sb.String()
@@ -105,7 +112,10 @@ func grepMatchesContent() string {
 	files := []string{"internal/hook/dispatch.go", "internal/hook/bash.go", "internal/hook/glob.go"}
 	for _, f := range files {
 		for i := 1; i <= 10; i++ {
-			sb.WriteString(f + ":" + strconv.Itoa(i) + ":\tsome matching line of source code here\n")
+			sb.WriteString(f)
+			sb.WriteString(":")
+			sb.WriteString(strconv.Itoa(i))
+			sb.WriteString(":\tsome matching line of source code here\n")
 		}
 	}
 	return sb.String()
@@ -117,8 +127,10 @@ func grepMatchesContent() string {
 // of whether os.Stat succeeds, so a synthetic path is fine for parity).
 func readFileContent() string {
 	var sb strings.Builder
-	for i := 0; i < 50; i++ {
-		sb.WriteString("line " + strconv.Itoa(i) + ": some file content for the parity test\n")
+	for i := range 50 {
+		sb.WriteString("line ")
+		sb.WriteString(strconv.Itoa(i))
+		sb.WriteString(": some file content for the parity test\n")
 	}
 	return sb.String()
 }
