@@ -10,17 +10,15 @@ import (
 	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/analytics"
-	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
-const writePassthroughThreshold = 256
-
 // HandleWrite compresses Write/Edit/MultiEdit tool responses.
-// Claude just wrote this content — no need to see the full file again.
-// Also caches the written content for delta tracking on next Read.
+// Claude just wrote this content — no need to see the full file (Edit's echo
+// even embeds the entire pre-edit originalFile). Also caches the written file
+// for delta tracking on the next Read.
 func HandleWrite(r io.Reader, w io.Writer) error {
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
@@ -30,27 +28,15 @@ func HandleWrite(r io.Reader, w io.Writer) error {
 }
 
 // handleWrite is the Write/Edit logic over an already-decoded input.
+//
+// The Write/Edit/MultiEdit tool_response carries no plain-text echo in a field
+// this code reads (Edit's is {filePath, oldString, newString, originalFile,
+// structuredPatch, ...}) — so echo size is taken from the raw tool_response
+// length (EchoLen), and the cached content is the ACTUAL file read from disk,
+// never the tool echo (which is a diff/original, not the post-edit file).
 func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
 	start := time.Now()
 	if inp.ToolResponse == nil {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-
-	// Only the length is needed on the common (file-readable) path; the raw
-	// bytes are materialized lazily below, in the fallback branch that is the
-	// sole reader of them. Text() resolves whichever key the tool used for its
-	// echo (content / nested file.content / output / stdout).
-	contentLen := len(inp.ToolResponse.Text())
-	if contentLen <= writePassthroughThreshold {
-		_ = analytics.Record(analytics.Event{
-			TS:       time.Now().UnixNano(),
-			SID:      inp.SessionID,
-			Hook:     inp.ToolName, // canonical Claude tool name (Write/Edit/MultiEdit)
-			Action:   "passthrough",
-			BytesIn:  contentLen,
-			BytesOut: contentLen,
-			DurNS:    time.Since(start).Nanoseconds(),
-		})
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -58,85 +44,70 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 	var ti protocol.ReadInput // reuse: same {file_path} shape
 	_ = json.Unmarshal(inp.ToolInput, &ti)
 
-	// Cache the ACTUAL file bytes for delta tracking — not inp.ToolResponse
-	// .Content, which is only the tool's confirmation/snippet (a diff for Edit,
-	// a summary for Write). Caching the response would make the next Read hash
-	// the real file, mismatch the cached snippet, and emit a bogus delta.
+	echoLen := inp.ToolResponse.EchoLen()
+
+	record := func(action string, bytesOut int) {
+		_ = analytics.Record(analytics.Event{
+			TS:       time.Now().UnixNano(),
+			SID:      inp.SessionID,
+			Hook:     inp.ToolName, // canonical Claude tool name (Write/Edit/MultiEdit)
+			Action:   action,
+			BytesIn:  echoLen,
+			BytesOut: bytesOut,
+			DurNS:    time.Since(start).Nanoseconds(),
+		})
+	}
+
+	// Prime the delta cache with the actual post-edit file bytes, read from a
+	// single open fd (os.Open + f.Stat gives content size + ModTime in one
+	// stat). This is the core purpose — it makes the NEXT Read of this path
+	// return §delta/§unchanged — and runs whenever the file is readable and we
+	// have a session, independent of echo size.
 	var (
-		hash      [32]byte
 		hashHex   string
 		lineCount int
+		cached    bool
 	)
-	// Read the file and its mtime from a single open fd. os.ReadFile would
-	// stat internally to size its buffer, then we'd stat a second time via
-	// os.Stat for ModTime — one avoidable syscall per Write/Edit. os.Open +
-	// f.Stat gives both from one stat; the fd's Size preallocates the read.
-	var (
-		fileBytes []byte
-		modTime   int64
-	)
-	f, ferr := os.Open(ti.FilePath)
-	if ferr == nil {
-		if fi, e := f.Stat(); e == nil {
-			modTime = fi.ModTime().UnixNano()
-		}
-		fileBytes, ferr = io.ReadAll(f)
-		_ = f.Close()
-	}
-	if ferr == nil {
-		hash = sha256.Sum256(fileBytes)
-		hashHex = cache.ShortHex(hash[:8])
-		lineCount = bytes.Count(fileBytes, []byte("\n"))
-		if inp.SessionID != "" {
-			state := store.LoadSession(inp.SessionID)
-			if state != nil {
-				state.Turn++
-				state.Files[ti.FilePath] = cache.FileEntry{
-					Hash:       hash,
-					Turn:       state.Turn,
-					Content:    fileBytes,
-					ModTime:    modTime,
-					LastReadAt: time.Now().Unix(),
-					ReadCount:  1,
+	if ti.FilePath != "" && inp.SessionID != "" {
+		if f, err := os.Open(ti.FilePath); err == nil {
+			var modTime int64
+			if fi, e := f.Stat(); e == nil {
+				modTime = fi.ModTime().UnixNano()
+			}
+			fileBytes, rerr := io.ReadAll(f)
+			_ = f.Close()
+			if rerr == nil {
+				hash := sha256.Sum256(fileBytes)
+				hashHex = cache.ShortHex(hash[:8])
+				lineCount = bytes.Count(fileBytes, []byte("\n"))
+				if state := store.LoadSession(inp.SessionID); state != nil {
+					state.Turn++
+					state.Files[ti.FilePath] = cache.FileEntry{
+						Hash:       hash,
+						Turn:       state.Turn,
+						Content:    fileBytes,
+						ModTime:    modTime,
+						LastReadAt: time.Now().Unix(),
+						ReadCount:  1,
+					}
+					store.SaveSession(inp.SessionID, state)
+					cached = true
 				}
-				store.SaveSession(inp.SessionID, state)
 			}
 		}
-	} else {
-		// Can't read the file back — emit a marker from the response but do not
-		// cache, so we never poison delta tracking with non-file bytes. S2B is
-		// a read-only, call-scoped view (no copy); the bytes don't outlive it.
-		content := bytesconv.S2B(inp.ToolResponse.Text())
-		hash = sha256.Sum256(content)
-		hashHex = cache.ShortHex(hash[:8])
-		lineCount = bytes.Count(content, []byte("\n"))
 	}
 
-	compressed := fmt.Sprintf("[WRITE §ref:%s§ %s — %d lines, cached for delta tracking]",
-		hashHex, ti.FilePath, lineCount)
-
-	// Never-worse guard: if the marker isn't actually shorter than the
-	// original response, pass the response through unchanged rather than grow
-	// what Claude sees (a long file path can make the marker exceed a small
-	// response). Mirrors read.go's guard and every dispatch.go branch.
-	action, bytesOut := "compressed", len(compressed)
-	replace := len(compressed) < contentLen
-	if !replace {
-		action, bytesOut = "passthrough", contentLen
+	// Replace the (often large) echo with a compact cache-ref marker, but only
+	// when we cached the file and the marker is actually shorter than the echo
+	// it replaces (never-worse). Otherwise pass the response through unchanged.
+	if cached {
+		marker := fmt.Sprintf("[WRITE §ref:%s§ %s — %d lines, cached for delta tracking]",
+			hashHex, ti.FilePath, lineCount)
+		if len(marker) < echoLen {
+			record("compressed", len(marker))
+			return protocol.EncodeOutput(w, protocol.Replace(marker))
+		}
 	}
-
-	_ = analytics.Record(analytics.Event{
-		TS:       time.Now().UnixNano(),
-		SID:      inp.SessionID,
-		Hook:     inp.ToolName, // canonical Claude tool name (Write/Edit/MultiEdit)
-		Action:   action,
-		BytesIn:  contentLen,
-		BytesOut: bytesOut,
-		DurNS:    time.Since(start).Nanoseconds(),
-	})
-
-	if !replace {
-		return protocol.EncodeOutput(w, protocol.Passthrough())
-	}
-	return protocol.EncodeOutput(w, protocol.Replace(compressed))
+	record("passthrough", echoLen)
+	return protocol.EncodeOutput(w, protocol.Passthrough())
 }

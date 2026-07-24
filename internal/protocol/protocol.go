@@ -27,7 +27,29 @@ type ToolResponse struct {
 	Stderr  string        `json:"stderr"`
 	Output  string        `json:"output"` // some tools use a generic "output" key
 	File    *FileResponse `json:"file"`   // Read tool: file text + window metadata
+
+	rawLen int // byte length of the raw tool_response JSON (echo size); see EchoLen
 }
+
+// UnmarshalJSON records the raw byte length of the tool_response object before
+// decoding its fields. Some tools (Edit/MultiEdit) put no plain-text echo in
+// any field this struct reads, yet their response is large (Edit embeds the
+// whole originalFile) — EchoLen lets handleWrite size that echo for its
+// never-worse compression decision, which Text()==0 could not.
+func (t *ToolResponse) UnmarshalJSON(data []byte) error {
+	type alias ToolResponse
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*t = ToolResponse(a)
+	t.rawLen = len(data)
+	return nil
+}
+
+// EchoLen is the byte size of the raw tool_response — a proxy for how much the
+// unmodified tool output would cost, used to gate/measure compression.
+func (t *ToolResponse) EchoLen() int { return t.rawLen }
 
 // FileResponse is the Read tool's "file" object. Content is the raw file text
 // (not line-numbered); StartLine/NumLines/TotalLines describe the returned

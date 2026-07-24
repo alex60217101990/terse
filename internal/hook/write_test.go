@@ -40,18 +40,25 @@ func TestWrite_SmallContent_Passthrough(t *testing.T) {
 func TestWrite_LargeContent_Compressed(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	content := strings.Repeat("package main\nfunc foo() {}\n", 20) // 500+ bytes
+	// The hook caches (and hashes) the ACTUAL file on disk, so the file must
+	// exist; its bytes here equal `content`. The large tool_response echo is
+	// what the compact marker replaces.
+	path := filepath.Join(t.TempDir(), "main.go")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	var out strings.Builder
-	_ = hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-2", "/project/main.go", content)), &out)
+	_ = hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-2", path, content)), &out)
 	var resp protocol.HookOutput
 	_ = json.Unmarshal([]byte(out.String()), &resp)
 	if resp.HookSpecificOutput == nil {
-		t.Fatal("large content should be compressed")
+		t.Fatal("a large echo of a cached file should be compressed")
 	}
 	compressed := resp.HookSpecificOutput.UpdatedToolOutput
 	if !strings.Contains(compressed, "[WRITE") {
 		t.Errorf("compressed output should start with [WRITE: %s", compressed)
 	}
-	// Hash prefix must match first 8 bytes of sha256(content).
+	// Hash prefix must match first 8 bytes of sha256(the file bytes).
 	hash := sha256.Sum256([]byte(content))
 	hashHex := fmt.Sprintf("%x", hash[:8])
 	if !strings.Contains(compressed, hashHex) {
@@ -105,8 +112,12 @@ func TestWrite_CachesRealFileNotResponse(t *testing.T) {
 func TestWrite_CachesContent(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	content := bytes.Repeat([]byte("x"), 300)
+	path := filepath.Join(t.TempDir(), "a.go")
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	var out strings.Builder
-	err := hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-3", "/a.go", string(content))), &out)
+	err := hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-3", path, string(content))), &out)
 	if err != nil {
 		t.Fatalf("HandleWrite returned error: %v", err)
 	}
@@ -119,8 +130,59 @@ func TestWrite_CachesContent(t *testing.T) {
 		t.Fatal("content >256 bytes must produce a compressed output")
 	}
 	// The compressed marker must reference the expected path.
-	if !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, "/a.go") {
+	if !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, path) {
 		t.Errorf("compressed output must contain the file path: %s",
 			resp.HookSpecificOutput.UpdatedToolOutput)
+	}
+}
+
+// TestWrite_EditShape_CachesAndCompresses uses the REAL Edit tool_response
+// shape (no "content"/"stdout" — {filePath, oldString, newString,
+// originalFile, structuredPatch}) verified from a live payload. handleWrite
+// must still cache the on-disk file and replace the large echo with a marker,
+// even though Text() is empty (echo size comes from the raw response length).
+func TestWrite_EditShape_CachesAndCompresses(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	path := filepath.Join(t.TempDir(), "edited.go")
+	fileContent := strings.Repeat("package main\nfunc foo() {}\n", 20)
+	if err := os.WriteFile(path, []byte(fileContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Edit-shaped response: no content field; originalFile makes it large.
+	inp := map[string]any{
+		"session_id": "sess-edit",
+		"tool_name":  "Edit",
+		"tool_input": map[string]any{"file_path": path},
+		"tool_response": map[string]any{
+			"filePath":        path,
+			"oldString":       "func foo() {}",
+			"newString":       "func foo() { return }",
+			"originalFile":    fileContent,
+			"structuredPatch": []any{},
+		},
+	}
+	b, _ := json.Marshal(inp)
+	var out strings.Builder
+	if err := hook.HandleWrite(strings.NewReader(string(b)), &out); err != nil {
+		t.Fatalf("HandleWrite: %v", err)
+	}
+	var resp protocol.HookOutput
+	_ = json.Unmarshal([]byte(out.String()), &resp)
+	if resp.HookSpecificOutput == nil || !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, "[WRITE") {
+		t.Fatalf("Edit's large echo must be compressed to a [WRITE ...] marker, got: %v", out.String())
+	}
+	// And the file must be cached for delta priming: a later Read is §unchanged.
+	rin := map[string]any{
+		"session_id": "sess-edit", "tool_name": "Read",
+		"tool_input":    map[string]any{"file_path": path},
+		"tool_response": map[string]any{"file": map[string]any{"content": fileContent, "startLine": 1, "numLines": 40, "totalLines": 40}},
+	}
+	rb, _ := json.Marshal(rin)
+	var rout strings.Builder
+	_ = hook.HandleRead(strings.NewReader(string(rb)), &rout)
+	var rr protocol.HookOutput
+	_ = json.Unmarshal([]byte(rout.String()), &rr)
+	if rr.HookSpecificOutput == nil || !strings.Contains(rr.HookSpecificOutput.UpdatedToolOutput, "§unchanged") {
+		t.Errorf("Read after Edit must be §unchanged (delta primed by Edit), got: %v", rout.String())
 	}
 }
