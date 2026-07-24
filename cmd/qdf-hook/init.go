@@ -8,25 +8,33 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alex60217101990/qdf-hook/internal/daemon"
 	"github.com/spf13/cobra"
 )
 
 // hookSpec is one hook entry qdf-hook installs into Claude Code settings.
 type hookSpec struct {
-	event   string // PreToolUse | PostToolUse | PreCompact | PostCompact
+	event   string // PreToolUse | PostToolUse | PreCompact | PostCompact | SessionStart
 	matcher string
-	sub     string // qdf-hook subcommand
+	// sub is the token isQdfHookCommand matches against (the first argument
+	// after the qdf-hook binary, or after the hybrid command's "||"
+	// fallback). For most events the installed command is literally
+	// "<exe> <sub>"; PostToolUse and SessionStart build a longer command via
+	// hookCommand but still key off this same token — see there.
+	sub string
 }
 
 // qdfHooks is the full set installed by `qdf-hook init`. A single catch-all
 // PostToolUse hook routes every tool (Read/Write/Bash/Glob/Grep/mcp__*/…)
 // through `post`, which dispatches internally — so new tools are covered with
-// no config change.
+// no config change. The PostToolUse and SessionStart entries get their full
+// command line from hookCommand rather than "<exe> <sub>" — see there.
 var qdfHooks = []hookSpec{
 	{"PreToolUse", "Read", "pretooluse"},
 	{"PostToolUse", ".*", "post"},
 	{"PreCompact", ".*", "precompact"},
 	{"PostCompact", ".*", "postcompact"},
+	{"SessionStart", "", "daemon"},
 }
 
 // Typed views of the settings.json hook schema — no interface{} anywhere.
@@ -183,11 +191,38 @@ func mergeHooks(hb hooksBlock, exe string) int {
 		}
 		hb[h.event] = append(hb[h.event], hookEntry{
 			Matcher: h.matcher,
-			Hooks:   []hookCmd{{Type: "command", Command: exe + " " + h.sub}},
+			Hooks:   []hookCmd{{Type: "command", Command: hookCommand(h, exe)}},
 		})
 		added++
 	}
 	return added
+}
+
+// hookCommand builds the full command line for a hookSpec. Most events run
+// the qdf-hook binary directly ("<exe> <sub>"); two are special-cased:
+//
+//   - PostToolUse ("post") is the daemon/CLI hybrid: nc talks to qdf-hookd
+//     over its unix socket when one is listening, falling back to the plain
+//     CLI when it isn't. The -N flag is mandatory, not cosmetic: Claude Code
+//     feeds the tool_response JSON to the hook's stdin, and the daemon reads
+//     with io.ReadAll to EOF — it only replies once the client half-closes
+//     its write side. Plain `nc -U` never does that (it waits for the
+//     server to close first), so both sides block forever. `-N` makes nc
+//     shut down its write side on stdin EOF, unblocking the daemon's read.
+//     If a platform's nc lacks -N, nc exits nonzero immediately and `|| ...
+//     post` runs instead — nc not having consumed stdin yet, so the
+//     fallback still gets the full payload. Never drop -N.
+//   - SessionStart ("daemon") starts/refreshes the daemon so the socket is
+//     already live before the first PostToolUse hook fires.
+func hookCommand(h hookSpec, exe string) string {
+	switch {
+	case h.event == "PostToolUse" && h.sub == "post":
+		return fmt.Sprintf("nc -N -U %s 2>/dev/null || %s post", daemon.SockPath(), exe)
+	case h.event == "SessionStart" && h.sub == "daemon":
+		return exe + " daemon --ensure"
+	default:
+		return exe + " " + h.sub
+	}
 }
 
 // commandPresent reports whether any entry already invokes THIS tool's given
@@ -250,7 +285,15 @@ func entryAllSuperseded(e hookEntry) bool {
 // isQdfHookCommand reports whether command c invokes `qdf-hook <sub>`: its
 // binary (bare or absolute) has basename "qdf-hook" (a ".test" build counts too,
 // so tests are deterministic) and its first argument is sub.
+//
+// Hybrid commands (see hookCommand) wrap this in `nc ... || <exe> <sub>`; the
+// nc/socket half never looks like qdf-hook, so when a "||" is present only
+// the fallback half after the LAST one is checked — this also means the
+// nc/|| noise can't be mistaken for, or hide, a foreign tool's own command.
 func isQdfHookCommand(c, sub string) bool {
+	if i := strings.LastIndex(c, "||"); i >= 0 {
+		c = c[i+len("||"):]
+	}
 	f := strings.Fields(c)
 	if len(f) < 2 || f[1] != sub {
 		return false
