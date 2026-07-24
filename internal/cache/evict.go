@@ -1,10 +1,11 @@
 package cache
 
 import (
+	"cmp"
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -24,11 +25,18 @@ func DecayLambda() float64 {
 // UtilityScore computes a combined recency+frequency score for a FileEntry.
 // Higher = more valuable to keep. Uses exponential decay: ReadCount * e^(-λ * ageHours).
 func UtilityScore(entry FileEntry, nowSec int64) float64 {
+	return utilityScore(entry, nowSec, DecayLambda())
+}
+
+// utilityScore is UtilityScore with the decay rate passed in, so a caller
+// scoring many entries in a loop reads QDF_DECAY_LAMBDA once (hoisted) instead
+// of re-parsing the env per entry.
+func utilityScore(entry FileEntry, nowSec int64, lambda float64) float64 {
 	ageHours := float64(nowSec-entry.LastReadAt) / 3600.0
 	if ageHours < 0 {
 		ageHours = 0
 	}
-	return float64(entry.ReadCount) * math.Exp(-DecayLambda()*ageHours)
+	return float64(entry.ReadCount) * math.Exp(-lambda*ageHours)
 }
 
 // Evict removes lowest-utility entries from state when len(Files) > maxFiles.
@@ -44,17 +52,18 @@ func Evict(state *SessionState, maxFiles int) {
 		readCount int
 	}
 	now := state.nowSec()
+	lambda := DecayLambda() // hoisted: parse the env once, not per entry
 	entries := make([]scored, 0, len(state.Files))
 	for path, e := range state.Files {
-		entries = append(entries, scored{path, UtilityScore(e, now), e.ReadCount})
+		entries = append(entries, scored{path, utilityScore(e, now, lambda), e.ReadCount})
 	}
 	// Sort ascending by score; break ties by ReadCount ascending so
 	// zero-read entries are always evicted before frequently-read ones.
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].score != entries[j].score {
-			return entries[i].score < entries[j].score
+	slices.SortFunc(entries, func(a, b scored) int {
+		if c := cmp.Compare(a.score, b.score); c != 0 {
+			return c
 		}
-		return entries[i].readCount < entries[j].readCount
+		return cmp.Compare(a.readCount, b.readCount)
 	})
 	// Drop lowest-scoring entries until we're at 80% of maxFiles.
 	target := maxFiles * 4 / 5
@@ -70,11 +79,17 @@ func Evict(state *SessionState, maxFiles int) {
 // UtilityScore for sessions: Hits * e^(-lambda * ageHours). A never-hit entry
 // (Hits 0) scores 0 and is evicted first.
 func CacheScore(s UsageStat, nowSec int64) float64 {
+	return cacheScore(s, nowSec, DecayLambda())
+}
+
+// cacheScore is CacheScore with the decay rate passed in (hoisted out of the
+// PruneDir loop so the env is parsed once, not per blob).
+func cacheScore(s UsageStat, nowSec int64, lambda float64) float64 {
 	ageHours := float64(nowSec-s.LastUsed) / 3600.0
 	if ageHours < 0 {
 		ageHours = 0 // clock skew must not inflate the score
 	}
-	return float64(s.Hits) * math.Exp(-DecayLambda()*ageHours)
+	return float64(s.Hits) * math.Exp(-lambda*ageHours)
 }
 
 // PruneDir bounds one blob directory. It drops entries older than ttl
@@ -100,6 +115,7 @@ func PruneDir(blobDir, usagePath string, maxSize int64, ttl time.Duration, nowSe
 	var blobs []blob
 	var total int64
 	ttlSec := int64(ttl / time.Second)
+	lambda := DecayLambda() // hoisted: parse the env once, not per blob
 
 	for _, de := range ents {
 		name := de.Name()
@@ -119,7 +135,7 @@ func PruneDir(blobDir, usagePath string, maxSize int64, ttl time.Duration, nowSe
 			key:   key,
 			path:  filepath.Join(blobDir, name),
 			size:  info.Size(),
-			score: CacheScore(idx[key], nowSec),
+			score: cacheScore(idx[key], nowSec, lambda),
 			used:  used,
 		})
 		total += info.Size()
@@ -153,11 +169,11 @@ func PruneDir(blobDir, usagePath string, maxSize int64, ttl time.Duration, nowSe
 
 	// 2) Size cap: if still over, evict lowest score until <= 80% of cap.
 	if total > maxSize {
-		sort.Slice(blobs, func(i, j int) bool {
-			if blobs[i].score != blobs[j].score {
-				return blobs[i].score < blobs[j].score // ascending: lowest first
+		slices.SortFunc(blobs, func(a, b blob) int {
+			if c := cmp.Compare(a.score, b.score); c != 0 {
+				return c // ascending: lowest first
 			}
-			return blobs[i].used < blobs[j].used // tie-break: oldest first
+			return cmp.Compare(a.used, b.used) // tie-break: oldest first
 		})
 		target := maxSize * 4 / 5
 		for _, b := range blobs {
