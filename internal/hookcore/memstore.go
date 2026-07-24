@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 )
@@ -23,11 +24,13 @@ type sessionShard struct {
 }
 
 // MemStore is a fully in-RAM implementation of StateStore for the qdf-hookd
-// daemon: session state, dedup refs, and last-tool-output blobs all live in
-// sharded/mutex-guarded maps instead of hitting disk on every hook call.
-// Writes only mark entries dirty; FlushDirty persists them via the same
-// internal/cache writers the CLI's diskStore uses (qdf OptSpeed/OptBalanced,
-// never encoding/json).
+// daemon: session state lives in sharded/mutex-guarded maps instead of
+// hitting disk on every hook call. Sessions are the only content held in RAM
+// and flushed lazily; ref/last-output blob *content* is never held in RAM —
+// refs/last are hash/key seen-sets only, and every RefPut/LastPut writes its
+// blob straight to disk (via internal/cache) so a daemon restart or crash
+// never loses a blob body. Usage (dedup-hit / access recency, for eviction
+// scoring) is tracked in RAM and flushed lazily to the usage sidecars.
 //
 // Safe for concurrent use by multiple goroutines. LoadSession returns a copy
 // of the stored session (made under the shard's lock, with its own Files
@@ -43,17 +46,26 @@ type sessionShard struct {
 type MemStore struct {
 	shards [shardCount]*sessionShard
 
-	refs map[string]string
+	// refs / last are seen-sets only (hash / key -> presence), never content.
+	// Content lives on disk from the moment RefPut/LastPut is called.
+	refs map[string]struct{}
 
-	last map[string]string
+	last map[string]struct{}
+
+	// usageRefs / usageLast track dedup-hit / access usage in RAM, flushed
+	// lazily to their sidecars by FlushDirty. Guarded by usageMu, independent
+	// of refsMu/lastMu (which guard only the seen-sets).
+	usageRefs cache.UsageIndex
+
+	usageLast cache.UsageIndex
 
 	dirtySessions map[string]struct{}
-	dirtyRefs     map[string]struct{}
-	dirtyLast     map[string]struct{}
 
 	refsMu sync.RWMutex
 
 	lastMu sync.RWMutex
+
+	usageMu sync.Mutex
 
 	dirtyMu sync.Mutex
 }
@@ -70,11 +82,11 @@ type MemStore struct {
 // left out of the map entirely.
 func NewMemStore() *MemStore {
 	m := &MemStore{
-		refs:          make(map[string]string),
-		last:          make(map[string]string),
+		refs:          make(map[string]struct{}),
+		last:          make(map[string]struct{}),
+		usageRefs:     cache.LoadUsage(cache.UsageRefsPath()),
+		usageLast:     cache.LoadUsage(cache.UsageLastPath()),
 		dirtySessions: make(map[string]struct{}),
-		dirtyRefs:     make(map[string]struct{}),
-		dirtyLast:     make(map[string]struct{}),
 	}
 	for i := range m.shards {
 		m.shards[i] = &sessionShard{sessions: make(map[string]*cache.SessionState)}
@@ -98,9 +110,11 @@ func (m *MemStore) shardFor(id string) *sessionShard {
 	return m.shards[shardIndex(id)]
 }
 
-// loadFromDisk walks the three on-disk stores and decodes each entry into the
-// corresponding in-RAM map. Entries loaded here are, by definition, already
-// in sync with disk, so none of them are marked dirty.
+// loadFromDisk walks the three on-disk stores. Sessions are decoded fully
+// into RAM (they're the one thing MemStore actually caches); refs/last are
+// only scanned for their *names* — each on-disk blob's hash/key is added to
+// the seen-set, never its content, so a daemon with a large on-disk cache
+// does not balloon its RAM footprint at startup.
 func (m *MemStore) loadFromDisk() {
 	if entries, err := os.ReadDir(cache.StateDir()); err == nil {
 		for _, e := range entries {
@@ -131,11 +145,9 @@ func (m *MemStore) loadFromDisk() {
 			if !ok {
 				continue
 			}
-			if content, ok := cache.RefGet(hash); ok {
-				m.refsMu.Lock()
-				m.refs[hash] = content
-				m.refsMu.Unlock()
-			}
+			m.refsMu.Lock()
+			m.refs[hash] = struct{}{}
+			m.refsMu.Unlock()
 		}
 	}
 
@@ -148,11 +160,9 @@ func (m *MemStore) loadFromDisk() {
 			if !ok {
 				continue
 			}
-			if content, ok := cache.LastOutputGet(key); ok {
-				m.lastMu.Lock()
-				m.last[key] = content
-				m.lastMu.Unlock()
-			}
+			m.lastMu.Lock()
+			m.last[key] = struct{}{}
+			m.lastMu.Unlock()
 		}
 	}
 }
@@ -212,7 +222,8 @@ func (m *MemStore) SaveSession(id string, s *cache.SessionState) {
 	m.dirtyMu.Unlock()
 }
 
-// RefSeen reports whether content addressed by hash is already in RAM.
+// RefSeen reports whether content addressed by hash was already stored (a
+// seen-set lookup — never touches disk).
 func (m *MemStore) RefSeen(hash string) bool {
 	m.refsMu.RLock()
 	_, ok := m.refs[hash]
@@ -220,59 +231,67 @@ func (m *MemStore) RefSeen(hash string) bool {
 	return ok
 }
 
-// RefPut stores content under hash and marks it dirty.
+// RefPut writes content to disk under hash (lazy qdf-encoded blob) and adds
+// hash to the seen-set. Unlike sessions, ref blobs are never held dirty in
+// RAM — they go straight to disk here, so a daemon crash between RefPut and
+// the next FlushDirty never loses a blob body.
 func (m *MemStore) RefPut(hash, content string) {
+	cache.RefPut(hash, content)
+
 	m.refsMu.Lock()
-	m.refs[hash] = content
+	m.refs[hash] = struct{}{}
 	m.refsMu.Unlock()
-
-	m.dirtyMu.Lock()
-	m.dirtyRefs[hash] = struct{}{}
-	m.dirtyMu.Unlock()
 }
 
-// RefGet returns the content stored under hash.
+// RefGet reads the content stored under hash from disk on demand. MemStore
+// never holds ref content in RAM.
 func (m *MemStore) RefGet(hash string) (string, bool) {
-	m.refsMu.RLock()
-	v, ok := m.refs[hash]
-	m.refsMu.RUnlock()
-	return v, ok
+	return cache.RefGet(hash)
 }
 
-// LastGet returns the previous tool output stored under key.
+// RefHit records a dedup hit against hash: bumps its in-RAM usage stat
+// (hits + last-access time), flushed lazily to the usage sidecar by
+// FlushDirty. Guarded by usageMu, independent of refsMu (which guards only
+// the seen-set).
+func (m *MemStore) RefHit(hash string) {
+	m.usageMu.Lock()
+	m.usageRefs.Bump(hash, time.Now().Unix())
+	m.usageMu.Unlock()
+}
+
+// LastGet reads the previous tool output stored under key from disk on
+// demand. MemStore never holds last-output content in RAM.
 func (m *MemStore) LastGet(key string) (string, bool) {
-	m.lastMu.RLock()
-	v, ok := m.last[key]
-	m.lastMu.RUnlock()
-	return v, ok
+	return cache.LastOutputGet(key)
 }
 
-// LastPut stores the current tool output under key and marks it dirty.
+// LastPut writes the current tool output to disk under key and adds key to
+// the seen-set. Like RefPut, this goes straight to disk — no dirty content
+// held in RAM.
 func (m *MemStore) LastPut(key, content string) {
-	m.lastMu.Lock()
-	m.last[key] = content
-	m.lastMu.Unlock()
+	cache.LastOutputPut(key, content)
 
-	m.dirtyMu.Lock()
-	m.dirtyLast[key] = struct{}{}
-	m.dirtyMu.Unlock()
+	m.lastMu.Lock()
+	m.last[key] = struct{}{}
+	m.lastMu.Unlock()
 }
 
-// FlushDirty persists every dirty session/ref/last-output entry to disk via
-// the internal/cache writers (cache.Save uses qdf OptSpeed; RefPut/
-// LastOutputPut use qdf OptBalanced), then clears the dirty set.
+// FlushDirty persists every dirty session to disk via cache.Save (qdf
+// OptSpeed), then flushes the in-RAM usage indices (ref/last dedup-hit and
+// access stats) to their sidecars. Ref/last-output *blobs* are never dirty
+// here — RefPut/LastPut already wrote them straight to disk — so there is
+// nothing to flush for them beyond usage.
 //
-// The dirty sets are swapped out under dirtyMu and iterated afterwards
+// The dirty session set is swapped out under dirtyMu and iterated afterwards
 // without holding it, so writes that arrive concurrently with a flush land in
-// a fresh dirty set rather than being lost or blocking on disk I/O.
+// a fresh dirty set rather than being lost or blocking on disk I/O. The usage
+// maps are cloned under usageMu for the same reason: SaveUsage's JSON
+// marshaling happens outside the lock so a concurrent RefHit/usage bump never
+// blocks on disk I/O.
 func (m *MemStore) FlushDirty() {
 	m.dirtyMu.Lock()
 	sessions := m.dirtySessions
-	refs := m.dirtyRefs
-	last := m.dirtyLast
 	m.dirtySessions = make(map[string]struct{})
-	m.dirtyRefs = make(map[string]struct{})
-	m.dirtyLast = make(map[string]struct{})
 	m.dirtyMu.Unlock()
 
 	for id := range sessions {
@@ -294,21 +313,10 @@ func (m *MemStore) FlushDirty() {
 		}
 	}
 
-	for hash := range refs {
-		m.refsMu.RLock()
-		content, ok := m.refs[hash]
-		m.refsMu.RUnlock()
-		if ok {
-			cache.RefPut(hash, content)
-		}
-	}
-
-	for key := range last {
-		m.lastMu.RLock()
-		content, ok := m.last[key]
-		m.lastMu.RUnlock()
-		if ok {
-			cache.LastOutputPut(key, content)
-		}
-	}
+	m.usageMu.Lock()
+	ur := maps.Clone(m.usageRefs)
+	ul := maps.Clone(m.usageLast)
+	m.usageMu.Unlock()
+	_ = cache.SaveUsage(cache.UsageRefsPath(), ur)
+	_ = cache.SaveUsage(cache.UsageLastPath(), ul)
 }

@@ -2,12 +2,40 @@ package hookcore_test
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 )
+
+// TestMemStore_RefSeenWithoutHoldingContent verifies that a dedup hit reads
+// its content from disk (not from RAM) and that RefHit's usage bump reaches
+// the on-disk sidecar via FlushDirty.
+func TestMemStore_RefSeenWithoutHoldingContent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+
+	big := strings.Repeat("x", 300_000) // 300 KB
+	hash := "deadbeefdeadbeefdeadbeefdeadbeef"
+	s.RefPut(hash, big)
+
+	if !s.RefSeen(hash) {
+		t.Fatal("RefSeen must be true after RefPut")
+	}
+	if got, ok := s.RefGet(hash); !ok || got != big {
+		t.Fatalf("RefGet must return the stored content from disk (ok=%v len=%d)", ok, len(got))
+	}
+	// A dedup hit records usage; after flush the sidecar has it.
+	s.RefHit(hash)
+	m.FlushDirty()
+	idx := cache.LoadUsage(cache.UsageRefsPath())
+	if idx[hash].Hits < 1 {
+		t.Errorf("RefHit should have bumped usage, got %+v", idx[hash])
+	}
+}
 
 // TestMemStore_FlushEvictConcurrentLoad reproduces the daemon crash where
 // FlushDirty handed the live stored *SessionState to cache.Save, whose Evict

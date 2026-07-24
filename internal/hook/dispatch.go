@@ -194,6 +194,7 @@ func dedupWithStore(store hookcore.StateStore, content string, minSize int) (tok
 	}
 	hash := cache.RefHashOf(content)
 	if store.RefSeen(hash) {
+		store.RefHit(hash) // record usage for eviction
 		return fmt.Sprintf("§ref:%s§ (%d bytes, identical to earlier output — qdf-hook expand %s)",
 			hash, len(content), hash), true
 	}

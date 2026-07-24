@@ -23,6 +23,8 @@ type StateStore interface {
 	RefPut(hash, content string)
 	// RefGet returns the content stored under hash.
 	RefGet(hash string) (string, bool)
+	// RefHit records a dedup hit against a stored ref (usage bump for eviction).
+	RefHit(hash string)
 
 	// LastGet returns the previous tool output stored under key.
 	LastGet(key string) (string, bool)

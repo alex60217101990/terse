@@ -1,6 +1,10 @@
 package hookcore
 
-import "github.com/alex60217101990/qdf-hook/internal/cache"
+import (
+	"time"
+
+	"github.com/alex60217101990/qdf-hook/internal/cache"
+)
 
 // diskStore is the on-disk StateStore implementation used by the CLI. It
 // delegates every method to the existing internal/cache package, preserving
@@ -22,6 +26,15 @@ func (diskStore) RefSeen(h string) bool { return cache.RefSeen(h) }
 func (diskStore) RefPut(h, c string) { cache.RefPut(h, c) }
 
 func (diskStore) RefGet(h string) (string, bool) { return cache.RefGet(h) }
+
+// RefHit records a dedup hit against the ref hash. The CLI is one-shot per
+// invocation, so this reads-modifies-writes the usage sidecar directly: a
+// dedup hit is occasional per invocation, not a hot loop.
+func (diskStore) RefHit(h string) {
+	idx := cache.LoadUsage(cache.UsageRefsPath())
+	idx.Bump(h, time.Now().Unix())
+	_ = cache.SaveUsage(cache.UsageRefsPath(), idx)
+}
 
 func (diskStore) LastGet(k string) (string, bool) { return cache.LastOutputGet(k) }
 
