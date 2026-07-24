@@ -24,9 +24,11 @@ func RefTTLHours() float64 {
 
 // GCResult holds the outcome of a GC run.
 type GCResult struct {
-	Removed    int
-	Kept       int
-	FreedBytes int64
+	Removed        int
+	Kept           int
+	FreedBytes     int64
+	BlobsRemoved   int   `json:"blobs_removed"`
+	BlobBytesFreed int64 `json:"blob_bytes_freed"`
 }
 
 // RunGC scans all session files in StateDir and removes those whose utility
@@ -111,5 +113,22 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 			return nil
 		})
 	}
+
+	// Prune refs/ and last/ blob stores by combined size cap + TTL, splitting
+	// the cap evenly across the two dirs (each bounded independently keeps
+	// one from starving the other; the combined ceiling is still maxSize).
+	nowSec2 := time.Now().Unix()
+	maxSize := CacheMaxSize()
+	ttl := CacheTTL()
+	half := maxSize / 2
+	for _, d := range []struct{ dir, usage string }{
+		{RefsDir(), UsageRefsPath()},
+		{LastOutDir(), UsageLastPath()},
+	} {
+		rm, freed := PruneDir(d.dir, d.usage, half, ttl, nowSec2, dryRun)
+		result.BlobsRemoved += rm
+		result.BlobBytesFreed += freed
+	}
+
 	return result, err
 }
