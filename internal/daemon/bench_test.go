@@ -33,8 +33,8 @@ func BenchmarkDaemonRoundtrip(b *testing.B) {
 	waitForSockB(b, sock)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+
+	for b.Loop() {
 		c, err := net.Dial("unix", sock)
 		if err != nil {
 			b.Fatalf("dial: %v", err)
@@ -71,8 +71,8 @@ func BenchmarkCLIRoundtrip(b *testing.B) {
 	b.Setenv("HOME", home)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+
+	for b.Loop() {
 		cmd := exec.Command(testExePath, "post")
 		cmd.Env = append(cmd.Env, "HOME="+home)
 		cmd.Stdin = strings.NewReader(benchPayload)
