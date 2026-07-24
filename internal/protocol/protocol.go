@@ -16,21 +16,39 @@ type HookInput struct {
 }
 
 // ToolResponse holds the raw tool output Claude Code produced. Different tools
-// expose their output under different keys: Read/Glob/Grep/Write use "content",
-// while Bash uses "stdout"/"stderr". Text() returns whichever is present.
+// expose their output under different keys: Bash uses "stdout"/"stderr"; some
+// tools a top-level "content"/"output"; and the Read tool nests the file text
+// under a "file" object ({content, filePath, startLine, numLines, totalLines})
+// — verified against a live PostToolUse payload. Text() returns whichever is
+// present.
 type ToolResponse struct {
-	Content string `json:"content"`
-	Stdout  string `json:"stdout"`
-	Stderr  string `json:"stderr"`
-	Output  string `json:"output"` // some tools use a generic "output" key
+	Content string        `json:"content"`
+	Stdout  string        `json:"stdout"`
+	Stderr  string        `json:"stderr"`
+	Output  string        `json:"output"` // some tools use a generic "output" key
+	File    *FileResponse `json:"file"`   // Read tool: file text + window metadata
 }
 
-// Text returns the tool's textual output, preferring "content", then a generic
-// "output", then combined stdout+stderr (the Bash shape).
+// FileResponse is the Read tool's "file" object. Content is the raw file text
+// (not line-numbered); StartLine/NumLines/TotalLines describe the returned
+// window (a partial read has StartLine>1 or NumLines<TotalLines).
+type FileResponse struct {
+	Content    string `json:"content"`
+	FilePath   string `json:"filePath"`
+	StartLine  int    `json:"startLine"`
+	NumLines   int    `json:"numLines"`
+	TotalLines int    `json:"totalLines"`
+}
+
+// Text returns the tool's textual output, preferring a top-level "content",
+// then the Read "file.content", then a generic "output", then combined
+// stdout+stderr (the Bash shape).
 func (t *ToolResponse) Text() string {
 	switch {
 	case t.Content != "":
 		return t.Content
+	case t.File != nil && t.File.Content != "":
+		return t.File.Content
 	case t.Output != "":
 		return t.Output
 	case t.Stdout != "" && t.Stderr != "":
@@ -45,7 +63,8 @@ func (t *ToolResponse) Text() string {
 // HasOutput reports whether any output field is populated (used to distinguish
 // a missing tool_response from an empty one).
 func (t *ToolResponse) HasOutput() bool {
-	return t.Content != "" || t.Output != "" || t.Stdout != "" || t.Stderr != ""
+	return t.Content != "" || t.Output != "" || t.Stdout != "" || t.Stderr != "" ||
+		(t.File != nil && t.File.Content != "")
 }
 
 // ReadInput is the parsed tool_input for the Read tool.

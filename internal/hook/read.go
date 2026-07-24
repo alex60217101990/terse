@@ -44,14 +44,20 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
-	// A windowed read (offset/limit) returns only a slice of the file, not the
-	// whole file. Caching that slice as the file's entry would poison the
-	// delta/unchanged logic — a later full read (or a Write that caches the
-	// raw file) would mismatch the window's hash and emit a bogus "§delta —
-	// changes since last read" that actually reflects the window, not a
-	// change. Pass a partial read straight through: don't cache it, don't diff
-	// against it.
-	if ti.Offset != 0 || ti.Limit != 0 {
+	// A windowed read returns only a slice of the file, not the whole file.
+	// Caching that slice as the file's entry would poison the delta/unchanged
+	// logic — a later full read (or a Write that caches the raw file) would
+	// mismatch the window's hash and emit a bogus "§delta — changes since last
+	// read" that actually reflects the window, not a change. Detect a window
+	// from the authoritative file metadata (StartLine>1 or NumLines<TotalLines)
+	// and, as a fallback when that metadata is absent, from the requested
+	// offset/limit. Pass a partial read straight through: don't cache, don't diff.
+	partial := ti.Offset != 0 || ti.Limit != 0
+	if f := inp.ToolResponse.File; f != nil &&
+		(f.StartLine > 1 || (f.TotalLines > 0 && f.NumLines < f.TotalLines)) {
+		partial = true
+	}
+	if partial {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -62,8 +68,9 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	}
 
 	// Zero-copy view: content is only read (hashed, diffed, cached) within this
-	// call; the cache copies it out on Save.
-	content := bytesconv.S2B(inp.ToolResponse.Content)
+	// call; the cache copies it out on Save. Text() resolves the Read tool's
+	// nested file.content (top-level "content" is empty for Read).
+	content := bytesconv.S2B(inp.ToolResponse.Text())
 
 	// Binary content: always pass through, no diff.
 	if cache.IsBinaryContent(content) {

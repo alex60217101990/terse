@@ -47,3 +47,22 @@ func TestEncodeHookOutput(t *testing.T) {
 		t.Errorf("output missing content: %s", got)
 	}
 }
+
+// TestText_ReadFileContent locks in the live Read-tool shape: the file text
+// is nested under tool_response.file.content (top-level "content" is empty),
+// verified against a real PostToolUse payload. Text() must resolve it.
+func TestText_ReadFileContent(t *testing.T) {
+	raw := `{"session_id":"s","tool_name":"Read","hook_event_name":"PostToolUse",` +
+		`"tool_input":{"file_path":"/x"},` +
+		`"tool_response":{"type":"text","file":{"content":"package main\n","filePath":"/x","startLine":1,"numLines":1,"totalLines":1}}}`
+	inp, err := protocol.DecodeInputBytes([]byte(raw))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got := inp.ToolResponse.Text(); got != "package main\n" {
+		t.Errorf("Text() must resolve file.content, got %q", got)
+	}
+	if !inp.ToolResponse.HasOutput() {
+		t.Error("HasOutput must be true when file.content is present")
+	}
+}

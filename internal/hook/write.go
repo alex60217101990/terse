@@ -38,8 +38,9 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 
 	// Only the length is needed on the common (file-readable) path; the raw
 	// bytes are materialized lazily below, in the fallback branch that is the
-	// sole reader of them. Avoids copying the whole response string per call.
-	contentLen := len(inp.ToolResponse.Content)
+	// sole reader of them. Text() resolves whichever key the tool used for its
+	// echo (content / nested file.content / output / stdout).
+	contentLen := len(inp.ToolResponse.Text())
 	if contentLen <= writePassthroughThreshold {
 		_ = analytics.Record(analytics.Event{
 			TS:       time.Now().UnixNano(),
@@ -105,7 +106,7 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		// Can't read the file back — emit a marker from the response but do not
 		// cache, so we never poison delta tracking with non-file bytes. S2B is
 		// a read-only, call-scoped view (no copy); the bytes don't outlive it.
-		content := bytesconv.S2B(inp.ToolResponse.Content)
+		content := bytesconv.S2B(inp.ToolResponse.Text())
 		hash = sha256.Sum256(content)
 		hashHex = cache.ShortHex(hash[:8])
 		lineCount = bytes.Count(content, []byte("\n"))

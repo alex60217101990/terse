@@ -52,3 +52,32 @@ func TestHandleRead_PartialReadNotCached(t *testing.T) {
 			r2.HookSpecificOutput.UpdatedToolOutput)
 	}
 }
+
+// TestHandleRead_CachesFileContent proves handleRead reads the Read tool's
+// nested file.content (not the empty top-level Content). Before the protocol
+// fix it cached "" and Read compression was a no-op on live Claude output.
+func TestHandleRead_CachesFileContent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	store := hookcore.NewDiskStore()
+	const path = "/tmp/qdf-filecontent-x.go"
+	fileContent := strings.Repeat("package main\n", 60)
+	ti, _ := json.Marshal(protocol.ReadInput{FilePath: path})
+	inp := &protocol.HookInput{
+		SessionID: "sess-file",
+		ToolInput: ti,
+		ToolResponse: &protocol.ToolResponse{
+			File: &protocol.FileResponse{
+				Content: fileContent, FilePath: path,
+				StartLine: 1, NumLines: 60, TotalLines: 60,
+			},
+		},
+	}
+	var out strings.Builder
+	if err := handleRead(store, inp, &out); err != nil {
+		t.Fatalf("handleRead: %v", err)
+	}
+	st := store.LoadSession("sess-file")
+	if got := string(st.Files[path].Content); got != fileContent {
+		t.Fatalf("Read must cache file.content (len %d), cached len %d", len(fileContent), len(got))
+	}
+}
