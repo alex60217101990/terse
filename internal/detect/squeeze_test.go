@@ -46,3 +46,13 @@ func BenchmarkSqueezeOutput(b *testing.B) {
 		_ = detect.SqueezeOutput(in)
 	}
 }
+
+// TestSqueezeOutput_NeverWorse is the B2 regression: when the run-length
+// marker would make the output larger than the input (a short repeated line),
+// SqueezeOutput must return the original, not the grown result.
+func TestSqueezeOutput_NeverWorse(t *testing.T) {
+	in := "a\na" // 3 bytes; "a  ⨯2" marker is larger
+	if got := detect.SqueezeOutput(in); got != in {
+		t.Errorf("short repeated line must return the original (never-worse), got %q", got)
+	}
+}

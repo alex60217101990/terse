@@ -23,33 +23,47 @@ func SqueezeOutput(content string) string {
 		stripped = ansiRE.ReplaceAllString(content, "")
 	}
 
-	lines := strings.Split(stripped, "\n")
 	var b strings.Builder
 	b.Grow(len(stripped))
 
-	i := 0
-	collapsed := false
-	for i < len(lines) {
-		j := i + 1
-		for j < len(lines) && lines[j] == lines[i] {
-			j++
+	// Single forward pass, no []string materialized: collapse runs of identical
+	// consecutive lines. Groups are joined by '\n' (a newline before every group
+	// but the first), matching the previous Split-based output exactly.
+	groupIdx := 0
+	writeGroup := func(line string, run int) {
+		if groupIdx > 0 {
+			b.WriteByte('\n')
 		}
-		run := j - i
-		b.WriteString(lines[i])
+		b.WriteString(line)
 		if run > 1 {
 			b.WriteString("  ⨯")
 			b.WriteString(strconv.Itoa(run))
-			collapsed = true
 		}
-		if j < len(lines) {
-			b.WriteByte('\n')
+		groupIdx++
+	}
+	var prev string
+	run := 0
+	have := false
+	for line := range strings.SplitSeq(stripped, "\n") {
+		if have && line == prev {
+			run++
+			continue
 		}
-		i = j
+		if have {
+			writeGroup(prev, run)
+		}
+		prev, run, have = line, 1, true
+	}
+	if have {
+		writeGroup(prev, run)
 	}
 
+	// Never-worse: return the original unless the result is strictly smaller.
+	// (A short repeated line's "  ⨯N" marker can exceed the bytes it saves, so
+	// guard on total length, not just "did anything collapse".)
 	out := b.String()
-	if !collapsed && len(out) == len(content) {
-		return content // nothing changed
+	if len(out) >= len(content) {
+		return content
 	}
 	return out
 }
