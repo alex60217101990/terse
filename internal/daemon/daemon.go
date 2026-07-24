@@ -187,10 +187,9 @@ func handleConn(c net.Conn, store hookcore.StateStore, version string, requestSh
 		}
 	}()
 
-	req, err := io.ReadAll(c)
-	if err != nil {
-		return
-	}
+	buf := readRequest(c)
+	defer putRequest(buf)
+	req := buf.Bytes()
 
 	switch strings.TrimSpace(string(req)) {
 	case "PING":
