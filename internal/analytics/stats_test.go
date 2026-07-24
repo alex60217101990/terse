@@ -139,7 +139,7 @@ func TestImpactBar_SkewedDistributionStaysVisible(t *testing.T) {
 
 func lineContaining(t *testing.T, s, sub string) string {
 	t.Helper()
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		if strings.Contains(line, sub) {
 			return line
 		}

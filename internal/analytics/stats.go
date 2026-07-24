@@ -195,13 +195,7 @@ func (c colorizer) bold(s string) string { return c.wrap("1", s) }
 func (c colorizer) dim(s string) string  { return c.wrap("2", s) }
 
 func clamp01(f float64) float64 {
-	if f < 0 {
-		return 0
-	}
-	if f > 1 {
-		return 1
-	}
-	return f
+	return min(max(f, 0), 1)
 }
 
 // impactFrac maps a per-hook saved byte count onto [0,1] with a sqrt
