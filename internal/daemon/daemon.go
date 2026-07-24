@@ -18,7 +18,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
@@ -356,7 +355,7 @@ func Ensure(sockPath, exePath, version string) error {
 	}
 
 	cmd := exec.Command(exePath, "daemon", "--serve")
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	cmd.SysProcAttr = detachSysProcAttr()
 	// stdin/stdout are left nil (exec connects them to /dev/null) so the
 	// daemon never holds the hook's pipes open. stderr goes to a log file
 	// rather than /dev/null so a daemon panic (handleConn's recover log) is
