@@ -88,7 +88,7 @@ func myersDiff(a, b []string) []edit {
 	// trace stores the v array at each step d for backtracking.
 	trace := make([][]int, 0, n+m)
 
-	for d := 0; d <= n+m; d++ {
+	for d := range n + m + 1 {
 		snap := make([]int, 2*offset+1)
 		copy(snap, v)
 		trace = append(trace, snap)
