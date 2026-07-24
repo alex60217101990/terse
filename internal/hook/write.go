@@ -66,7 +66,22 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		hashHex   string
 		lineCount int
 	)
-	fileBytes, ferr := os.ReadFile(ti.FilePath)
+	// Read the file and its mtime from a single open fd. os.ReadFile would
+	// stat internally to size its buffer, then we'd stat a second time via
+	// os.Stat for ModTime — one avoidable syscall per Write/Edit. os.Open +
+	// f.Stat gives both from one stat; the fd's Size preallocates the read.
+	var (
+		fileBytes []byte
+		modTime   int64
+	)
+	f, ferr := os.Open(ti.FilePath)
+	if ferr == nil {
+		if fi, e := f.Stat(); e == nil {
+			modTime = fi.ModTime().UnixNano()
+		}
+		fileBytes, ferr = io.ReadAll(f)
+		_ = f.Close()
+	}
 	if ferr == nil {
 		hash = sha256.Sum256(fileBytes)
 		hashHex = cache.ShortHex(hash[:8])
@@ -75,10 +90,6 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 			state := store.LoadSession(inp.SessionID)
 			if state != nil {
 				state.Turn++
-				var modTime int64
-				if info, e := os.Stat(ti.FilePath); e == nil {
-					modTime = info.ModTime().UnixNano()
-				}
 				state.Files[ti.FilePath] = cache.FileEntry{
 					Hash:       hash,
 					Turn:       state.Turn,
