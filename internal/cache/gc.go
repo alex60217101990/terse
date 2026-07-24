@@ -93,3 +93,15 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 
 	return result, err
 }
+
+// SweepBlobs prunes the refs/ and last/ blob stores to the configured size cap
+// (split evenly across the two dirs) and TTL. It is blob-only: it never touches
+// session .qdf state, so — unlike RunGC — it is safe to call from a hook on the
+// current session without any risk of evicting the state that request just
+// wrote or is about to read. Best-effort; errors are swallowed inside PruneDir.
+func SweepBlobs(nowSec int64) {
+	half := CacheMaxSize() / 2
+	ttl := CacheTTL()
+	PruneDir(RefsDir(), UsageRefsPath(), half, ttl, nowSec, false)
+	PruneDir(LastOutDir(), UsageLastPath(), half, ttl, nowSec, false)
+}

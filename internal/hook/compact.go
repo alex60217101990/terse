@@ -88,6 +88,16 @@ func HandleSessionStart(r io.Reader, w io.Writer) error {
 		return fmt.Errorf("DecodeInput: %w", err)
 	}
 
+	// Best-effort automatic cache prune, throttled to at most once/24h. This
+	// runs on EVERY session start (before the no-manifest early return below),
+	// so it fires reliably even for sessions that never compact. It is
+	// blob-only (refs/ + last/) via SweepBlobs — it never touches session .qdf
+	// state, so it cannot evict the very session this request is about to load.
+	// Never blocks or fails the hook.
+	if cache.ShouldRunGC(time.Now().Unix()) {
+		cache.SweepBlobs(time.Now().Unix())
+	}
+
 	state, err := cache.Load(inp.SessionID)
 	if err != nil || len(state.Files) == 0 || state.CompactedAt == 0 {
 		// No prior session or no compaction — no manifest to inject.
@@ -103,15 +113,6 @@ func HandleSessionStart(r io.Reader, w io.Writer) error {
 		Action: "session-start",
 		DurNS:  time.Since(start).Nanoseconds(),
 	})
-
-	// Best-effort automatic gc, throttled to at most once/24h. Placed after
-	// this session's manifest is already built (and the state file it reads
-	// captured to a local var) so a same-run gc sweep can never evict the
-	// very session state this request just loaded. Must never block or fail
-	// the hook: errors are swallowed.
-	if cache.ShouldRunGC(time.Now().Unix()) {
-		_, _ = cache.RunGC(false, 0.01) // 0.01 = the gc cmd's default min-score
-	}
 
 	return protocol.EncodeOutput(w, protocol.Replace(manifest))
 }

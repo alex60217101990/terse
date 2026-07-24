@@ -204,11 +204,7 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 // cache.RunGC's own split). Called periodically from Serve's loop, and
 // directly by tests; it never blocks on anything but local disk I/O.
 func sweepCache(nowSec int64) {
-	maxSize := cache.CacheMaxSize()
-	ttl := cache.CacheTTL()
-	half := maxSize / 2
-	cache.PruneDir(cache.RefsDir(), cache.UsageRefsPath(), half, ttl, nowSec, false)
-	cache.PruneDir(cache.LastOutDir(), cache.UsageLastPath(), half, ttl, nowSec, false)
+	cache.SweepBlobs(nowSec)
 }
 
 // handleConn reads a single request off c to EOF (the client half-closes its
