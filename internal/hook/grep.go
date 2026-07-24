@@ -3,7 +3,8 @@ package hook
 import (
 	"fmt"
 	"io"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
@@ -35,8 +36,8 @@ func parseGrepLine(s string) (file, line, text string, ok bool) {
 		return "", "", "", false
 	}
 	num := rest[:j]
-	for k := 0; k < len(num); k++ {
-		if num[k] < '0' || num[k] > '9' {
+	for _, c := range num {
+		if c < '0' || c > '9' {
 			return "", "", "", false
 		}
 	}
@@ -47,33 +48,34 @@ func parseGrepLine(s string) (file, line, text string, ok bool) {
 // mode, "tree" when delegated to the file-tree compressor, or "" (empty
 // summary) when the input doesn't look like grep output.
 func buildGrepSummary(content string) (string, string) {
-	lines := strings.Split(strings.TrimSpace(content), "\n")
-
 	groups := make(map[string][]grepMatch)
-	var order []string
-	parsed := 0
-	for _, ln := range lines {
+	// SplitSeq: single forward pass, no []string materialized. lineCount
+	// replaces len(lines) for the bare-list ratio below.
+	parsed, lineCount := 0, 0
+	for ln := range strings.SplitSeq(strings.TrimSpace(content), "\n") {
+		lineCount++
 		file, num, text, ok := parseGrepLine(ln)
 		if !ok {
 			continue
 		}
 		parsed++
-		if _, seen := groups[file]; !seen {
-			order = append(order, file)
-		}
 		groups[file] = append(groups[file], grepMatch{line: num, text: text})
 	}
 
 	// If almost nothing parsed as content matches, treat the output as a bare
-	// path list (files_with_matches) and reuse the Glob tree compressor.
-	if parsed < len(lines)/2 {
+	// path list (files_with_matches) and reuse the Glob tree compressor. The
+	// `parsed == 0` short-circuit handles a single bare path (lineCount 1,
+	// parsed 0) — where `parsed < lineCount/2` is `0 < 0` (false) and would
+	// otherwise emit a bogus "0 matches in 0 files".
+	if parsed == 0 || parsed < lineCount/2 {
 		if tree := buildGlobTree(content); tree != "" {
 			return tree, "tree"
 		}
 		return "", ""
 	}
 
-	sort.Strings(order)
+	// Alphabetical file order — same as the previous first-seen + sort.Strings.
+	order := slices.Sorted(maps.Keys(groups))
 	var sb strings.Builder
 	total := 0
 	for _, file := range order {
