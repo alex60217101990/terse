@@ -103,6 +103,19 @@ Goal: `GOOS=windows go build ./...` compiles clean. Full Windows daemon lifecycl
 
 **Fix:** perceptual scaling — `meter(sqrt(saved)/sqrt(maxSaved), width)` — with a **floor of 1 filled cell for any non-zero saved** (and 0 cells only for exactly 0). The dominant hook still reads as the fullest bar (honest), but meaningful mid contributors remain visible. Pin with a golden test over a deliberately skewed distribution.
 
+### 3.5 Cache-validity hardening — PreToolUse `ctime`
+
+**Problem.** The `PreToolUse` deny path (`internal/hook/pretooluse.go`) avoids reading a file at all, so it cannot hash content; it decides "unchanged" from a stat only, denying the re-read when **both `mtime` and `size`** match the cached entry. The `PostToolUse` path is always safe (it hashes the freshly-read bytes), but the deny path has one residual staleness window: a content change that preserves **both** `mtime` and `size` — `cp -p`, `rsync --times`, `os.Chtimes`, `touch -r`, `tar` extraction, or a same-size in-place edit on a coarse-mtime filesystem — makes the deny fire, so Claude keeps its stale in-context copy and the correcting re-read never happens. The existing code comment acknowledges this as "rare".
+
+**Fix.** Add the inode change time (`ctime`) to the deny gate. `ctime` is updated by the kernel on **every** content write and metadata change and **cannot be moved backward from userspace** — even `utimes`/`touch -r` (which set `mtime` into the past) bump `ctime` to now. So a file whose content changed always has a `ctime` newer than when it was cached, even under a forged `mtime`. Deny only when `mtime == cached && size == cached && ctime == cached`.
+
+**Properties.**
+- Closes the `cp -p` / `rsync` / `touch -r` / `tar` staleness window.
+- Fails only in the **safe** direction: a pure metadata change (`chmod`, `rename`, `chown`) bumps `ctime` without changing content, producing a false "changed" → one harmless extra re-read, **never** a stale serve.
+- Free: the file is already `os.Stat`'d. `ctime` is read via `syscall.Stat_t` behind a build-tagged helper (`statCtimeNS(fi) int64`): Unix returns the real `ctime`; on platforms without a POSIX `ctime` (Windows) it returns `0` and the gate degrades to the current `mtime+size` behavior.
+- The cache entry gains a `CtimeNS int64` field, populated wherever `ModTime` is populated today (read/write handlers). A cached entry with `CtimeNS == 0` (pre-upgrade) skips the `ctime` comparison so old caches don't force a mass re-read.
+- Behavior change is **strictly more re-reads, never fewer** → test-gated, no benchmark needed.
+
 ---
 
 ## 4. Containerization (`deploy/docker/`)
@@ -184,6 +197,7 @@ The qdf project's `.github` is the blueprint. Its security and hygiene suite is 
 ## 7. Task Breakdown (features first, docs last)
 
 1. **Stats-viz fix** — sqrt scaling + min-1-cell floor + golden test. Self-contained.
+1b. **PreToolUse ctime hardening** — add `ctime` to the deny gate (build-tagged `statCtimeNS`), `CtimeNS` cache field, degrade to `mtime+size` when unavailable/zero + tests for the `cp -p`/`touch -r` scenario. Correctness fix, self-contained.
 2. **Go socket-client** in `post`/`pretooluse` (socket-first → inline fallback) + tests + byte-parity.
 3. **Windows build** — `detach_unix.go`/`detach_windows.go` build tags; `GOOS=windows go build ./...` green.
 4. **`qdf-hookc`** — `client/qc.c` in repo + Makefile `zig cc` cross targets + `qc`≡`nc` parity test.
@@ -204,6 +218,7 @@ The qdf project's `.github` is the blueprint. Its security and hygiene suite is 
 - **Cross-compile smoke:** CI builds `qdf-hookc` for all Unix targets and runs the native-arch ones against a daemon.
 - **Windows compile:** `GOOS=windows go build ./...` in CI (compile-only gate).
 - **Stats golden:** skewed distribution renders visible bars for all non-zero hooks; dominant hook is fullest.
+- **ctime hardening:** a file re-touched with `touch -r`/`cp -p` to a preserved `mtime`+`size` but changed content is **not** denied (deny gate sees the new `ctime`); a pure `chmod` may re-read (safe); a genuinely unchanged file is still denied.
 - **Perf:** benchstat gate per §2 for any perf change; native client vs nc recorded.
 - **Race:** `go test -race` ×3 clean for daemon/client/hook packages.
 
