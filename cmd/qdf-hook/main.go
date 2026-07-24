@@ -32,7 +32,20 @@ var (
 // printed by `qdf-hook version` and reported by qdf-hookd's PING handshake
 // (see daemon.Ensure), so a running daemon can be detected as stale after an
 // upgrade.
-const appVersion = "v0.1.0"
+//
+// It is a var (not a const) so the build can stamp it without editing source:
+//
+//	go build -ldflags "-X main.appVersion=$(git describe --tags --always)" ./cmd/qdf-hook
+//
+// In a Dockerfile, pass the value through as a build arg:
+//
+//	ARG QDF_VERSION=dev
+//	RUN go build -trimpath \
+//	    -ldflags "-s -w -X main.appVersion=${QDF_VERSION}" \
+//	    -o /out/qdf-hook ./cmd/qdf-hook
+//
+// The default below is the fallback for a plain `go build`/`go install`.
+var appVersion = "dev"
 
 var rootCmd = &cobra.Command{
 	Use:   "qdf-hook",

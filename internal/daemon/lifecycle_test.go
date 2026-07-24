@@ -14,11 +14,12 @@ import (
 	"github.com/alex60217101990/qdf-hook/internal/daemon"
 )
 
-// appVersion mirrors cmd/qdf-hook's appVersion const (main.go). Ensure's
-// version-mismatch replacement path execs the real qdf-hook binary, which
-// reports this string over PING — the two must stay in sync for
-// TestEnsure_VersionMismatchReplacesDaemon to mean anything.
-const appVersion = "v0.1.0"
+// appVersion mirrors cmd/qdf-hook's default appVersion (main.go), which is
+// "dev" for an un-stamped build. TestMain builds the test binary with a plain
+// `go build` (no -ldflags -X), so the binary reports this default over PING;
+// the two must stay in sync for TestEnsure_VersionMismatchReplacesDaemon to
+// mean anything.
+const appVersion = "dev"
 
 // testExePath is a real, freshly built qdf-hook binary, built once in
 // TestMain and reused by every test in this file that needs to exercise
