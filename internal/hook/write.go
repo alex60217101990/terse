@@ -44,7 +44,7 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		_ = analytics.Record(analytics.Event{
 			TS:       time.Now().UnixNano(),
 			SID:      inp.SessionID,
-			Hook:     "write",
+			Hook:     inp.ToolName, // canonical Claude tool name (Write/Edit/MultiEdit)
 			Action:   "passthrough",
 			BytesIn:  contentLen,
 			BytesOut: contentLen,
@@ -116,7 +116,7 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 	_ = analytics.Record(analytics.Event{
 		TS:       time.Now().UnixNano(),
 		SID:      inp.SessionID,
-		Hook:     "write",
+		Hook:     inp.ToolName, // canonical Claude tool name (Write/Edit/MultiEdit)
 		Action:   action,
 		BytesIn:  contentLen,
 		BytesOut: bytesOut,

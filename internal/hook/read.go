@@ -122,7 +122,7 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	_ = analytics.Record(analytics.Event{
 		TS:       time.Now().UnixNano(),
 		SID:      inp.SessionID,
-		Hook:     "read",
+		Hook:     inp.ToolName, // canonical Claude tool name (e.g. "Read")
 		Action:   action,
 		BytesIn:  len(content),
 		BytesOut: bytesOut,

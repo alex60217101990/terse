@@ -63,6 +63,31 @@ func (s Stats) SavingsPercent() float64 {
 }
 
 // ComputeStats aggregates a slice of events into Stats.
+// hookAlias folds legacy lowercase per-tool hook names (written before the
+// universal pipeline reported the canonical Claude tool_name) onto their
+// canonical form, so old and new analytics records for the same tool don't
+// show up as duplicate rows (e.g. "bash" + "Bash").
+var hookAlias = map[string]string{
+	"read": "Read", "write": "Write", "bash": "Bash", "glob": "Glob", "grep": "Grep",
+}
+
+// contextHooks are lifecycle hooks that inject context (a restoration manifest
+// across compaction, a session-start preamble) rather than compress a tool's
+// output. Their byte deltas are context-management overhead — often a net add
+// — so they are excluded from the headline compression ratio and reported
+// separately.
+var contextHooks = map[string]bool{
+	"precompact": true, "postcompact": true, "sessionstart": true,
+}
+
+// normalizeHook maps a raw Event.Hook to its canonical display name.
+func normalizeHook(h string) string {
+	if c, ok := hookAlias[h]; ok {
+		return c
+	}
+	return h
+}
+
 func ComputeStats(events []Event) Stats {
 	s := Stats{
 		ByHookAction: make(map[string]map[string]int),
@@ -71,19 +96,27 @@ func ComputeStats(events []Event) Stats {
 		LatencyStats: make(map[string]LatStat),
 	}
 	for _, e := range events {
+		hook := normalizeHook(e.Hook)
 		s.TotalInvocations++
-		s.TotalBytesIn += e.BytesIn
-		s.TotalBytesOut += e.BytesOut
-		key := e.Hook + "/" + e.Action
-		if s.ByHookAction[e.Hook] == nil {
-			s.ByHookAction[e.Hook] = make(map[string]int)
+		// Headline compression totals count only output-compression hooks.
+		// Context-injection hooks (precompact/postcompact/sessionstart) add
+		// bytes on purpose to survive compaction — folding their overhead into
+		// the compression ratio would misreport it. They're reported in their
+		// own section instead.
+		if !contextHooks[hook] {
+			s.TotalBytesIn += e.BytesIn
+			s.TotalBytesOut += e.BytesOut
 		}
-		s.ByHookAction[e.Hook][e.Action]++
-		agg := s.ByHook[e.Hook]
+		key := hook + "/" + e.Action
+		if s.ByHookAction[hook] == nil {
+			s.ByHookAction[hook] = make(map[string]int)
+		}
+		s.ByHookAction[hook][e.Action]++
+		agg := s.ByHook[hook]
 		agg.Count++
 		agg.BytesIn += e.BytesIn
 		agg.BytesOut += e.BytesOut
-		s.ByHook[e.Hook] = agg
+		s.ByHook[hook] = agg
 		s.Latencies[key] = append(s.Latencies[key], e.DurNS)
 	}
 	// Compute latency percentiles.
@@ -256,34 +289,58 @@ func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) {
 	fmt.Fprintf(w, "    Saved       %9s   ~%s tok\n", FormatBytes(s.SavedBytes()), humanTokens(s.SavedTokens()))
 	fmt.Fprintf(w, "    Efficiency  %s  %.1f%%\n\n", meter(s.SavingsPercent()/100, 24), s.SavingsPercent())
 
-	// Per-hook table with impact bars (impact = saved bytes relative to the
-	// busiest hook). Impact is the last column so its ANSI codes don't throw
-	// off tabwriter's column alignment.
+	// Per-hook tables. Compression hooks (tool output) carry a saved/%/impact
+	// bar; context-injection hooks (precompact/postcompact/sessionstart) add
+	// bytes on purpose, so they get their own "added" column and never
+	// contaminate the impact scale. Impact is the last column so its ANSI
+	// codes don't throw off tabwriter's alignment.
 	if len(s.ByHook) > 0 {
-		fmt.Fprintf(w, "  %s\n", c.bold("BY HOOK"))
-		hooks := make([]string, 0, len(s.ByHook))
+		var comp, ctx []string
 		maxSaved := 1
 		for h, a := range s.ByHook {
-			hooks = append(hooks, h)
+			if contextHooks[h] {
+				ctx = append(ctx, h)
+				continue
+			}
+			comp = append(comp, h)
 			if sv := a.BytesIn - a.BytesOut; sv > maxSaved {
 				maxSaved = sv
 			}
 		}
-		sort.Strings(hooks)
-		tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
-		fmt.Fprintln(tw, "    hook\tcalls\tsaved\t%\timpact")
-		for _, h := range hooks {
-			a := s.ByHook[h]
-			saved := a.BytesIn - a.BytesOut
-			pct := 0.0
-			if a.BytesIn > 0 {
-				pct = float64(saved) / float64(a.BytesIn) * 100
+		sort.Strings(comp)
+		sort.Strings(ctx)
+
+		if len(comp) > 0 {
+			fmt.Fprintf(w, "  %s\n", c.bold("BY HOOK"))
+			tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
+			fmt.Fprintln(tw, "    hook\tcalls\tsaved\t%\timpact")
+			for _, h := range comp {
+				a := s.ByHook[h]
+				saved := a.BytesIn - a.BytesOut
+				pct := 0.0
+				if a.BytesIn > 0 {
+					pct = float64(saved) / float64(a.BytesIn) * 100
+				}
+				fmt.Fprintf(tw, "    %s\t%d\t%s\t%.0f%%\t%s\n",
+					h, a.Count, FormatBytes(saved), pct, meter(float64(saved)/float64(maxSaved), 12))
 			}
-			fmt.Fprintf(tw, "    %s\t%d\t%s\t%.0f%%\t%s\n",
-				h, a.Count, FormatBytes(saved), pct, meter(float64(saved)/float64(maxSaved), 12))
+			_ = tw.Flush()
+			fmt.Fprintln(w)
 		}
-		_ = tw.Flush()
-		fmt.Fprintln(w)
+
+		if len(ctx) > 0 {
+			fmt.Fprintf(w, "  %s\n", c.bold("CONTEXT INJECTION"))
+			tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
+			fmt.Fprintln(tw, "    hook\tcalls\tadded")
+			for _, h := range ctx {
+				a := s.ByHook[h]
+				// Manifests add context deliberately; report bytes added
+				// (out-in), so this reads as cost, not a bogus "saving".
+				fmt.Fprintf(tw, "    %s\t%d\t%s\n", h, a.Count, FormatBytes(a.BytesOut-a.BytesIn))
+			}
+			_ = tw.Flush()
+			fmt.Fprintln(w)
+		}
 	}
 
 	// Latency percentiles.

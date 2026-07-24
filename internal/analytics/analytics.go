@@ -78,6 +78,9 @@ func SavedTokens(e Event) int {
 
 // FormatBytes formats byte counts for display.
 func FormatBytes(n int) string {
+	if n < 0 {
+		return "-" + FormatBytes(-n)
+	}
 	switch {
 	case n >= 1024*1024:
 		return fmt.Sprintf("%.1f MB", float64(n)/(1024*1024))

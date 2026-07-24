@@ -19,6 +19,47 @@ func makeEvents() []analytics.Event {
 	}
 }
 
+func TestComputeStats_FoldsLegacyToolAliases(t *testing.T) {
+	// Legacy lowercase per-tool records must merge with canonical tool_name
+	// records instead of showing as duplicate rows (bash + Bash).
+	ev := []analytics.Event{
+		{Hook: "bash", Action: "summary", BytesIn: 1000, BytesOut: 100},
+		{Hook: "Bash", Action: "summary", BytesIn: 2000, BytesOut: 200},
+	}
+	s := analytics.ComputeStats(ev)
+	if _, dup := s.ByHook["bash"]; dup {
+		t.Error("legacy 'bash' must fold into 'Bash', not appear separately")
+	}
+	agg, ok := s.ByHook["Bash"]
+	if !ok || agg.Count != 2 || agg.BytesIn != 3000 {
+		t.Errorf("folded Bash agg wrong: %+v ok=%v", agg, ok)
+	}
+}
+
+func TestComputeStats_ContextHooksExcludedFromSavings(t *testing.T) {
+	ev := []analytics.Event{
+		{Hook: "Bash", Action: "summary", BytesIn: 1000, BytesOut: 100},          // compression
+		{Hook: "postcompact", Action: "postcompact", BytesIn: 0, BytesOut: 5000}, // context add
+	}
+	s := analytics.ComputeStats(ev)
+	// The 5000-byte manifest must NOT drag the headline compression ratio.
+	if s.TotalBytesIn != 1000 || s.TotalBytesOut != 100 {
+		t.Errorf("context hook leaked into headline totals: in=%d out=%d", s.TotalBytesIn, s.TotalBytesOut)
+	}
+	if _, ok := s.ByHook["postcompact"]; !ok {
+		t.Error("postcompact should still be tracked in ByHook")
+	}
+	if s.TotalInvocations != 2 {
+		t.Errorf("all invocations still counted, got %d", s.TotalInvocations)
+	}
+}
+
+func TestFormatBytes_Negative(t *testing.T) {
+	if got := analytics.FormatBytes(-14344); got != "-14.0 KB" {
+		t.Errorf("negative bytes: got %q, want %q", got, "-14.0 KB")
+	}
+}
+
 func TestComputeStats_TotalInvocations(t *testing.T) {
 	stats := analytics.ComputeStats(makeEvents())
 	if stats.TotalInvocations != 6 {
