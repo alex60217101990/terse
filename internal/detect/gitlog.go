@@ -42,10 +42,9 @@ func IsGitLogOutput(s string) bool {
 // SummarizeGitLog returns a compact table of commits.
 // Keeps hash (short), and truncates long commit messages to 72 characters.
 func SummarizeGitLog(s string) string {
-	lines := strings.Split(strings.TrimSpace(s), "\n")
 	var body strings.Builder
 	commits := 0
-	for _, line := range lines {
+	for line := range strings.SplitSeq(strings.TrimSpace(s), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
