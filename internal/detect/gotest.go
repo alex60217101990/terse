@@ -53,6 +53,18 @@ func SummarizeGoTest(s string) string {
 				pkgCount++
 			}
 		case strings.HasPrefix(line, "    "):
+			// Indented subtest results (`    --- FAIL: T/sub`) were folded into
+			// the parent's detail but never tallied — count them here so the
+			// headline [N PASS, M FAIL] includes subtests. The line still goes
+			// into currentIndented so the FAILURES block is unchanged.
+			switch t := strings.TrimLeft(line, " "); {
+			case strings.HasPrefix(t, "--- PASS:"):
+				passCount++
+			case strings.HasPrefix(t, "--- FAIL:"):
+				failCount++
+			case strings.HasPrefix(t, "--- SKIP:"):
+				skipCount++
+			}
 			currentIndented = append(currentIndented, line)
 		}
 	}

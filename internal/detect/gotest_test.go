@@ -61,3 +61,19 @@ func TestSummarizeGoTest_MultiPackage(t *testing.T) {
 		t.Errorf("must not misattribute the summary to the last package only: %q", out)
 	}
 }
+
+// TestSummarizeGoTest_CountsIndentedSubtests is the B5 regression: indented
+// subtest results (`    --- FAIL: T/sub`) must be tallied in the headline
+// [N PASS, M FAIL], not silently folded into the parent's detail only.
+func TestSummarizeGoTest_CountsIndentedSubtests(t *testing.T) {
+	in := "=== RUN   TestX\n" +
+		"=== RUN   TestX/sub\n" +
+		"    --- FAIL: TestX/sub (0.00s)\n" +
+		"        x_test.go:5: boom\n" +
+		"--- FAIL: TestX (0.00s)\n" +
+		"FAIL\n"
+	s := detect.SummarizeGoTest(in)
+	if !strings.Contains(s, "2 FAIL") {
+		t.Errorf("expected the indented subtest failure to be counted (2 FAIL), got:\n%s", s)
+	}
+}
