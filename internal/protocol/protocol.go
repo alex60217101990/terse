@@ -22,11 +22,12 @@ type HookInput struct {
 // — verified against a live PostToolUse payload. Text() returns whichever is
 // present.
 type ToolResponse struct {
-	Content string        `json:"content"`
-	Stdout  string        `json:"stdout"`
-	Stderr  string        `json:"stderr"`
-	Output  string        `json:"output"` // some tools use a generic "output" key
-	File    *FileResponse `json:"file"`   // Read tool: file text + window metadata
+	File *FileResponse `json:"file"` // Read tool: file text + window metadata
+
+	Content string `json:"content"`
+	Stdout  string `json:"stdout"`
+	Stderr  string `json:"stderr"`
+	Output  string `json:"output"` // some tools use a generic "output" key
 
 	rawLen int // byte length of the raw tool_response JSON (echo size); see EchoLen
 }
