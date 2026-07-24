@@ -23,16 +23,9 @@ func TestIsJSONArray(t *testing.T) {
 	for _, c := range cases {
 		got := detect.IsJSONArray(c.input)
 		if got != c.want {
-			t.Errorf("IsJSONArray(%q) = %v, want %v", c.input[:minInt(len(c.input), 30)], got, c.want)
+			t.Errorf("IsJSONArray(%q) = %v, want %v", c.input[:min(len(c.input), 30)], got, c.want)
 		}
 	}
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // TestAnalyzeJSONArray_TopVals_DeterministicOnTies guards a §ref-breaking bug:
@@ -170,8 +163,7 @@ func TestColumnarSummary_1k(t *testing.T) {
 
 func BenchmarkAnalyzeJSONArray(b *testing.B) {
 	data, _ := os.ReadFile("../../testdata/json_array_1k.json")
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = detect.AnalyzeJSONArray(data, 1000)
 	}
 }

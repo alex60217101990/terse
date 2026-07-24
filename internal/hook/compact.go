@@ -3,8 +3,9 @@ package hook
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -114,11 +115,7 @@ func buildManifest(state *cache.SessionState) string {
 	sb.WriteString("These files are tracked. Re-reads will return delta only.\n\n")
 
 	// Sort for deterministic output.
-	paths := make([]string, 0, len(state.Files))
-	for p := range state.Files {
-		paths = append(paths, p)
-	}
-	sort.Strings(paths)
+	paths := slices.Sorted(maps.Keys(state.Files))
 
 	for _, path := range paths {
 		entry := state.Files[path]

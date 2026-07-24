@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/alex60217101990/qdf-hook/internal/daemon"
@@ -300,14 +301,9 @@ func entryAllSuperseded(e hookEntry) bool {
 		return false
 	}
 	for _, h := range e.Hooks {
-		super := false
-		for _, sub := range supersededSubs {
-			if isQdfHookCommand(h.Command, sub) {
-				super = true
-				break
-			}
-		}
-		if !super {
+		if !slices.ContainsFunc(supersededSubs, func(sub string) bool {
+			return isQdfHookCommand(h.Command, sub)
+		}) {
 			return false
 		}
 	}

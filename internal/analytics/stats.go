@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"slices"
-	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -307,8 +307,8 @@ func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) {
 				maxSaved = sv
 			}
 		}
-		sort.Strings(comp)
-		sort.Strings(ctx)
+		slices.Sort(comp)
+		slices.Sort(ctx)
 
 		if len(comp) > 0 {
 			fmt.Fprintf(w, "  %s\n", c.bold("BY HOOK"))
@@ -346,11 +346,7 @@ func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) {
 	// Latency percentiles.
 	if len(s.LatencyStats) > 0 {
 		fmt.Fprintf(w, "  %s  p50 / p95 / p99\n", c.bold("LATENCY"))
-		keys := make([]string, 0, len(s.LatencyStats))
-		for k := range s.LatencyStats {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
+		keys := slices.Sorted(maps.Keys(s.LatencyStats))
 		for _, k := range keys {
 			ls := s.LatencyStats[k]
 			fmt.Fprintf(w, "    %-28s %.1f / %.1f / %.1f ms\n", k, ls.P50, ls.P95, ls.P99)
