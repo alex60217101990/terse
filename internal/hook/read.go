@@ -44,6 +44,17 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
+	// A windowed read (offset/limit) returns only a slice of the file, not the
+	// whole file. Caching that slice as the file's entry would poison the
+	// delta/unchanged logic — a later full read (or a Write that caches the
+	// raw file) would mismatch the window's hash and emit a bogus "§delta —
+	// changes since last read" that actually reflects the window, not a
+	// change. Pass a partial read straight through: don't cache it, don't diff
+	// against it.
+	if ti.Offset != 0 || ti.Limit != 0 {
+		return protocol.EncodeOutput(w, protocol.Passthrough())
+	}
+
 	// Stat the file to capture its modification time.
 	var modTime int64
 	if info, err := os.Stat(ti.FilePath); err == nil {
