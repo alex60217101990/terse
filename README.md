@@ -16,15 +16,20 @@ go test -v, 50 tests pass             →  3 lines           (−99 %)
 Measured end-to-end on a realistic mixed session: **−72 % tokens**, trending to
 **90 %+** as a session re-reads and re-runs. Every hot path runs in **tens of
 microseconds** — a sub-1 % sliver of the process-spawn cost, so the savings are
-effectively free.
+effectively free. An optional resident daemon (`qdf-hookd`) cuts the per-hook
+cost further still: a warm daemon roundtrip is **~59.7 µs** versus **~6.97 ms**
+for a fresh CLI spawn — about **117×**.
 
 - ⚡ **Fast** — re-read of an unchanged file: **49 µs**; a `§ref` cache hit:
-  **3.6 µs**; JSON analysis of 1000 rows: **269 µs**.
+  **3.6 µs**; JSON analysis of 1000 rows: **269 µs**; warm daemon roundtrip:
+  **~59.7 µs** (vs **~6.97 ms** for a fresh CLI spawn).
 - 🧠 **Context-aware** — tracks what the model already saw *this session and
   across sessions* and serves a reference instead of the bytes.
 - 🔒 **Safe** — never changes what a tool *does*; only compresses what the model
   *sees*. A cache miss is always a fresh, correct read.
-- 🚀 **One-command install.** No daemon, single static binary, nothing to hand-edit.
+- 🚀 **One-command install.** Single static binary, nothing to hand-edit. A
+  resident daemon starts itself in the background — there's still nothing to
+  run by hand.
 
 ---
 
@@ -54,21 +59,24 @@ qdf-hook stats            # aggregate token savings this session
 <details>
 <summary>Manual configuration (if you'd rather edit settings.json yourself)</summary>
 
+A single catch-all `PostToolUse` hook now routes every tool through `post`,
+which dispatches internally — new tools need no config change. `PostToolUse`
+and `PreToolUse` talk to the resident daemon first (`nc -U <sock>` on macOS,
+`nc -N -U <sock>` on Linux/BSD — see `QDF_NC_ARGS`), falling back to the plain
+CLI subcommand when the daemon isn't up:
+
 ```json
 {
   "hooks": {
     "PreToolUse": [
-      {"matcher": "Read", "hooks": [{"type": "command", "command": "qdf-hook pretooluse"}]}
+      {"matcher": "Read", "hooks": [{"type": "command", "command": "nc -U ~/.qdf-hook/d.sock 2>/dev/null || qdf-hook pretooluse"}]}
     ],
     "PostToolUse": [
-      {"matcher": "Read", "hooks": [{"type": "command", "command": "qdf-hook read"}]},
-      {"matcher": "Bash", "hooks": [{"type": "command", "command": "qdf-hook bash"}]},
-      {"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": "qdf-hook write"}]},
-      {"matcher": "Glob", "hooks": [{"type": "command", "command": "qdf-hook glob"}]},
-      {"matcher": "Grep", "hooks": [{"type": "command", "command": "qdf-hook grep"}]}
+      {"matcher": ".*", "hooks": [{"type": "command", "command": "nc -U ~/.qdf-hook/d.sock 2>/dev/null || qdf-hook post"}]}
     ],
-    "PreCompact":  [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook precompact"}]}],
-    "PostCompact": [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook postcompact"}]}]
+    "PreCompact":   [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook precompact"}]}],
+    "PostCompact":  [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook postcompact"}]}],
+    "SessionStart": [{"matcher": "",   "hooks": [{"type": "command", "command": "qdf-hook daemon --ensure"}]}]
   }
 }
 ```
@@ -131,9 +139,14 @@ Full methodology and raw numbers: **[docs/BENCHMARKS.md](docs/BENCHMARKS.md)**.
 | `§ref` cache hit | **3.6 µs** | 12 |
 | Session state Save + Load | **69 µs** | 29 |
 | JSON analysis (1000 rows) | **269 µs** | 2 068 |
+| Daemon roundtrip (warm `qdf-hookd`) | **~59.7 µs** | — |
+| CLI roundtrip (fresh process spawn) | **~6.97 ms** | — |
 
 Launching the hook process itself costs Claude Code **~1–6 ms** of spawn +
-runtime init; qdf-hook's own work is a **sub-1 % sliver** of that.
+runtime init; qdf-hook's own work is a **sub-1 % sliver** of that. The resident
+daemon (`qdf-hookd`) removes the spawn cost entirely for warmed-up sessions: a
+request answered from its shared in-RAM store is **~117×** faster than a fresh
+CLI invocation of the same pipeline.
 
 ---
 
@@ -157,20 +170,51 @@ flowchart LR
 ```
 
 - **Read** — PreToolUse denies unchanged re-reads (mtime+size); PostToolUse serves
-  `§unchanged§`, a unified diff, or full content on first read.
+  `§unchanged§`, a unified diff, or full content on first read. Windowed reads
+  (an `offset`/`limit` or a partial `startLine`/`numLines` window) always pass
+  through uncached — caching a slice would poison delta tracking for the whole
+  file.
 - **Bash** — structural summarizers → `§ref` dedup of repeats → ANSI/RLE squeeze
   → pass through.
 - **Grep** — group content matches per file (capped) or delegate a file list to
   the tree compressor.
 - **Glob** — flat list → directory tree. **Write/Edit** — suppress echo, cache the
-  real file for the next delta. **Compaction** — force full re-read + file
-  manifest.
+  real file for the next delta (Write/Edit/MultiEdit tool responses carry no
+  plain-text field — the hook resolves `originalFile`/`structuredPatch`
+  instead). **Compaction** — force full re-read + file manifest.
+
+### Resident daemon (`qdf-hookd`)
+
+Every hook invocation above still pays Claude Code's `exec` cost — spawning a
+fresh process and re-decoding the on-disk cache — even though qdf-hook's own
+logic runs in tens of microseconds. `qdf-hookd` removes that spawn: it's a
+long-lived process, started (and version-checked) at `SessionStart` via
+`qdf-hook daemon --ensure`, that answers hook requests over a unix socket
+(`~/.qdf-hook/d.sock`) against one shared in-RAM state store instead of a
+per-invocation disk round trip.
+
+The `PostToolUse`/`PreToolUse` hooks are a **hybrid client**: `nc <flags> -U
+<sock> 2>/dev/null || <exe> <sub>` talks to the daemon when it's up and falls
+back to the plain CLI when it isn't. The `nc` flags are platform-specific
+(macOS's `/usr/bin/nc` has no `-N` and half-closes on stdin EOF by default;
+Linux/BSD's OpenBSD `nc` needs `-N` to half-close) — override with
+`QDF_NC_ARGS` if your `nc` differs. A `PING` handshake carrying the binary's
+version lets `daemon --ensure` detect and replace a stale daemon after an
+upgrade; `QUIT` requests a clean shutdown; an idle daemon exits on its own
+after 30 minutes. The daemon restores `GOMAXPROCS(NumCPU)` and the garbage
+collector on start — the one-shot CLI disables both for startup speed, but a
+long-lived process needs them.
 
 Every persisted store is a rebuildable cache written with a single plain write
 and serialized with [`qdf`](https://github.com/alex60217101990/qdf)
 (~38× faster decode than JSON); decode and hashing are zero-copy. A `§ref` is
 emitted only when the current output's hash already has a stored blob, so it can
-never point at stale or wrong content.
+never point at stale or wrong content. The `refs/` and rerun-delta `last/`
+stores are bounded: `gc` (run automatically, throttled to at most once per 24h
+at `SessionStart`, and on a 10-minute sweep inside the daemon) evicts the
+lowest-utility blobs — hits × exponential time-decay — once total size exceeds
+`--cache-max-size` (default 128 MiB) or an entry is older than `--cache-ttl`
+(default 720h / 30 days).
 
 ---
 
@@ -179,28 +223,44 @@ never point at stale or wrong content.
 | Subcommand | Purpose |
 | --- | --- |
 | `init` | **Install all hooks into Claude Code settings.json** (idempotent) |
+| `post` | Universal `PostToolUse` hook — routes any tool through the pipeline |
 | `pretooluse` | Deny re-read of an unchanged file (mtime+size) |
-| `read` | `§unchanged§` / unified-diff compression |
-| `bash` | Structured summaries + `§ref` dedup + ANSI/RLE squeeze |
-| `write` | Suppress content echo, prime delta cache |
-| `glob` / `grep` | File tree / grouped matches |
+| `read` | `§unchanged§` / unified-diff compression (standalone; superseded by `post`) |
+| `bash` | Structured summaries + `§ref` dedup + ANSI/RLE squeeze (standalone; superseded by `post`) |
+| `write` | Suppress content echo, prime delta cache (standalone; superseded by `post`) |
+| `glob` / `grep` | File tree / grouped matches (standalone; superseded by `post`) |
 | `precompact` / `postcompact` | Full re-read + file manifest around compaction |
-| `stats` | Token-savings analytics (`--json`) |
-| `gc` | Evict low-utility sessions + old `§ref` blobs (`--dry-run`) |
+| `sessionstart` | `SessionStart` hook logic (invoked via `daemon --ensure`) |
+| `daemon --serve` | Run the `qdf-hookd` serve loop in the foreground |
+| `daemon --ensure` | Start/refresh `qdf-hookd`, replacing a stale version; throttled disk-cache gc |
+| `stats` | Token-savings + latency analytics (`--json`, `--style line\|braille`) |
+| `gc` | Evict low-utility sessions + bounded `refs/`/`last/` blobs (`--dry-run`) |
 | `expand <hash>` | Print the full content behind a `§ref:HASH§` token |
 | `version` | Print version |
 
 Global flags: `--cpuprofile FILE`, `--memprofile FILE`.
 
+`qdf-hook init` installs a single catch-all `PostToolUse` hook (`post`) plus the
+`PreToolUse`/`SessionStart` hooks; the per-tool subcommands (`read`, `bash`,
+`write`, `glob`, `grep`) still work standalone but are superseded by `post` and
+pruned from `settings.json` on re-`init`.
+
 ## Configuration
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `QDF_REF_TTL_HOURS` | `168` (7 d) | Max age of a `§ref` blob before `gc` prunes it |
-| `QDF_DECAY_LAMBDA` | `0.1` | Decay rate for session eviction utility |
+| `QDF_CACHE_MAX_SIZE` | `128 MiB` | Combined size cap for `refs/` + `last/` before `gc` evicts |
+| `QDF_CACHE_TTL` | `720h` (30 d) | Max age of a cache entry before `gc` prunes it regardless of size |
+| `QDF_DECAY_LAMBDA` | `0.1` | Decay rate for utility-score eviction (sessions and blobs) |
+| `QDF_SKIP_TOOLS` | *(none)* | Comma-separated tool names to always pass through verbatim |
+| `QDF_NC_ARGS` | platform default | Override the `nc` flags the hybrid client uses to reach `qdf-hookd` |
 
-State lives under `~/.qdf-hook/` (`sessions/`, `refs/`, `analytics.jsonl`) and is
-a rebuildable cache — safe to delete anytime.
+`--cache-max-size` and `--cache-ttl` flags on `daemon` and `gc` override the
+env vars for a single invocation.
+
+State lives under `~/.qdf-hook/` (`sessions/`, `refs/`, `last/`, `d.sock`,
+`analytics.jsonl`) and is a rebuildable cache — safe to delete anytime (the
+daemon will restart itself and the caches will refill).
 
 ## FAQ
 
@@ -211,7 +271,20 @@ only *deny* a redundant re-read. Never mutates files or command behavior.
 rarely needs it — a `§ref` means it already saw that exact output.
 
 **Safe across crashes / concurrent hooks?** Yes — state is content-addressed and
-rebuildable; a torn write is treated as a cache miss.
+rebuildable; a torn write is treated as a cache miss. A daemon connection that
+panics is recovered per-connection and just closes without a reply, so the
+hybrid client's CLI fallback covers it.
+
+**Do I need to manage the daemon myself?** No. `SessionStart` runs
+`daemon --ensure`, which starts it if it's not running, replaces it if it's a
+stale version, and is a no-op otherwise. It exits on its own after 30 minutes
+idle. To stop it early, send it `QUIT` (e.g. `printf 'QUIT\n' | nc -U
+~/.qdf-hook/d.sock`) — it flushes and shuts down cleanly.
+
+**What if `nc` isn't available or behaves differently?** The hybrid command
+falls back to the plain CLI subcommand whenever `nc` fails to connect — you
+lose the daemon speedup, not correctness. Set `QDF_NC_ARGS` to override the
+flags for a non-standard `nc`.
 
 **Plays nice with other hooks (sqz, atuin, …)?** Yes; `qdf-hook init` preserves
 them. They compose.

@@ -46,10 +46,16 @@ half of plausible optimizations turn out to be neutral or worse once measured.
 ## Serialization: use qdf
 
 All on-disk state uses [`qdf`](https://github.com/alex60217101990/qdf), not
-`encoding/json`:
+`encoding/json`. The option picked per store matters and isn't uniform:
 
-- **`OptBalanced`** for hot read paths — repetitive-payload default, ~38× faster
-  decode than JSON at equal wire size.
+- **`OptSpeed`** for session state (`internal/cache/store.go`) — it's written
+  on *every* hook, so minimizing per-Marshal allocs beats a smaller wire size;
+  `OptBalanced`/`OptCompression` add codec overhead (Dense/QPack/ShapeIntern,
+  rANS/FSST/Gorilla) that doesn't pay off at this write frequency.
+- **`OptBalanced`** for `§ref` blobs, the rerun-delta `last/` store, and the
+  usage sidecar index (`internal/cache/ref.go`, `lastout.go`, `usage.go`) —
+  the repetitive-payload default, ~38× faster decode than JSON at equal wire
+  size; these are read far more often than written.
 - **`WithNoCopy`** to decode string/`[]byte` fields as aliases into the read
   buffer — only where that buffer outlives the value and is never mutated.
 - **Plain `os.WriteFile`** (no tmp+rename) for the rebuildable caches — a torn
@@ -65,6 +71,40 @@ All on-disk state uses [`qdf`](https://github.com/alex60217101990/qdf), not
   degrade to a fresh, correct result, never wrong content or a crash.
 - Any compressor must be **never-worse**: only replace output when the
   replacement is strictly smaller than the original.
+- Handle each tool's **real `tool_response` shape**, not an assumed one: Read
+  nests content under `file.content` (with window metadata), Edit/MultiEdit
+  have no plain-text field at all (`originalFile`/`oldString`/`newString`/
+  `structuredPatch`, and `originalFile` can be the whole pre-edit file), Bash
+  uses `stdout`/`stderr`. A windowed Read (`offset`/`limit`, or a
+  `startLine`/`numLines` partial) must pass through uncached — never fed into
+  delta/unchanged tracking, which assumes it's looking at the whole file.
+
+## Correctness rules for the daemon
+
+`qdf-hookd` (`internal/daemon`) is long-lived and handles concurrent
+connections, which is a different risk profile from the one-shot CLI:
+
+- **Never let a connection hang the daemon.** Every connection gets a bounded
+  deadline (`connDeadlineNS`) covering read + dispatch + write; an unbounded
+  `io.ReadAll` on a client that never half-closes would otherwise leak the
+  handler goroutine and block clean shutdown via `Serve`'s `wg.Wait()`.
+- **A panic in one connection must never take down the daemon.** `handleConn`
+  recovers and just closes the connection — the hybrid client's CLI fallback
+  covers the dropped request.
+- **The daemon and the CLI must produce byte-identical hook output** for the
+  same input. Both call the same `hook.Dispatch`/`DispatchBytes` — the only
+  difference is which `hookcore.StateStore` backs the call
+  (`DiskStore` for the CLI, `MemStore` for the daemon). New hook logic goes in
+  `internal/hook` against the `hookcore.StateStore` interface, never
+  hardcoded against one backend.
+- **The daemon must restore normal runtime behavior.** `main.init()`'s
+  `GOMAXPROCS(1)` + `SetGCPercent(-1)` (fast one-shot CLI startup) would leak
+  and serialize connections if left in place for a long-lived process —
+  `daemon --serve` calls `restoreDaemonRuntime()` first.
+- **Flush and sweep on a schedule, not just on exit.** `Serve` flushes dirty
+  state every 5 s and sweeps `refs/`/`last/` to their bounds every 10 minutes,
+  so a crash or a long session never loses more than one interval's worth of
+  state or lets the cache grow unbounded.
 
 ## Commits
 
@@ -76,7 +116,11 @@ All on-disk state uses [`qdf`](https://github.com/alex60217101990/qdf), not
 ## Adding a compressor
 
 1. Put detection + summarization in `internal/detect` (pure, table-testable).
-2. Wire it into the relevant handler in `internal/hook`.
+2. Wire it into the relevant handler in `internal/hook`. If it's a tool-agnostic
+   shape (not a new Read/Write-style handler), wire it into `handleGeneric`
+   (`internal/hook/dispatch.go`) instead — every tool already flows through
+   `Dispatch`/`post`, so it needs no new subcommand or `settings.json` entry.
 3. Add a benchmark and a never-worse test (summary strictly shorter; malformed
    input passes through unchanged).
-4. Register the subcommand in `cmd/qdf-hook/main.go` if it's a new hook.
+4. Register a new subcommand in `cmd/qdf-hook/main.go` only if it's a genuinely
+   new hook *event* (not just a new tool shape) — most additions don't need one.

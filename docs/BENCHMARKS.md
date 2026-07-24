@@ -61,6 +61,34 @@ init alone is **~1–6 ms**. qdf-hook's own work (tens of µs) is a **sub-1 %
 sliver** of that — it is never the latency bottleneck, so the token savings come
 essentially for free.
 
+## Daemon vs. one-shot CLI roundtrip
+
+`internal/daemon`'s `BenchmarkDaemonRoundtrip` and `BenchmarkCLIRoundtrip` send
+the identical fixed payload through the identical `hook.Dispatch` pipeline, so
+the measured delta is pure transport overhead — process spawn plus
+`DiskStore`'s disk round trip — not differing amounts of compression work:
+
+| Path | Time |
+| --- | --- |
+| Warm `qdf-hookd`, dial + write + half-close + read | **~59.7 µs** |
+| Fresh `qdf-hook post` process (`exec` + stdin/stdout) | **~6.97 ms** |
+
+That's **~117×**. It confirms the daemon's premise: qdf-hook's own compression
+logic was already tens of microseconds (see the table above); the ~1–6 ms
+Claude Code paid per hook was almost entirely process-spawn and disk-decode
+overhead the daemon design set out to remove, and the roundtrip benchmark
+shows it actually is removed, not just theoretically eliminated.
+
+Perf work on the daemon path itself — a pooled read buffer for incoming
+requests (`internal/daemon`'s request pool) instead of a fresh allocation per
+connection, and `DispatchBytes`'s single `json.Unmarshal` instead of wrapping
+the request in a `json.Decoder` — trims allocation and copying on the hot
+in-RAM path. Both are qualitative wins (fewer allocs, one less buffering
+layer) confirmed by the project's tests and benchmarks; no separate
+before/after nanosecond figures for those two changes in isolation are
+recorded here, since the roundtrip numbers above already capture the warm,
+optimized path end to end.
+
 ## Optimization history
 
 Each change was `benchstat`-gated and kept only if it cleared the noise.
@@ -88,6 +116,9 @@ Each change was `benchstat`-gated and kept only if it cleared the noise.
 ```bash
 # latency
 go test -bench=. -benchmem -count=6 ./...
+
+# daemon vs. CLI roundtrip specifically
+go test -bench='BenchmarkDaemonRoundtrip|BenchmarkCLIRoundtrip' -benchmem -count=6 ./internal/daemon/
 
 # token savings: run the binary over sample inputs and read its analytics
 qdf-hook stats --json
