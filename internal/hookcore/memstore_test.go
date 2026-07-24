@@ -31,23 +31,19 @@ func TestMemStore_FlushEvictConcurrentLoad(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 8 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 50 {
 				_ = m.LoadSession("sess") // reads Files under RLock
 			}
-		}()
+		})
 	}
 	for range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 50 {
 				s.SaveSession("sess", newBig()) // re-mark dirty
 				m.FlushDirty()                  // cache.Save -> Evict deletes
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }
