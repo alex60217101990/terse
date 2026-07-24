@@ -2,15 +2,24 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
+	"time"
 
+	"github.com/alex60217101990/qdf-hook/internal/daemon"
 	"github.com/alex60217101990/qdf-hook/internal/hook"
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/spf13/cobra"
 )
+
+// socketDialTimeout bounds how long post/pretooluse wait to dial the resident
+// daemon before falling back to inline dispatch. Short: a live daemon accepts
+// near-instantly, so this only matters (and only costs real time) when the
+// daemon is down.
+const socketDialTimeout = 2 * time.Second
 
 func init() {
 	// qdf-hook is a one-shot CLI: it does a single unit of work and exits in
@@ -195,7 +204,7 @@ func cmdPost() *cobra.Command {
 		Use:   "post",
 		Short: "Universal PostToolUse hook — routes any tool through the pipeline",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return hook.Dispatch(hookcore.NewDiskStore(), os.Stdin, os.Stdout)
+			return runPost()
 		},
 	}
 }
@@ -244,7 +253,34 @@ func runVersion() error {
 
 func runRead() error         { return hook.HandleRead(os.Stdin, os.Stdout) }
 func runBash() error         { return hook.HandleBash(os.Stdin, os.Stdout) }
-func runPreToolUse() error   { return hook.HandlePreToolUse(os.Stdin, os.Stdout) }
 func runPreCompact() error   { return hook.HandlePreCompact(os.Stdin, os.Stdout) }
 func runPostCompact() error  { return hook.HandlePostCompact(os.Stdin, os.Stdout) }
 func runSessionStart() error { return hook.HandleSessionStart(os.Stdin, os.Stdout) }
+
+// runPost tries the resident daemon first (pure-Go socket client), falling
+// back to a correct in-process dispatch when the daemon is unreachable. This
+// replaces the old `nc || qdf-hook post` shell hybrid: one process, one spawn.
+func runPost() error { return socketFirst() }
+
+// runPreToolUse tries the resident daemon first, same as runPost — the daemon
+// multiplexes both PreToolUse and PostToolUse over one socket (see
+// hook.routeInput), so both subcommands share the identical socket-first
+// dispatch, distinguished only by the hook_event_name already present in the
+// stdin payload.
+func runPreToolUse() error { return socketFirst() }
+
+// socketFirst dials the daemon's unix socket and, on success, proxies the
+// already-dialed connection (os.Stdin/os.Stdout) through it — committing to
+// the socket, since os.Stdin can only be read once. Only a *dial* failure
+// (daemon absent or unreachable) falls back to inline dispatch: at that point
+// no bytes have been read from stdin yet, so it is still intact for
+// hook.Dispatch to consume. A dial success that then fails mid-stream is not
+// retried inline, since stdin may already be partially consumed.
+func socketFirst() error {
+	c, derr := net.DialTimeout("unix", daemon.SockPath(), socketDialTimeout)
+	if derr != nil {
+		// Daemon down: stdin untouched, dispatch inline.
+		return hook.Dispatch(hookcore.NewDiskStore(), os.Stdin, os.Stdout)
+	}
+	return daemon.ProxyConn(c, os.Stdin, os.Stdout, socketDialTimeout)
+}
