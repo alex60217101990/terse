@@ -7,11 +7,12 @@ import (
 
 // HookInput is the JSON Claude Code sends to any PostToolUse hook on stdin.
 type HookInput struct {
-	ToolResponse *ToolResponse   `json:"tool_response,omitempty"`
-	SessionID    string          `json:"session_id"`
-	ToolName     string          `json:"tool_name"`
-	ToolUseID    string          `json:"tool_use_id,omitempty"`
-	ToolInput    json.RawMessage `json:"tool_input"`
+	ToolResponse  *ToolResponse   `json:"tool_response,omitempty"`
+	SessionID     string          `json:"session_id"`
+	ToolName      string          `json:"tool_name"`
+	ToolUseID     string          `json:"tool_use_id,omitempty"`
+	HookEventName string          `json:"hook_event_name,omitempty"`
+	ToolInput     json.RawMessage `json:"tool_input"`
 }
 
 // ToolResponse holds the raw tool output Claude Code produced. Different tools

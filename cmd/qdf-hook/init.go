@@ -244,8 +244,12 @@ func upgradeExisting(entries []hookEntry, sub, want string) bool {
 //     already live before the first PostToolUse hook fires.
 func hookCommand(h hookSpec, exe string) string {
 	switch {
-	case h.event == "PostToolUse" && h.sub == "post":
-		return fmt.Sprintf("nc -N -U %s 2>/dev/null || %s post", daemon.SockPath(), exe)
+	// PostToolUse and PreToolUse both go through the daemon/CLI hybrid so a
+	// warm qdf-hookd answers from RAM (a repeated Read's mtime check never
+	// pays a fresh process + disk decode); the fallback subcommand differs.
+	case h.event == "PostToolUse" && h.sub == "post",
+		h.event == "PreToolUse" && h.sub == "pretooluse":
+		return fmt.Sprintf("nc -N -U %s 2>/dev/null || %s %s", daemon.SockPath(), exe, h.sub)
 	case h.event == "SessionStart" && h.sub == "daemon":
 		return exe + " daemon --ensure"
 	default:

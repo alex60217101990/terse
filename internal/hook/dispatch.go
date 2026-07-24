@@ -45,6 +45,13 @@ func DispatchBytes(store hookcore.StateStore, req []byte, w io.Writer) error {
 }
 
 func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
+	// PreToolUse (the Read mtime fast-path) is distinguished by the event name
+	// Claude sends in the payload — the daemon multiplexes both events over one
+	// socket, unlike the CLI where the subcommand picked the handler. Anything
+	// else is a PostToolUse event, routed by tool name.
+	if inp.HookEventName == "PreToolUse" {
+		return handlePreToolUse(store, inp, w)
+	}
 	switch inp.ToolName {
 	case "Read":
 		return handleRead(store, inp, w)

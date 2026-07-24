@@ -78,6 +78,52 @@ func bashPayload(output string) string {
 	return string(b)
 }
 
+// readEventPayload builds a Read hook payload for the given event. A PostToolUse
+// payload carries tool_response.content; a PreToolUse one does not.
+func readEventPayload(event, sid, path, content string) string {
+	inp := map[string]any{
+		"session_id":      sid,
+		"hook_event_name": event,
+		"tool_name":       "Read",
+		"tool_input":      map[string]any{"file_path": path},
+	}
+	if content != "" {
+		inp["tool_response"] = map[string]any{"content": content}
+	}
+	b, _ := json.Marshal(inp)
+	return string(b)
+}
+
+// TestDaemon_PreToolUseRoutesAndDenies proves PreToolUse is routed through the
+// daemon (by hook_event_name) against the in-RAM session a prior PostToolUse
+// Read populated — a repeated read of an unchanged file is denied from RAM
+// without a fresh CLI process or disk decode.
+func TestDaemon_PreToolUseRoutesAndDenies(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	sock := tempSock(t)
+	go func() { _ = daemon.Serve(sock, time.Minute, "test") }()
+	waitForSock(t, sock)
+
+	fp := filepath.Join(t.TempDir(), "f.go")
+	content := strings.Repeat("package x\n", 60)
+	if err := os.WriteFile(fp, []byte(content), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	// Prime the daemon's session cache with a PostToolUse Read.
+	_ = roundtrip(t, sock, readEventPayload("PostToolUse", "sess-pre", fp, content))
+
+	// PreToolUse for the same unchanged file must deny with the §unchanged§
+	// marker — served from the in-RAM session.
+	reply := roundtrip(t, sock, readEventPayload("PreToolUse", "sess-pre", fp, ""))
+	if !strings.Contains(reply, `"permissionDecision":"deny"`) {
+		t.Fatalf("expected PreToolUse deny for unchanged file, got: %s", reply)
+	}
+	if !strings.Contains(reply, "§unchanged") {
+		t.Fatalf("expected §unchanged marker, got: %s", reply)
+	}
+}
+
 func TestDaemon_ServesAndDedups(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	sock := tempSock(t)

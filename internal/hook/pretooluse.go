@@ -9,6 +9,7 @@ import (
 
 	"github.com/alex60217101990/qdf-hook/internal/analytics"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
 )
 
@@ -17,12 +18,19 @@ import (
 // the last compaction, it denies the read with an §unchanged§ marker —
 // the file is not read at all, saving I/O and output tokens.
 func HandlePreToolUse(r io.Reader, w io.Writer) error {
-	start := time.Now()
-
 	inp, err := protocol.DecodeInput(r)
 	if err != nil {
 		return protocol.EncodePre(w, "allow", "")
 	}
+	return handlePreToolUse(hookcore.NewDiskStore(), inp, w)
+}
+
+// handlePreToolUse is the PreToolUse logic over a decoded input and a state
+// store, so both the CLI (disk store) and the daemon (in-RAM store, via
+// routeInput) share it. Routing through the daemon lets a repeated Read hit
+// the in-memory session instead of a fresh process + disk decode.
+func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
+	start := time.Now()
 
 	var ti protocol.ReadInput
 	if err := json.Unmarshal(inp.ToolInput, &ti); err != nil || ti.FilePath == "" {
@@ -36,8 +44,8 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 		return protocol.EncodePre(w, "allow", "")
 	}
 
-	state, err := cache.Load(inp.SessionID)
-	if err != nil {
+	state := store.LoadSession(inp.SessionID)
+	if state == nil {
 		return protocol.EncodePre(w, "allow", "")
 	}
 
