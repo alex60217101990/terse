@@ -174,28 +174,56 @@ func runInit(project bool, dir string, printOnly bool) error {
 		return err
 	}
 
-	fmt.Printf("qdf-hook: installed %d hook(s) into %s\n", added, path)
+	fmt.Printf("qdf-hook: installed/updated %d hook(s) into %s\n", added, path)
 	fmt.Println("  Restart Claude Code (or start a new session) for the hooks to load.")
 	return nil
 }
 
-// mergeHooks idempotently adds every qdfHooks entry to hb, using exe as the
-// command binary. Returns how many were newly added; existing entries (from any
-// tool) are preserved, and a qdf-hook subcommand already wired for its event is
-// skipped so re-running is a no-op.
+// mergeHooks idempotently brings every qdfHooks entry in hb up to date, using
+// exe as the command binary. Returns how many entries it changed (added or
+// upgraded); other tools' entries are preserved, and an entry already at the
+// current command is left untouched so re-running is a no-op.
+//
+// An existing qdf-hook command for the event whose text differs from the
+// current one is rewritten IN PLACE rather than skipped — this upgrades an
+// older install (e.g. a plain "<exe> post" catch-all from before the daemon)
+// to the current hybrid form, and absorbs any drift in the socket path or nc
+// flags, without duplicating the entry.
 func mergeHooks(hb hooksBlock, exe string) int {
-	added := 0
+	changed := 0
 	for _, h := range qdfHooks {
-		if commandPresent(hb[h.event], h.sub) {
+		want := hookCommand(h, exe)
+		if upgradeExisting(hb[h.event], h.sub, want) {
+			changed++ // rewrote an out-of-date qdf-hook command in place
 			continue
+		}
+		if commandPresent(hb[h.event], h.sub) {
+			continue // already present and current
 		}
 		hb[h.event] = append(hb[h.event], hookEntry{
 			Matcher: h.matcher,
-			Hooks:   []hookCmd{{Type: "command", Command: hookCommand(h, exe)}},
+			Hooks:   []hookCmd{{Type: "command", Command: want}},
 		})
-		added++
+		changed++
 	}
-	return added
+	return changed
+}
+
+// upgradeExisting finds the first qdf-hook command for sub whose text differs
+// from want and rewrites it in place, returning true. A command already equal
+// to want is left alone (returns false — commandPresent then treats it as an
+// up-to-date no-op).
+func upgradeExisting(entries []hookEntry, sub, want string) bool {
+	for ei := range entries {
+		for hi := range entries[ei].Hooks {
+			cmd := entries[ei].Hooks[hi].Command
+			if isQdfHookCommand(cmd, sub) && cmd != want {
+				entries[ei].Hooks[hi].Command = want
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // hookCommand builds the full command line for a hookSpec. Most events run

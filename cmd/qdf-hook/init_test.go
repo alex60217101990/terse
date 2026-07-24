@@ -90,6 +90,57 @@ func TestIsQdfHookCommand_HybridAndEnsure(t *testing.T) {
 	}
 }
 
+// TestMergeHooks_UpgradesPlainPostToHybrid covers the pre-daemon install:
+// an older init wired a plain "<exe> post" catch-all. Re-running init must
+// rewrite it in place to the hybrid (daemon) form — not skip it as "present"
+// and not add a duplicate — so upgrading actually enables the daemon path.
+func TestMergeHooks_UpgradesPlainPostToHybrid(t *testing.T) {
+	exe := "/Users/x/.local/bin/qdf-hook"
+	hb := hooksBlock{
+		"PostToolUse": []hookEntry{
+			{Matcher: ".*", Hooks: []hookCmd{{Type: "command", Command: exe + " post"}}},
+		},
+	}
+
+	changed := mergeHooks(hb, exe)
+	if changed == 0 {
+		t.Fatal("expected mergeHooks to report a change (upgrade), got 0")
+	}
+
+	// Still exactly one PostToolUse entry (upgraded in place, not duplicated).
+	posts := 0
+	var postCmd string
+	for _, e := range hb["PostToolUse"] {
+		for _, h := range e.Hooks {
+			if isQdfHookCommand(h.Command, "post") {
+				posts++
+				postCmd = h.Command
+			}
+		}
+	}
+	if posts != 1 {
+		t.Fatalf("expected exactly 1 post hook after upgrade, got %d", posts)
+	}
+	if !strings.Contains(postCmd, "nc -N -U") || !strings.Contains(postCmd, "|| "+exe+" post") {
+		t.Errorf("plain post was not upgraded to hybrid: %q", postCmd)
+	}
+
+	// Idempotent now: a second merge changes nothing on the post entry.
+	before := postCmd
+	_ = mergeHooks(hb, exe)
+	postCmd = ""
+	for _, e := range hb["PostToolUse"] {
+		for _, h := range e.Hooks {
+			if isQdfHookCommand(h.Command, "post") {
+				postCmd = h.Command
+			}
+		}
+	}
+	if postCmd != before {
+		t.Errorf("second merge changed the already-hybrid command: %q -> %q", before, postCmd)
+	}
+}
+
 func TestPruneSuperseded_RemovesOldPerToolHookNotHybrid(t *testing.T) {
 	hb := hooksBlock{
 		"PostToolUse": []hookEntry{
