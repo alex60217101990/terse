@@ -202,7 +202,12 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 					cs.ConstCount = cnt
 				}
 			}
-			// Sort by frequency descending, take top 5.
+			// Sort by frequency descending, take top 5. The value is built by
+			// ranging a Go map (random order), so the sort MUST fully order the
+			// result — tiebreak equal counts by key ascending. Without the
+			// tiebreak, tied frequencies land in map-iteration order, so the
+			// same input yields different bytes run-to-run; that breaks §ref
+			// dedup, whose whole premise is identical output hashing identically.
 			type kv struct {
 				k string
 				v int
@@ -212,7 +217,10 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 				top = append(top, kv{k, v})
 			}
 			slices.SortFunc(top, func(a, b kv) int {
-				return b.v - a.v
+				if a.v != b.v {
+					return b.v - a.v
+				}
+				return strings.Compare(a.k, b.k)
 			})
 			limit := min(5, len(top))
 			for _, pair := range top[:limit] {

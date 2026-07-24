@@ -35,6 +35,68 @@ func minInt(a, b int) int {
 	return b
 }
 
+// TestAnalyzeJSONArray_TopVals_DeterministicOnTies guards a §ref-breaking bug:
+// TopVals was sorted by count only, so string values tied at the same count
+// fell out in Go map-iteration order — the same input produced different bytes
+// run to run, and content-addressed dedup never fired. The sort now tiebreaks
+// by key ascending. Build a column with several values all tied at count 2 and
+// assert the result is identical across many analyses and in key order.
+func TestAnalyzeJSONArray_TopVals_DeterministicOnTies(t *testing.T) {
+	// 5 distinct "tag" values, each appearing exactly twice -> all tied.
+	tags := []string{"delta", "alpha", "echo", "charlie", "bravo"}
+	var b []byte
+	b = append(b, '[')
+	first := true
+	for _, tag := range tags {
+		for range 2 {
+			if !first {
+				b = append(b, ',')
+			}
+			first = false
+			b = append(b, []byte(`{"tag":"`+tag+`"}`)...)
+		}
+	}
+	b = append(b, ']')
+
+	var want []string
+	for i := range 20 {
+		st, err := detect.AnalyzeJSONArray(b, 1000)
+		if err != nil {
+			t.Fatalf("AnalyzeJSONArray: %v", err)
+		}
+		var tagCol *detect.ColStats
+		for j := range st.Columns {
+			if st.Columns[j].Name == "tag" {
+				tagCol = &st.Columns[j]
+			}
+		}
+		if tagCol == nil {
+			t.Fatal("no 'tag' column")
+		}
+		if i == 0 {
+			want = append(want, tagCol.TopVals...)
+			// All tied at count 2 -> must be key-ascending.
+			expect := []string{`"alpha"×2`, `"bravo"×2`, `"charlie"×2`, `"delta"×2`, `"echo"×2`}
+			if len(tagCol.TopVals) != len(expect) {
+				t.Fatalf("TopVals = %v, want %v", tagCol.TopVals, expect)
+			}
+			for k := range expect {
+				if tagCol.TopVals[k] != expect[k] {
+					t.Fatalf("TopVals not key-ascending on ties: got %v, want %v", tagCol.TopVals, expect)
+				}
+			}
+		} else if len(tagCol.TopVals) != len(want) {
+			t.Fatalf("run %d: TopVals length changed: %v vs %v", i, tagCol.TopVals, want)
+		} else {
+			for k := range want {
+				if tagCol.TopVals[k] != want[k] {
+					t.Fatalf("run %d: TopVals nondeterministic: %v vs %v", i, tagCol.TopVals, want)
+				}
+			}
+		}
+	}
+}
+
 func TestAnalyzeJSONArray_1k(t *testing.T) {
 	data, err := os.ReadFile("../../testdata/json_array_1k.json")
 	if err != nil {
