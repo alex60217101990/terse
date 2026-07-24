@@ -9,6 +9,49 @@ import (
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 )
 
+// TestMemStore_FlushEvictConcurrentLoad reproduces the daemon crash where
+// FlushDirty handed the live stored *SessionState to cache.Save, whose Evict
+// deletes from Files (>200-file sessions), racing a concurrent LoadSession's
+// read of that same map — a fatal "concurrent map read and map write" that
+// recover cannot catch. With the copy-before-Save fix this runs clean under
+// -race. The session carries >200 files so Evict actually fires on flush.
+func TestMemStore_FlushEvictConcurrentLoad(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+
+	newBig := func() *cache.SessionState {
+		st := cache.NewSessionState()
+		for i := range 260 { // > 200 so cache.Save's Evict deletes entries
+			st.Files[fmt.Sprintf("/f/%d", i)] = cache.FileEntry{Turn: i}
+		}
+		return st
+	}
+	s.SaveSession("sess", newBig())
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 50 {
+				_ = m.LoadSession("sess") // reads Files under RLock
+			}
+		}()
+	}
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 50 {
+				s.SaveSession("sess", newBig()) // re-mark dirty
+				m.FlushDirty()                  // cache.Save -> Evict deletes
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func TestMemStore_RoundTripAndFlush(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	m := hookcore.NewMemStore()

@@ -177,13 +177,26 @@ func (m *MemStore) LoadSession(id string) *cache.SessionState {
 		sh.mu.RUnlock()
 		return cache.NewSessionState()
 	}
+	cp := copySession(st)
+	sh.mu.RUnlock()
+	return cp
+}
+
+// copySession returns a copy of st with its own Files map. The stored session
+// must never be handed out or written to a mutating consumer directly: both
+// LoadSession's callers (which edit in place) and FlushDirty's cache.Save
+// (which mutates Files via Evict) operate on a copy, so the map a concurrent
+// LoadSession reads under sh.mu is never structurally modified without a lock.
+// FileEntry values (including Content []byte) are shared by the copy, which is
+// safe because nothing mutates a FileEntry in place — entries are only added,
+// replaced, or deleted at the map level.
+func copySession(st *cache.SessionState) *cache.SessionState {
 	cp := &cache.SessionState{
 		Turn:        st.Turn,
 		CompactedAt: st.CompactedAt,
 		Files:       make(map[string]cache.FileEntry, len(st.Files)),
 	}
 	maps.Copy(cp.Files, st.Files)
-	sh.mu.RUnlock()
 	return cp
 }
 
@@ -266,9 +279,18 @@ func (m *MemStore) FlushDirty() {
 		sh := m.shardFor(id)
 		sh.mu.RLock()
 		st, ok := sh.sessions[id]
+		var cp *cache.SessionState
+		if ok {
+			// Copy under the lock: cache.Save calls Evict, which deletes from
+			// Files. Mutating the stored map here (even though we only hold
+			// RLock) would race a concurrent LoadSession's read of the same
+			// map — a fatal "concurrent map read and map write" that recover
+			// cannot catch. Save the copy instead.
+			cp = copySession(st)
+		}
 		sh.mu.RUnlock()
 		if ok {
-			_ = cache.Save(id, st)
+			_ = cache.Save(id, cp)
 		}
 	}
 
