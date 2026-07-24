@@ -21,6 +21,7 @@ func SummarizeGoTest(s string) string {
 		passCount, failCount, skipCount int
 		duration                        string
 		pkg                             string
+		pkgCount                        int // distinct package-result lines seen
 		failLines                       []string
 		currentIndented                 []string // indented lines for the current test
 	)
@@ -45,15 +46,25 @@ func SummarizeGoTest(s string) string {
 			if len(parts) >= 3 {
 				pkg = parts[1]
 				duration = parts[2]
+				pkgCount++
 			}
 		case strings.HasPrefix(line, "FAIL\t"):
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				pkg = parts[1]
+				pkgCount++
 			}
 		case strings.HasPrefix(line, "    "):
 			currentIndented = append(currentIndented, line)
 		}
+	}
+
+	// When the run spanned multiple packages, the single tracked pkg/duration
+	// would misattribute the summary to just the last one — label it by count
+	// instead, and drop the (per-package) duration.
+	if pkgCount > 1 {
+		pkg = itoa(pkgCount) + " packages"
+		duration = ""
 	}
 
 	var sb strings.Builder

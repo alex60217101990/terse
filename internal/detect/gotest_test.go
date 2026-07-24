@@ -47,3 +47,17 @@ func TestSummarizeGoTest_Fail(t *testing.T) {
 		t.Errorf("summary should contain failure location: %s", s)
 	}
 }
+
+// TestSummarizeGoTest_MultiPackage guards the multi-package attribution fix:
+// a run spanning several packages must be labeled by count, not misattributed
+// to whichever package's summary line came last.
+func TestSummarizeGoTest_MultiPackage(t *testing.T) {
+	in := "ok  \tpkg/a\t0.10s\nok  \tpkg/b\t0.20s\nok  \tpkg/c\t0.30s\n"
+	out := detect.SummarizeGoTest(in)
+	if !strings.Contains(out, "3 packages") {
+		t.Errorf("multi-package summary should say '3 packages', got: %q", out)
+	}
+	if strings.Contains(out, "pkg/c") {
+		t.Errorf("must not misattribute the summary to the last package only: %q", out)
+	}
+}

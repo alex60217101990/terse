@@ -1,6 +1,7 @@
 package detect
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"slices"
@@ -110,6 +111,19 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			switch vt {
 			case jsonparser.String:
 				acc.hasStr = true
+				// jsonparser hands back the raw (still-escaped) value bytes for
+				// strings. A value containing an escape (\", \n, \uXXXX) must be
+				// unescaped before it keys the frequency map, or two encodings of
+				// the same string ("café" vs "café") count as distinct —
+				// inflating Cardinality, hiding ConstVal, and rendering escapes
+				// literally in TopVals. Only strings that actually contain a
+				// backslash pay for this; the common escape-free case stays fully
+				// zero-copy (the -96%-alloc lookup below).
+				if bytes.IndexByte(value, '\\') >= 0 {
+					if u, err := jsonparser.Unescape(value, nil); err == nil {
+						value = u
+					}
+				}
 				// Look up with a zero-copy view of the value bytes (no alloc for
 				// an existing key — the map compares by content). Only allocate
 				// an owned copy when inserting a new distinct value (capped at

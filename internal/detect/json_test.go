@@ -97,6 +97,33 @@ func TestAnalyzeJSONArray_TopVals_DeterministicOnTies(t *testing.T) {
 	}
 }
 
+// TestAnalyzeJSONArray_UnescapesStringValues guards the escape-aware fix: two
+// encodings of the same string must count as one distinct value, not inflate
+// cardinality or render escapes literally.
+func TestAnalyzeJSONArray_UnescapesStringValues(t *testing.T) {
+	// Interpreted string: é becomes a UTF-8 é byte sequence in the first
+	// value, while \\u00e9 stays a literal JSON é escape in the second —
+	// the same logical string "café" in two encodings.
+	data := []byte("[{\"v\":\"café\"},{\"v\":\"caf\\u00e9\"}]")
+	st, err := detect.AnalyzeJSONArray(data, 100)
+	if err != nil {
+		t.Fatalf("AnalyzeJSONArray: %v", err)
+	}
+	var col *detect.ColStats
+	for i := range st.Columns {
+		if st.Columns[i].Name == "v" {
+			col = &st.Columns[i]
+		}
+	}
+	if col == nil {
+		t.Fatal("no 'v' column")
+	}
+	if col.Cardinality != 1 {
+		t.Errorf(`"café" and "café" must fold to 1 distinct value, got Cardinality=%d TopVals=%v`,
+			col.Cardinality, col.TopVals)
+	}
+}
+
 func TestAnalyzeJSONArray_1k(t *testing.T) {
 	data, err := os.ReadFile("../../testdata/json_array_1k.json")
 	if err != nil {
