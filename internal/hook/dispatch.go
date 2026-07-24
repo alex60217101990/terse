@@ -27,6 +27,24 @@ func Dispatch(store hookcore.StateStore, r io.Reader, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("DecodeInput: %w", err)
 	}
+	return routeInput(store, inp, w)
+}
+
+// DispatchBytes is Dispatch for callers that already hold the whole request in
+// memory (the daemon, via a pooled read buffer): it decodes with a single
+// json.Unmarshal instead of wrapping the bytes in a json.Decoder, avoiding
+// that decoder's extra buffering/streaming layer on the hottest path. Pool
+// safety is unchanged — json.Unmarshal, like the Decoder, copies every string
+// out of req, so nothing routeInput retains aliases the pooled bytes.
+func DispatchBytes(store hookcore.StateStore, req []byte, w io.Writer) error {
+	inp, err := protocol.DecodeInputBytes(req)
+	if err != nil {
+		return fmt.Errorf("DecodeInput: %w", err)
+	}
+	return routeInput(store, inp, w)
+}
+
+func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
 	switch inp.ToolName {
 	case "Read":
 		return handleRead(store, inp, w)

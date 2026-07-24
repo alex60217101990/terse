@@ -79,6 +79,18 @@ func DecodeInput(r io.Reader) (*HookInput, error) {
 	return &inp, nil
 }
 
+// DecodeInputBytes decodes one HookInput from a fully-buffered request via
+// json.Unmarshal, avoiding the json.Decoder buffering that DecodeInput's
+// io.Reader path pays. For callers (the daemon) that already hold the whole
+// request slice.
+func DecodeInputBytes(data []byte) (*HookInput, error) {
+	var inp HookInput
+	if err := json.Unmarshal(data, &inp); err != nil {
+		return nil, err
+	}
+	return &inp, nil
+}
+
 // EncodeOutput writes HookOutput as JSON to w followed by a newline.
 func EncodeOutput(w io.Writer, out *HookOutput) error {
 	enc := json.NewEncoder(w)

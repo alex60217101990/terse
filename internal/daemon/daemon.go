@@ -5,7 +5,6 @@
 package daemon
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -228,7 +227,9 @@ func handleConn(c net.Conn, store hookcore.StateStore, version string, requestSh
 		return
 	}
 
-	_ = hook.Dispatch(store, bytes.NewReader(req), c)
+	// DispatchBytes decodes the already-buffered request directly, skipping the
+	// json.Decoder buffering an io.Reader path would add.
+	_ = hook.DispatchBytes(store, req, c)
 }
 
 // ping dials sockPath, sends a PING request, and returns the trimmed reply
