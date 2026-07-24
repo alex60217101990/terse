@@ -5,6 +5,7 @@
 package daemon
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/hook"
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
@@ -236,7 +238,10 @@ func handleConn(c net.Conn, store hookcore.StateStore, version string, requestSh
 	defer putRequest(buf)
 	req := buf.Bytes()
 
-	switch strings.TrimSpace(string(req)) {
+	// B2S over the trimmed bytes: avoid copying the whole (up to 1 MiB)
+	// request just to compare against two 4-byte control words. The view is
+	// switch-local and never outlives req (released by defer putRequest).
+	switch bytesconv.B2S(bytes.TrimSpace(req)) {
 	case "PING":
 		fmt.Fprintf(c, "qdf-hookd %s\n", version)
 		return
