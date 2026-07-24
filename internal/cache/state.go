@@ -15,6 +15,7 @@ type FileEntry struct {
 	Content    []byte   `json:"content"`
 	Turn       int      `json:"turn"`
 	ModTime    int64    `json:"mtim,omitempty"`
+	CtimeNS    int64    `json:"ctim,omitempty"`
 	ReadCount  int      `json:"rc,omitempty"`
 	LastReadAt int64    `json:"lra,omitempty"`
 	Hash       [32]byte `json:"hash"`

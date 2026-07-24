@@ -55,19 +55,25 @@ func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.W
 	reason := ""
 	var bytesIn, bytesOut int
 
-	// Deny only when BOTH mtime and size match the cached copy. mtime alone is
-	// not sufficient: cp -p, rsync --times, os.Chtimes, tar extraction and
-	// coarse-resolution filesystems (NFS, some bind mounts) can leave mtime
+	// Deny only when mtime, size AND ctime all match the cached copy. mtime
+	// alone is not sufficient: cp -p, rsync --times, os.Chtimes, tar extraction
+	// and coarse-resolution filesystems (NFS, some bind mounts) can leave mtime
 	// unchanged across a content change. Requiring the size to match as well is
-	// free (already stat'd) and closes the common cases. Residual risk — an
-	// edit that preserves both mtime and size — is rare and only costs a missed
-	// compression, never wrong content beyond that window.
+	// free (already stat'd) and closes most cases, but a same-size content
+	// change combined with a forged/rewound mtime (cp -p, touch -r) still slips
+	// through mtime+size alone. ctime advances on every content or metadata
+	// change and cannot be moved backward from userspace, so it catches that
+	// residual window. ctimeOK degrades to mtime+size when either the cached or
+	// current ctime is 0 (unavailable on Windows, or a pre-upgrade cache entry
+	// written before CtimeNS existed) so old caches don't force a mass re-read.
 	sizeMatch := info.Size() == int64(len(entry.Content))
-	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() && sizeMatch {
-		// mtime + size unchanged — safe to deny without reading.
+	curCtime := statCtimeNS(info)
+	ctimeOK := entry.CtimeNS == 0 || curCtime == 0 || entry.CtimeNS == curCtime
+	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() && sizeMatch && ctimeOK {
+		// mtime+size+ctime unchanged — safe to deny without reading.
 		hashHex := cache.ShortHex(entry.Hash[:8])
 		reason = fmt.Sprintf(
-			"§unchanged:%s§ %s — mtime+size unchanged, cached at turn %d. No re-read needed.",
+			"§unchanged:%s§ %s — mtime+size+ctime unchanged, cached at turn %d. No re-read needed.",
 			hashHex, ti.FilePath, entry.Turn,
 		)
 		decision = "deny"

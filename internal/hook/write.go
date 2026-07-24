@@ -70,9 +70,10 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 	)
 	if ti.FilePath != "" && inp.SessionID != "" {
 		if f, err := os.Open(ti.FilePath); err == nil {
-			var modTime int64
+			var modTime, ctimeNS int64
 			if fi, e := f.Stat(); e == nil {
 				modTime = fi.ModTime().UnixNano()
+				ctimeNS = statCtimeNS(fi)
 			}
 			fileBytes, rerr := io.ReadAll(f)
 			_ = f.Close()
@@ -87,6 +88,7 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 						Turn:       state.Turn,
 						Content:    fileBytes,
 						ModTime:    modTime,
+						CtimeNS:    ctimeNS,
 						LastReadAt: time.Now().Unix(),
 						ReadCount:  1,
 					}

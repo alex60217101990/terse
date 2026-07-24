@@ -61,10 +61,11 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
-	// Stat the file to capture its modification time.
-	var modTime int64
+	// Stat the file to capture its modification time and ctime.
+	var modTime, ctimeNS int64
 	if info, err := os.Stat(ti.FilePath); err == nil {
 		modTime = info.ModTime().UnixNano()
+		ctimeNS = statCtimeNS(info)
 	}
 
 	// Zero-copy view: content is only read (hashed, diffed, cached) within this
@@ -126,6 +127,7 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	updatedEntry.ReadCount++
 	updatedEntry.LastReadAt = time.Now().Unix()
 	updatedEntry.ModTime = modTime
+	updatedEntry.CtimeNS = ctimeNS
 	state.Files[ti.FilePath] = updatedEntry
 
 	store.SaveSession(inp.SessionID, state)
