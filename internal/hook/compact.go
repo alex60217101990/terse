@@ -104,6 +104,15 @@ func HandleSessionStart(r io.Reader, w io.Writer) error {
 		DurNS:  time.Since(start).Nanoseconds(),
 	})
 
+	// Best-effort automatic gc, throttled to at most once/24h. Placed after
+	// this session's manifest is already built (and the state file it reads
+	// captured to a local var) so a same-run gc sweep can never evict the
+	// very session state this request just loaded. Must never block or fail
+	// the hook: errors are swallowed.
+	if cache.ShouldRunGC(time.Now().Unix()) {
+		_, _ = cache.RunGC(false, 0.01) // 0.01 = the gc cmd's default min-score
+	}
+
 	return protocol.EncodeOutput(w, protocol.Replace(manifest))
 }
 

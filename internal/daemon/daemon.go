@@ -20,12 +20,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/hook"
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 )
 
 // flushInterval is how often Serve flushes dirty state to disk while running.
 const flushInterval = 5 * time.Second
+
+// sweepInterval is how often Serve prunes the blob caches (refs/ and last/)
+// down to their size cap and TTL while running.
+const sweepInterval = 10 * time.Minute
 
 // pingProbe is how long ping-style dials (version check, no-op detection)
 // wait before giving up on a socket that should already be live.
@@ -144,12 +149,17 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 	start := time.Now()
 	lastActivity := start
 	lastFlush := start
+	lastSweep := start
 
 	for {
 		now := time.Now()
 		if now.Sub(lastFlush) >= flushInterval {
 			store.FlushDirty()
 			lastFlush = now
+		}
+		if now.Sub(lastSweep) >= sweepInterval {
+			sweepCache(now.Unix())
+			lastSweep = now
 		}
 		if now.Sub(lastActivity) >= idle {
 			store.FlushDirty()
@@ -187,6 +197,18 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 			handleConn(c, store, version, requestShutdown)
 		})
 	}
+}
+
+// sweepCache prunes the refs/ and last/ blob stores down to their combined
+// size cap and TTL, splitting the cap evenly across the two dirs (mirroring
+// cache.RunGC's own split). Called periodically from Serve's loop, and
+// directly by tests; it never blocks on anything but local disk I/O.
+func sweepCache(nowSec int64) {
+	maxSize := cache.CacheMaxSize()
+	ttl := cache.CacheTTL()
+	half := maxSize / 2
+	cache.PruneDir(cache.RefsDir(), cache.UsageRefsPath(), half, ttl, nowSec, false)
+	cache.PruneDir(cache.LastOutDir(), cache.UsageLastPath(), half, ttl, nowSec, false)
 }
 
 // handleConn reads a single request off c to EOF (the client half-closes its
