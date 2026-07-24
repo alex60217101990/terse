@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/debug"
 	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/daemon"
@@ -14,9 +16,20 @@ import (
 // a session, short enough not to linger forever after the session ends.
 const daemonIdleTimeout = 30 * time.Minute
 
+// restoreDaemonRuntime undoes the one-shot-CLI tuning that main.init() applies
+// (GOMAXPROCS(1) + SetGCPercent(-1)). The daemon is long-lived and concurrent:
+// it MUST garbage-collect (or it leaks for its whole life) and use all Ps (or
+// it serializes connections).
+func restoreDaemonRuntime() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	debug.SetGCPercent(100)
+}
+
 func cmdDaemon() *cobra.Command {
 	var serve bool
 	var ensure bool
+	var maxSize string
+	var ttl string
 
 	cmd := &cobra.Command{
 		Use:   "daemon",
@@ -32,6 +45,13 @@ trip.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch {
 			case serve:
+				restoreDaemonRuntime()
+				if maxSize != "" {
+					_ = os.Setenv("QDF_CACHE_MAX_SIZE", maxSize)
+				}
+				if ttl != "" {
+					_ = os.Setenv("QDF_CACHE_TTL", ttl)
+				}
 				return daemon.Serve(daemon.SockPath(), daemonIdleTimeout, appVersion)
 			case ensure:
 				exe, err := os.Executable()
@@ -46,5 +66,7 @@ trip.
 	}
 	cmd.Flags().BoolVar(&serve, "serve", false, "run the daemon serve loop in the foreground")
 	cmd.Flags().BoolVar(&ensure, "ensure", false, "ensure a live, current daemon is running")
+	cmd.Flags().StringVar(&maxSize, "cache-max-size", "", "override refs/last size cap in bytes (default 128MiB / $QDF_CACHE_MAX_SIZE)")
+	cmd.Flags().StringVar(&ttl, "cache-ttl", "", "override cache TTL, e.g. 720h (default / $QDF_CACHE_TTL)")
 	return cmd
 }
