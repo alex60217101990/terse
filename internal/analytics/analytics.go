@@ -49,22 +49,39 @@ func Record(e Event) error {
 	defer recordMu.Unlock()
 
 	path := AnalyticsPath()
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return err
-	}
 
-	// Rotate if > 10MB.
-	if info, err := os.Stat(path); err == nil && info.Size() > 10*1024*1024 {
-		_ = os.Rename(path, path+".1")
-	}
-
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	// Open first; only MkdirAll on ENOENT (the dir already exists on every
+	// call but the first). Mirrors cache/io.go's writeFileLazy — drops an
+	// os.MkdirAll from this per-hook hot path.
+	f, err := openAppend(path)
 	if err != nil {
-		return err
+		if !os.IsNotExist(err) {
+			return err
+		}
+		if mkErr := os.MkdirAll(filepath.Dir(path), 0o700); mkErr != nil {
+			return mkErr
+		}
+		if f, err = openAppend(path); err != nil {
+			return err
+		}
+	}
+
+	// Rotate if > 10MB, checked via the open fd rather than a second path
+	// stat. Reopen the fresh file after renaming the old one aside.
+	if info, e := f.Stat(); e == nil && info.Size() > 10*1024*1024 {
+		_ = f.Close()
+		_ = os.Rename(path, path+".1")
+		if f, err = openAppend(path); err != nil {
+			return err
+		}
 	}
 	defer f.Close()
 	_, err = f.Write(line)
 	return err
+}
+
+func openAppend(path string) (*os.File, error) {
+	return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 }
 
 // SavedTokens estimates tokens saved from an event (4 bytes per token).
