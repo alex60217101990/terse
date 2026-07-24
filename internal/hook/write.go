@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alex60217101990/qdf-hook/internal/analytics"
+	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
 	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
 	"github.com/alex60217101990/qdf-hook/internal/protocol"
@@ -35,16 +36,19 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
-	content := []byte(inp.ToolResponse.Content)
-	if len(content) <= writePassthroughThreshold {
+	// Only the length is needed on the common (file-readable) path; the raw
+	// bytes are materialized lazily below, in the fallback branch that is the
+	// sole reader of them. Avoids copying the whole response string per call.
+	contentLen := len(inp.ToolResponse.Content)
+	if contentLen <= writePassthroughThreshold {
 		_ = analytics.Record(analytics.Event{
-			TS:      time.Now().UnixNano(),
-			SID:     inp.SessionID,
-			Hook:    "write",
-			Action:  "passthrough",
-			BytesIn: len(content),
-			BytesOut: len(content),
-			DurNS:   time.Since(start).Nanoseconds(),
+			TS:       time.Now().UnixNano(),
+			SID:      inp.SessionID,
+			Hook:     "write",
+			Action:   "passthrough",
+			BytesIn:  contentLen,
+			BytesOut: contentLen,
+			DurNS:    time.Since(start).Nanoseconds(),
 		})
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
@@ -88,7 +92,9 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		}
 	} else {
 		// Can't read the file back — emit a marker from the response but do not
-		// cache, so we never poison delta tracking with non-file bytes.
+		// cache, so we never poison delta tracking with non-file bytes. S2B is
+		// a read-only, call-scoped view (no copy); the bytes don't outlive it.
+		content := bytesconv.S2B(inp.ToolResponse.Content)
 		hash = sha256.Sum256(content)
 		hashHex = cache.ShortHex(hash[:8])
 		lineCount = bytes.Count(content, []byte("\n"))
@@ -97,15 +103,28 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 	compressed := fmt.Sprintf("[WRITE §ref:%s§ %s — %d lines, cached for delta tracking]",
 		hashHex, ti.FilePath, lineCount)
 
+	// Never-worse guard: if the marker isn't actually shorter than the
+	// original response, pass the response through unchanged rather than grow
+	// what Claude sees (a long file path can make the marker exceed a small
+	// response). Mirrors read.go's guard and every dispatch.go branch.
+	action, bytesOut := "compressed", len(compressed)
+	replace := len(compressed) < contentLen
+	if !replace {
+		action, bytesOut = "passthrough", contentLen
+	}
+
 	_ = analytics.Record(analytics.Event{
 		TS:       time.Now().UnixNano(),
 		SID:      inp.SessionID,
 		Hook:     "write",
-		Action:   "compressed",
-		BytesIn:  len(content),
-		BytesOut: len(compressed),
+		Action:   action,
+		BytesIn:  contentLen,
+		BytesOut: bytesOut,
 		DurNS:    time.Since(start).Nanoseconds(),
 	})
 
+	if !replace {
+		return protocol.EncodeOutput(w, protocol.Passthrough())
+	}
 	return protocol.EncodeOutput(w, protocol.Replace(compressed))
 }

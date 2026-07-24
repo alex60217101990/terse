@@ -138,6 +138,13 @@ func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (st
 	if !ok || prev == content {
 		return "", false
 	}
+	// Guard: UnifiedDiff (Myers) is O((N+M)²) in line count — skip it for very
+	// large reruns rather than risk gigabytes of transient allocation or a hang
+	// that would take down every daemon connection. Mirrors read.go's
+	// serveDelta guard; the caller then falls back to squeeze/passthrough.
+	if strings.Count(prev, "\n")+strings.Count(content, "\n") > 10000 {
+		return "", false
+	}
 	diff := cache.UnifiedDiff(bytesconv.S2B(prev), bytesconv.S2B(content), 3)
 	if diff == "" {
 		return "", false
