@@ -15,8 +15,6 @@ func IsGoTestOutput(s string) bool {
 // SummarizeGoTest condenses go test -v output into a compact summary.
 // For passing runs: one-line summary. For failing runs: full failure details preserved.
 func SummarizeGoTest(s string) string {
-	lines := strings.Split(s, "\n")
-
 	var (
 		passCount, failCount, skipCount int
 		duration                        string
@@ -26,7 +24,7 @@ func SummarizeGoTest(s string) string {
 		currentIndented                 []string // indented lines for the current test
 	)
 
-	for _, line := range lines {
+	for line := range strings.SplitSeq(s, "\n") {
 		switch {
 		case strings.HasPrefix(line, "=== RUN"):
 			currentIndented = nil

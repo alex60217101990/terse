@@ -17,8 +17,6 @@ func HandleGlob(r io.Reader, w io.Writer) error { return Dispatch(hookcore.NewDi
 // buildGlobTree converts a newline-separated list of file paths into a compact
 // directory-tree summary grouped by the top two path components.
 func buildGlobTree(content string) string {
-	lines := strings.Split(strings.TrimSpace(content), "\n")
-
 	type dirGroup struct {
 		dir   string
 		files []string
@@ -27,7 +25,8 @@ func buildGlobTree(content string) string {
 	var order []string
 	total := 0
 
-	for _, path := range lines {
+	// SplitSeq: single forward pass, no []string materialized.
+	for path := range strings.SplitSeq(strings.TrimSpace(content), "\n") {
 		path = strings.TrimSpace(path)
 		if path == "" {
 			continue
