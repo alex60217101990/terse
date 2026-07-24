@@ -113,3 +113,37 @@ func TestPrintStats_Text(t *testing.T) {
 		t.Error("text output should contain LATENCY section")
 	}
 }
+
+func TestImpactBar_SkewedDistributionStaysVisible(t *testing.T) {
+	// Read dominates; Edit saves far less in absolute bytes but is non-zero.
+	// Before the fix, Edit's bar floored to zero cells. After: >=1 cell.
+	ev := []analytics.Event{
+		{Hook: "Read", Action: "unchanged", BytesIn: 24_000_000, BytesOut: 900_000},
+		{Hook: "Edit", Action: "delta", BytesIn: 907_000, BytesOut: 8_400},
+		{Hook: "Agent", Action: "full", BytesIn: 1000, BytesOut: 1000},
+	}
+	stats := analytics.ComputeStats(ev)
+	var buf strings.Builder
+	analytics.PrintStats(stats, false, "blocks", &buf)
+	out := buf.String()
+
+	editLine := lineContaining(t, out, "Edit")
+	if !strings.Contains(editLine, "▬") {
+		t.Errorf("non-zero hook Edit must show >=1 filled cell, got:\n%s", editLine)
+	}
+	agentLine := lineContaining(t, out, "Agent")
+	if strings.Contains(agentLine, "▬") {
+		t.Errorf("zero-saved hook Agent must show no filled cell, got:\n%s", agentLine)
+	}
+}
+
+func lineContaining(t *testing.T, s, sub string) string {
+	t.Helper()
+	for _, line := range strings.Split(s, "\n") {
+		if strings.Contains(line, sub) {
+			return line
+		}
+	}
+	t.Fatalf("no line containing %q in:\n%s", sub, s)
+	return ""
+}

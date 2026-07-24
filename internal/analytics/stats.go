@@ -204,6 +204,17 @@ func clamp01(f float64) float64 {
 	return f
 }
 
+// impactFrac maps a per-hook saved byte count onto [0,1] with a sqrt
+// (perceptual) scale so a single dominant hook does not collapse every other
+// bar to empty. A non-zero saved always yields at least one cell (handled by
+// the caller's meter width); exactly-zero yields 0.
+func impactFrac(saved, maxSaved int) float64 {
+	if saved <= 0 || maxSaved <= 0 {
+		return 0
+	}
+	return math.Sqrt(float64(saved)) / math.Sqrt(float64(maxSaved))
+}
+
 // --- alternate bar styles (for `barsdemo`) ---
 
 // meterLine: a thick bar rule (▬, ~50% heavier than ━) fading to a thin dim
@@ -211,6 +222,9 @@ func clamp01(f float64) float64 {
 func (c colorizer) meterLine(frac float64, width int) string {
 	frac = clamp01(frac)
 	full := int(frac * float64(width))
+	if frac > 0 && full == 0 {
+		full = 1
+	}
 	var b strings.Builder
 	i := 0
 	for ; i < full && i < width; i++ {
@@ -226,6 +240,9 @@ func (c colorizer) meterLine(frac float64, width int) string {
 func (c colorizer) meterBraille(frac float64, width int) string {
 	frac = clamp01(frac)
 	full := int(frac * float64(width))
+	if frac > 0 && full == 0 {
+		full = 1
+	}
 	var b strings.Builder
 	i := 0
 	for ; i < full && i < width; i++ {
@@ -322,7 +339,7 @@ func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) {
 					pct = float64(saved) / float64(a.BytesIn) * 100
 				}
 				fmt.Fprintf(tw, "    %s\t%d\t%s\t%.0f%%\t%s\n",
-					h, a.Count, FormatBytes(saved), pct, meter(float64(saved)/float64(maxSaved), 12))
+					h, a.Count, FormatBytes(saved), pct, meter(impactFrac(saved, maxSaved), 12))
 			}
 			_ = tw.Flush()
 			fmt.Fprintln(w)
