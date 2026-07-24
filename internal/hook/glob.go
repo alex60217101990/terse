@@ -3,8 +3,9 @@ package hook
 import (
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/alex60217101990/qdf-hook/internal/hookcore"
@@ -22,7 +23,6 @@ func buildGlobTree(content string) string {
 		files []string
 	}
 	groups := make(map[string]*dirGroup)
-	var order []string
 	total := 0
 
 	// SplitSeq: single forward pass, no []string materialized.
@@ -34,17 +34,17 @@ func buildGlobTree(content string) string {
 		dir := topGlobDir(path)
 		if _, ok := groups[dir]; !ok {
 			groups[dir] = &dirGroup{dir: dir}
-			order = append(order, dir)
 		}
 		groups[dir].files = append(groups[dir].files, filepath.Base(path))
 		total++
 	}
-	sort.Strings(order)
+	// Alphabetical dir order — same as the previous first-seen+sort.Strings.
+	order := slices.Sorted(maps.Keys(groups))
 
 	var sb strings.Builder
 	for _, dir := range order {
 		g := groups[dir]
-		sort.Strings(g.files)
+		slices.Sort(g.files)
 		if len(g.files) <= 6 {
 			fmt.Fprintf(&sb, "%-30s %d files (%s)\n",
 				dir+"/", len(g.files), strings.Join(g.files, " "))
