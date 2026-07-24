@@ -54,7 +54,11 @@ func jsonArrayPayloadContent() string {
 				sb.WriteString(",")
 			}
 			first = false
-			sb.WriteString(`{"id":` + strconv.Itoa(id) + `,"name":"n` + strconv.Itoa(name) + `","active":true}`)
+			sb.WriteString(`{"id":`)
+			sb.WriteString(strconv.Itoa(id))
+			sb.WriteString(`,"name":"n`)
+			sb.WriteString(strconv.Itoa(name))
+			sb.WriteString(`","active":true}`)
 			id++
 		}
 	}
