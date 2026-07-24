@@ -228,7 +228,24 @@ func (m *MemStore) RefSeen(hash string) bool {
 	m.refsMu.RLock()
 	_, ok := m.refs[hash]
 	m.refsMu.RUnlock()
-	return ok
+	if !ok {
+		return false // a miss is authoritative: the set is a superset of disk
+	}
+	// A set hit can lag disk: the periodic blob sweep (cache.SweepBlobs) deletes
+	// evicted blobs but does not touch this in-RAM set, so a hash can remain
+	// here after its blob is gone. Confirm the blob still exists — otherwise we
+	// would emit a §ref token for pruned content and a later `expand` would
+	// fail. If the blob is gone, forget the hash so dedupWithStore re-caches it
+	// (restoring the design's "an evicted entry only costs a re-cache" invariant,
+	// exactly as the CLI's stat-based RefSeen already behaves). The stat is paid
+	// only on a set hit — the common miss path stays a pure RAM lookup.
+	if cache.RefSeen(hash) {
+		return true
+	}
+	m.refsMu.Lock()
+	delete(m.refs, hash)
+	m.refsMu.Unlock()
+	return false
 }
 
 // RefPut writes content to disk under hash (lazy qdf-encoded blob) and adds

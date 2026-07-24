@@ -2,6 +2,7 @@ package hookcore_test
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -230,5 +231,37 @@ func TestMemStore_ConcurrentLoadMutateSaveSameSession(t *testing.T) {
 
 	if got := s.LoadSession(sessionID); got == nil {
 		t.Fatal("session missing after concurrent load/mutate/save")
+	}
+}
+
+// TestMemStore_RefSeenSelfHealsAfterBlobEvicted is the final-review regression:
+// the periodic blob sweep deletes a blob but not the in-RAM seen-set, so
+// RefSeen must confirm against disk on a set hit — otherwise it would report a
+// pruned hash as seen, yielding a §ref token whose blob is gone. After the
+// blob is removed, RefSeen must return false and forget the hash so the caller
+// re-caches.
+func TestMemStore_RefSeenSelfHealsAfterBlobEvicted(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+
+	hash := "cafebabecafebabecafebabecafebabe"
+	s.RefPut(hash, "some cached content that is long enough")
+	if !s.RefSeen(hash) {
+		t.Fatal("RefSeen should be true right after RefPut")
+	}
+
+	// Simulate the sweep deleting the blob from disk (seen-set untouched).
+	if err := os.Remove(cache.RefPath(hash)); err != nil {
+		t.Fatalf("remove blob: %v", err)
+	}
+
+	if s.RefSeen(hash) {
+		t.Fatal("RefSeen must return false once the blob is gone (dangling-ref guard)")
+	}
+	// Re-caching works and is seen again.
+	s.RefPut(hash, "some cached content that is long enough")
+	if !s.RefSeen(hash) {
+		t.Fatal("RefSeen should be true again after re-caching")
 	}
 }
