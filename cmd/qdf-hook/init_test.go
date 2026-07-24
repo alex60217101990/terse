@@ -121,7 +121,7 @@ func TestMergeHooks_UpgradesPlainPostToHybrid(t *testing.T) {
 	if posts != 1 {
 		t.Fatalf("expected exactly 1 post hook after upgrade, got %d", posts)
 	}
-	if !strings.Contains(postCmd, "nc -N -U") || !strings.Contains(postCmd, "|| "+exe+" post") {
+	if !strings.Contains(postCmd, "nc "+ncArgs()+" ") || !strings.Contains(postCmd, "|| "+exe+" post") {
 		t.Errorf("plain post was not upgraded to hybrid: %q", postCmd)
 	}
 
@@ -221,8 +221,8 @@ func TestRunInit_HybridAndSessionStart(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(postCmd, "nc -N -U") {
-		t.Errorf("PostToolUse command missing %q: %q", "nc -N -U", postCmd)
+	if !strings.Contains(postCmd, "nc "+ncArgs()+" ") {
+		t.Errorf("PostToolUse command missing %q: %q", "nc "+ncArgs()+" ", postCmd)
 	}
 	if !strings.Contains(postCmd, "|| ") {
 		t.Errorf("PostToolUse command missing %q: %q", "|| ", postCmd)

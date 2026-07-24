@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -235,14 +236,30 @@ func upgradeExisting(entries []hookEntry, sub, want string) bool {
 //     CLI when it isn't. The -N flag is mandatory, not cosmetic: Claude Code
 //     feeds the tool_response JSON to the hook's stdin, and the daemon reads
 //     with io.ReadAll to EOF — it only replies once the client half-closes
-//     its write side. Plain `nc -U` never does that (it waits for the
-//     server to close first), so both sides block forever. `-N` makes nc
-//     shut down its write side on stdin EOF, unblocking the daemon's read.
-//     If a platform's nc lacks -N, nc exits nonzero immediately and `|| ...
-//     post` runs instead — nc not having consumed stdin yet, so the
-//     fallback still gets the full payload. Never drop -N.
+//     its write side. The nc flags for that are platform-specific (see
+//     ncArgs): OpenBSD nc (Linux) needs -N to half-close on stdin EOF, while
+//     macOS's /usr/bin/nc has no -N flag and half-closes by default — passing
+//     -N there makes nc error out and fall back to the CLI (correct, but the
+//     daemon is never used). Either way, if nc fails, `|| <exe> <sub>` runs
+//     the CLI with the full stdin (nc hasn't consumed it on a connect/flag
+//     failure).
 //   - SessionStart ("daemon") starts/refreshes the daemon so the socket is
 //     already live before the first PostToolUse hook fires.
+// ncArgs returns the nc flags for the daemon socket, per platform. OpenBSD nc
+// (Linux and *BSD) needs -N to shut its write side on stdin EOF so the daemon's
+// read-to-EOF unblocks; macOS's /usr/bin/nc has no -N flag and half-closes on
+// EOF by default, so -N there would just make nc error and force the CLI
+// fallback. Override with QDF_NC_ARGS for a non-standard nc.
+func ncArgs() string {
+	if v := os.Getenv("QDF_NC_ARGS"); v != "" {
+		return v
+	}
+	if runtime.GOOS == "darwin" {
+		return "-U"
+	}
+	return "-N -U"
+}
+
 func hookCommand(h hookSpec, exe string) string {
 	switch {
 	// PostToolUse and PreToolUse both go through the daemon/CLI hybrid so a
@@ -250,7 +267,7 @@ func hookCommand(h hookSpec, exe string) string {
 	// pays a fresh process + disk decode); the fallback subcommand differs.
 	case h.event == "PostToolUse" && h.sub == "post",
 		h.event == "PreToolUse" && h.sub == "pretooluse":
-		return fmt.Sprintf("nc -N -U %s 2>/dev/null || %s %s", daemon.SockPath(), exe, h.sub)
+		return fmt.Sprintf("nc %s %s 2>/dev/null || %s %s", ncArgs(), daemon.SockPath(), exe, h.sub)
 	case h.event == "SessionStart" && h.sub == "daemon":
 		return exe + " daemon --ensure"
 	default:
