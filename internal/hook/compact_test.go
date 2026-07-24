@@ -2,8 +2,6 @@ package hook_test
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -151,34 +149,3 @@ func TestPostCompact_NoFiles_Passthrough(t *testing.T) {
 	}
 }
 
-// TestSessionStart_TriggersBlobSweep verifies auto-gc fires on a plain
-// (non-compacted) session start — the common case — and prunes over-cap blobs.
-// Regression for the earlier narrow trigger that only ran post-compaction.
-func TestSessionStart_TriggersBlobSweep(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("QDF_CACHE_MAX_SIZE", "2000") // tiny cap so 3x1000B blobs over-cap
-
-	refs := cache.RefsDir()
-	if err := os.MkdirAll(refs, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for _, n := range []string{"a", "b", "c"} {
-		if err := os.WriteFile(filepath.Join(refs, n+".blob"), make([]byte, 1000), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// A fresh session with no prior compaction — the early-return path. The
-	// blob sweep must still run (it's before the early return) since no
-	// .gc-stamp exists yet.
-	var out strings.Builder
-	if err := hook.HandleSessionStart(strings.NewReader(makeCompactInput(t, "sess-sweep")), &out); err != nil {
-		t.Fatalf("HandleSessionStart: %v", err)
-	}
-
-	left, _ := os.ReadDir(refs)
-	if len(left) >= 3 {
-		t.Errorf("SessionStart should have swept over-cap blobs, %d remain", len(left))
-	}
-}

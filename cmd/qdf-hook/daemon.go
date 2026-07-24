@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/alex60217101990/qdf-hook/internal/cache"
 	"github.com/alex60217101990/qdf-hook/internal/daemon"
 	"github.com/spf13/cobra"
 )
@@ -54,6 +55,11 @@ trip.
 				}
 				return daemon.Serve(daemon.SockPath(), daemonIdleTimeout, appVersion)
 			case ensure:
+				// SessionStart runs `daemon --ensure`, so this is the throttled
+				// (≤once/24h) automatic disk-cache prune point — it fires even
+				// if the daemon can't start, which is the only automatic prune a
+				// CLI-only user gets (no daemon sweep ticker for them).
+				cache.AutoSweep(time.Now().Unix())
 				exe, err := os.Executable()
 				if err != nil {
 					return fmt.Errorf("daemon: resolve executable path: %w", err)

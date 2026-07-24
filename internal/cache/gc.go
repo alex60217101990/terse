@@ -105,3 +105,15 @@ func SweepBlobs(nowSec int64) {
 	PruneDir(RefsDir(), UsageRefsPath(), half, ttl, nowSec, false)
 	PruneDir(LastOutDir(), UsageLastPath(), half, ttl, nowSec, false)
 }
+
+// AutoSweep runs a throttled blob prune: it calls SweepBlobs at most once per
+// gc interval (gated by ShouldRunGC's timestamp stamp). Wired into the
+// installed SessionStart hook (qdf-hook daemon --ensure) so the disk cache is
+// bounded on every session start even when no daemon ends up running — for a
+// CLI-only user the daemon sweep ticker never fires, so this is their only
+// automatic prune. Best-effort; never fails the caller.
+func AutoSweep(nowSec int64) {
+	if ShouldRunGC(nowSec) {
+		SweepBlobs(nowSec)
+	}
+}
