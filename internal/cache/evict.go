@@ -126,17 +126,18 @@ func PruneDir(blobDir, usagePath string, maxSize int64, ttl time.Duration, nowSe
 	}
 
 	drop := func(b blob) {
-		if dryRun {
-			removed++
-			freed += b.size
-			return
-		}
-		if err := os.Remove(b.path); err == nil {
-			removed++
-			freed += b.size
-			total -= b.size
+		if !dryRun {
+			if err := os.Remove(b.path); err != nil {
+				return // couldn't remove — don't count it or advance the total
+			}
 			delete(idx, b.key)
 		}
+		// total is decremented in dry-run too, so the size-cap loop's
+		// `total <= target` break reflects what WOULD be freed — otherwise a
+		// dry run reports evicting every blob instead of just down to target.
+		removed++
+		freed += b.size
+		total -= b.size
 	}
 
 	// 1) TTL floor: drop anything older than ttl.

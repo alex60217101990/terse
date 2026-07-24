@@ -79,3 +79,27 @@ func TestCacheScore_HotBeatsCold(t *testing.T) {
 		t.Errorf("expected hot(%.3f) > coldOld(%.3f) > never(%.3f)", hot, coldOld, never)
 	}
 }
+
+// TestPruneDir_DryRunReportsToTargetNotAll guards the dry-run size-cap count:
+// a dry run must report evicting only down to 80% of the cap, not every blob.
+// Regression for a bug where drop() didn't decrement the running total in
+// dry-run, so the size-cap loop never hit its break and counted all blobs.
+func TestPruneDir_DryRunReportsToTargetNotAll(t *testing.T) {
+	dir := t.TempDir()
+	usage := filepath.Join(t.TempDir(), "u.qdf")
+	now := time.Now()
+	// Three 1000-byte fresh blobs; cap 2500 -> 80% target 2000 -> exactly one
+	// eviction reaches the target.
+	writeBlob(t, dir, "a", 1000, now)
+	writeBlob(t, dir, "b", 1000, now)
+	writeBlob(t, dir, "c", 1000, now)
+
+	removed, _ := cache.PruneDir(dir, usage, 2500, 720*time.Hour, now.Unix(), true /*dryRun*/)
+	if removed != 1 {
+		t.Fatalf("dry-run should report 1 eviction to reach 80%% target, got %d", removed)
+	}
+	// Dry run must not delete anything.
+	if ents, _ := os.ReadDir(dir); len(ents) != 3 {
+		t.Fatalf("dry-run must not delete blobs, %d remain", len(ents))
+	}
+}
