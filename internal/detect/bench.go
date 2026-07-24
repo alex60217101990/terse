@@ -47,13 +47,16 @@ func SummarizeGoBench(s string) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("[go bench — %d benchmarks]\n", len(rows)))
+	fmt.Fprintf(&sb, "[go bench — %d benchmarks]\n", len(rows))
 	for _, r := range rows {
 		name := r.name
-		if len(name) > 40 {
-			name = name[:37] + "..."
+		// Truncate on a rune boundary so a multi-byte name (e.g. a subtest
+		// with a non-ASCII rune) is never split into invalid UTF-8 — matches
+		// SummarizeGitLog's []rune truncation.
+		if rs := []rune(name); len(rs) > 40 {
+			name = string(rs[:37]) + "..."
 		}
-		sb.WriteString(fmt.Sprintf("%-42s %s  %s  %s\n", name, r.nsop, r.bop, r.allocsop))
+		fmt.Fprintf(&sb, "%-42s %s  %s  %s\n", name, r.nsop, r.bop, r.allocsop)
 	}
 	return sb.String()
 }
