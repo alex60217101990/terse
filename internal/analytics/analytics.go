@@ -5,7 +5,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
+
+// recordMu serializes Record. The one-shot CLI only ever called Record once
+// per process, but qdf-hookd calls it from many concurrent connection
+// handlers, so the stat+rename rotation check would otherwise race (two
+// goroutines both seeing >10MB and both renaming). The O_APPEND line writes
+// are individually atomic; this mutex only needs to make rotation and the
+// write mutually exclusive.
+var recordMu sync.Mutex
 
 // Event records one hook invocation for analytics purposes.
 type Event struct {
@@ -35,6 +44,9 @@ func Record(e Event) error {
 		return err
 	}
 	line = append(line, '\n')
+
+	recordMu.Lock()
+	defer recordMu.Unlock()
 
 	path := AnalyticsPath()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

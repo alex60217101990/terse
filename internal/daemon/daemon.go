@@ -36,6 +36,23 @@ const pingProbe = 200 * time.Millisecond
 // daemon before giving up.
 const ensureReadyTimeout = 2 * time.Second
 
+// connDeadlineNS bounds a single connection's whole read+dispatch+write, in
+// nanoseconds. The daemon must never hang a Claude Code hook: without this, an
+// unbounded buf.ReadFrom(c) would block forever if a client connected but
+// never half-closed (a wedged handler, or an nc variant that accepts but
+// no-ops -N), leaking the handler goroutine and — via Serve's defer wg.Wait()
+// — blocking clean shutdown. A deadline turns every such case into a closed
+// connection within a bounded time, so nc unblocks and the CLI fallback (or
+// passthrough) runs. Set generously above any real in-memory dispatch cost.
+//
+// It's an atomic int64 rather than a const only so tests can shorten it;
+// handlers read it concurrently, so a plain mutable var would be a data race.
+// int64-of-nanoseconds (not atomic.Pointer[time.Duration]) keeps it a lock-free
+// scalar with no indirection or allocation.
+var connDeadlineNS atomic.Int64
+
+func init() { connDeadlineNS.Store(int64(10 * time.Second)) }
+
 // SockPath returns the well-known unix socket path for qdf-hookd:
 // ~/.qdf-hook/d.sock. The parent directory is not created here — callers
 // that need it to exist (Serve, via net.Listen) create it lazily, matching
@@ -84,6 +101,13 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 		_ = c.Close()
 		return fmt.Errorf("daemon already running at %s", sockPath)
 	}
+	// Note: two `daemon --ensure` calls from two sessions starting at the same
+	// instant can both pass the dial check and both reach os.Remove+Listen
+	// here; the second unlinks the first's freshly bound socket, orphaning the
+	// first daemon (it keeps running, flushing, until its 30m idle-exit). The
+	// outcome is harmless — last-writer-wins on a rebuildable on-disk cache —
+	// but the orphan wastes a goroutine and RAM until it times out. Not worth
+	// a cross-process lock for a rare startup race with a self-healing result.
 	_ = os.Remove(sockPath)
 
 	ln, err := net.Listen("unix", sockPath)
@@ -187,6 +211,10 @@ func handleConn(c net.Conn, store hookcore.StateStore, version string, requestSh
 		}
 	}()
 
+	// Bound the whole exchange so a client that connects but never
+	// half-closes can't wedge the handler (and, via wg.Wait, shutdown).
+	_ = c.SetDeadline(time.Now().Add(time.Duration(connDeadlineNS.Load())))
+
 	buf := readRequest(c)
 	defer putRequest(buf)
 	req := buf.Bytes()
@@ -265,6 +293,17 @@ func waitGone(sockPath string, timeout time.Duration) {
 	}
 }
 
+// openDaemonLog opens the daemon's stderr log file (daemon.log, beside the
+// socket) for appending, creating the parent directory if needed. Used so a
+// detached daemon's panic output has somewhere to go instead of /dev/null.
+func openDaemonLog(sockPath string) (*os.File, error) {
+	dir := filepath.Dir(sockPath)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	return os.OpenFile(filepath.Join(dir, "daemon.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+}
+
 // Ensure makes sure a live, current qdf-hookd is serving sockPath, starting
 // or replacing it as needed:
 //
@@ -294,6 +333,14 @@ func Ensure(sockPath, exePath, version string) error {
 
 	cmd := exec.Command(exePath, "daemon", "--serve")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	// stdin/stdout are left nil (exec connects them to /dev/null) so the
+	// daemon never holds the hook's pipes open. stderr goes to a log file
+	// rather than /dev/null so a daemon panic (handleConn's recover log) is
+	// diagnosable; on any failure to open it we fall back to /dev/null.
+	if logf, lerr := openDaemonLog(sockPath); lerr == nil {
+		cmd.Stderr = logf
+		defer logf.Close()
+	}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("daemon: start %s: %w", exePath, err)
 	}
