@@ -1,24 +1,39 @@
 # syntax=docker/dockerfile:1
 # --- build stage: zig cross-compiles the POSIX client to a static musl binary ---
-FROM alpine:3.20 AS build
+# Pin to the NATIVE build platform: zig itself is a cross-compiler, so we fetch
+# the zig toolchain for the BUILD host arch (BUILDARCH) and cross-compile to the
+# requested target's musl triple via `-target`. That keeps the whole build off
+# QEMU — an arm64 client is produced on an amd64 runner without emulation. The
+# zig download is cached across runs. BUILDARCH/TARGETARCH come from buildx.
+FROM --platform=$BUILDPLATFORM alpine:3.20 AS build
 ARG ZIG_VERSION=0.16.0
+ARG BUILDARCH
 ARG TARGETARCH
-RUN apk add --no-cache curl xz && \
-    case "$TARGETARCH" in \
-      amd64) ZARCH=x86_64; MUSL=x86_64-linux-musl ;; \
-      arm64) ZARCH=aarch64; MUSL=aarch64-linux-musl ;; \
+RUN --mount=type=cache,target=/zig-dl \
+    apk add --no-cache curl xz && \
+    case "$BUILDARCH" in \
+      amd64) HOSTARCH=x86_64 ;; \
+      arm64) HOSTARCH=aarch64 ;; \
+      *) echo "unsupported BUILDARCH=$BUILDARCH" >&2; exit 1 ;; \
     esac && \
-    curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-${ZARCH}-linux-${ZIG_VERSION}.tar.xz" \
-      | tar -xJ -C /opt && mv /opt/zig-* /opt/zig && echo "$MUSL" > /musl-target
+    case "$TARGETARCH" in \
+      amd64) echo "x86_64-linux-musl"  > /musl-target ;; \
+      arm64) echo "aarch64-linux-musl" > /musl-target ;; \
+      *) echo "unsupported TARGETARCH=$TARGETARCH" >&2; exit 1 ;; \
+    esac && \
+    tarball="zig-${HOSTARCH}-linux-${ZIG_VERSION}.tar.xz" && \
+    if [ ! -f "/zig-dl/${tarball}" ]; then \
+      curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/${tarball}" -o "/zig-dl/${tarball}"; \
+    fi && \
+    tar -xJ -C /opt -f "/zig-dl/${tarball}" && mv /opt/zig-* /opt/zig
 COPY client/qc.c /src/qc.c
 RUN mkdir -p /out && \
-    /opt/zig/zig cc -O2 -target "$(cat /musl-target)" -o /out/qdf-hookc /src/qc.c && \
-    /opt/zig/zig cc --version >/dev/null
+    /opt/zig/zig cc -O2 -target "$(cat /musl-target)" -o /out/qdf-hookc /src/qc.c
 
 # --- final stage ---
 FROM scratch
 LABEL org.opencontainers.image.title="qdf-hookc" \
       org.opencontainers.image.description="Native qdf-hook socket client" \
-      org.opencontainers.image.source="https://github.com/alex60217101990/qdf-hook"
+      org.opencontainers.image.source="https://github.com/alex60217101990/terse"
 COPY --from=build /out/qdf-hookc /qdf-hookc
 ENTRYPOINT ["/qdf-hookc"]
