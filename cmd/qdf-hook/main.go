@@ -128,6 +128,7 @@ func init() {
 		cmdExpand(),
 		cmdInit(),
 		cmdDaemon(),
+		cmdProfile(),
 	)
 }
 

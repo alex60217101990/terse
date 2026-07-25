@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -58,6 +59,10 @@ var connDeadlineNS atomic.Int64
 
 func init() { connDeadlineNS.Store(int64(10 * time.Second)) }
 
+// startTime is set at the top of Serve and read by writeStats to report
+// daemon uptime over the STATS control word.
+var startTime time.Time
+
 // SockPath returns the well-known unix socket path for qdf-hookd:
 // ~/.qdf-hook/d.sock. The parent directory is not created here — callers
 // that need it to exist (Serve, via net.Listen) create it lazily, matching
@@ -98,6 +103,8 @@ func SockPath() string {
 // accept goroutine to leak. Dirty state is flushed at least every
 // flushInterval and once more before Serve returns.
 func Serve(sockPath string, idle time.Duration, version string) error {
+	startTime = time.Now()
+
 	// A unix socket file lingers after its owner dies. Distinguish a live
 	// daemon (dial succeeds) — which we must not clobber — from a stale file
 	// (dial refused/absent), which we remove so net.Listen won't fail with
@@ -209,13 +216,15 @@ func sweepCache(nowSec int64) {
 }
 
 // handleConn reads a single request off c to EOF (the client half-closes its
-// write side once it's done sending). Two bare control requests are handled
+// write side once it's done sending). Three bare control requests are handled
 // before the request ever reaches the hook pipeline:
 //
 //   - "PING" replies "qdf-hookd <version>\n" — used by Ensure to detect
 //     whether a live daemon is running and, if so, whether it's current.
 //   - "QUIT" calls requestShutdown (closing the listener so the accept loop
 //     in Serve unblocks and exits cleanly) and replies with nothing.
+//   - "STATS" replies with a one-metric-per-line runtime snapshot (see
+//     writeStats) — for daemon tuning, not correctness.
 //
 // Anything else is run through the full hook pipeline against store. It
 // never panics the daemon: a recover guards the whole handler, and any error
@@ -247,11 +256,23 @@ func handleConn(c net.Conn, store hookcore.StateStore, version string, requestSh
 	case "QUIT":
 		requestShutdown()
 		return
+	case "STATS":
+		writeStats(c)
+		return
 	}
 
 	// DispatchBytes decodes the already-buffered request directly, skipping the
 	// json.Decoder buffering an io.Reader path would add.
 	_ = hook.DispatchBytes(store, req, c)
+}
+
+// writeStats emits a compact one-metric-per-line runtime snapshot for tuning
+// (peer of PING/QUIT). Cheap: reads MemStats once, no profiling machinery.
+func writeStats(c net.Conn) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Fprintf(c, "heap_alloc %d\nheap_inuse %d\nnum_gc %d\npause_total_ns %d\nnum_goroutine %d\nuptime %s\n",
+		m.HeapAlloc, m.HeapInuse, m.NumGC, m.PauseTotalNs, runtime.NumGoroutine(), time.Since(startTime))
 }
 
 // ping dials sockPath, sends a PING request, and returns the trimmed reply

@@ -3,6 +3,7 @@ package daemon
 import (
 	"io"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -40,4 +41,24 @@ func ProxyConn(c net.Conn, in io.Reader, out io.Writer, timeout time.Duration) e
 	}
 	_, err := io.Copy(out, c)
 	return err
+}
+
+// Stats sends the STATS control word and returns the daemon's runtime
+// snapshot (see writeStats in daemon.go): one metric per line, for tuning and
+// diagnostics — not part of the hook dispatch pipeline.
+func Stats(sockPath string, timeout time.Duration) (string, error) {
+	var b strings.Builder
+	if err := DialAndProxy(sockPath, strings.NewReader("STATS\n"), &b, timeout); err != nil {
+		return "", err
+	}
+	return b.String(), nil
+}
+
+// Ping sends the PING control word and returns the daemon's trimmed version
+// reply (e.g. "qdf-hookd v0.1.0"). Exported so callers outside this package
+// (the `daemon --ping` container-healthcheck flag) can probe liveness without
+// reimplementing the PING protocol; it is the same probe Ensure uses
+// internally via the unexported ping helper.
+func Ping(sockPath string, timeout time.Duration) (string, error) {
+	return ping(sockPath, timeout)
 }
