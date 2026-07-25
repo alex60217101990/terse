@@ -1,6 +1,7 @@
 package cache_test
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -163,7 +164,7 @@ func BenchmarkUnifiedDiff(b *testing.B) {
 func TestUnifiedDiff_NoOverlappingHunks(t *testing.T) {
 	old := "a\nx\nx\nx\nx\nb\n"
 	nw := "A\nx\nx\nx\nx\nB\n"
-	d := string(cache.UnifiedDiff([]byte(old), []byte(nw), 3))
+	d := cache.UnifiedDiff([]byte(old), []byte(nw), 3)
 	if h := strings.Count(d, "@@ -"); h != 1 {
 		t.Fatalf("want 1 merged hunk, got %d\n%s", h, d)
 	}
@@ -172,5 +173,34 @@ func TestUnifiedDiff_NoOverlappingHunks(t *testing.T) {
 	}
 	if !strings.Contains(d, "@@ -1,6 +1,6 @@") {
 		t.Fatalf("want header spanning the whole 6-line file, got:\n%s", d)
+	}
+}
+
+// TestUnifiedDiff_BailsOnPathologicalDissimilar: two large, fully-dissimilar
+// inputs would drive full-trace Myers to O((N+M)^2) transient memory. The
+// edit-distance cap must bail (empty diff → caller serves full content) rather
+// than allocate gigabytes, while a large but SIMILAR input still diffs.
+func TestUnifiedDiff_BailsOnPathologicalDissimilar(t *testing.T) {
+	var a, b strings.Builder
+	for i := range 4000 {
+		fmt.Fprintf(&a, "old-line-%d\n", i)
+		fmt.Fprintf(&b, "new-different-%d\n", i) // shares no line with a
+	}
+	if d := cache.UnifiedDiff([]byte(a.String()), []byte(b.String()), 3); d != "" {
+		t.Fatalf("fully-dissimilar large input must bail to empty diff, got %d bytes", len(d))
+	}
+
+	// Large but similar (one changed line) still produces a diff.
+	var c, e strings.Builder
+	for i := range 4000 {
+		fmt.Fprintf(&c, "line-%d\n", i)
+		if i == 2000 {
+			e.WriteString("line-CHANGED\n")
+		} else {
+			fmt.Fprintf(&e, "line-%d\n", i)
+		}
+	}
+	if d := cache.UnifiedDiff([]byte(c.String()), []byte(e.String()), 3); d == "" {
+		t.Fatal("large similar input (1 change) must still diff, got empty")
 	}
 }

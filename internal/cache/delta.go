@@ -88,7 +88,19 @@ func myersDiff(a, b []string) []edit {
 	// trace stores the v array at each step d for backtracking.
 	trace := make([][]int, 0, n+m)
 
+	// Bound trace memory. Full-trace Myers keeps one v-snapshot (2*offset+1
+	// ints) per edit-distance step d, so a fully-dissimilar input is O((n+m)^2)
+	// ints — gigabytes at the callers' 10k-line ceiling. Cap d to a fixed int
+	// budget so pathological dissimilar inputs bail instead of blowing memory;
+	// a diff needing more edits than this isn't a useful compression anyway, and
+	// both callers treat an empty diff as "serve the full content" (never-worse).
+	const maxTraceInts = 8 << 20 // ~64 MiB of int snapshots
+	maxD := maxTraceInts / (2*offset + 1)
+
 	for d := range n + m + 1 {
+		if d > maxD {
+			return nil // edit script too large to bound memory → signal "no diff"
+		}
 		snap := make([]int, 2*offset+1)
 		copy(snap, v)
 		trace = append(trace, snap)
