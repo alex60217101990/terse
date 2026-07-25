@@ -153,21 +153,22 @@ func LoadEvents(days int) ([]Event, error) {
 		if err != nil {
 			continue
 		}
-		scanner := bufio.NewScanner(f)
-		scanner.Buffer(make([]byte, 64*1024), 64*1024)
-		for scanner.Scan() {
-			var e Event
-			if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
-				continue
+		// bufio.Reader (not Scanner) so a single oversized/corrupt line can't
+		// abort the whole read: Scanner errors with ErrTooLong past its 64 KB
+		// cap and stops, which used to fail `stats` wholesale. Analytics is
+		// best-effort diagnostics — skip an unparseable line, keep the rest.
+		r := bufio.NewReader(f)
+		for {
+			line, rerr := r.ReadString('\n')
+			if len(line) > 0 {
+				var e Event
+				if json.Unmarshal([]byte(line), &e) == nil && (cutoff == 0 || e.TS >= cutoff) {
+					events = append(events, e)
+				}
 			}
-			if cutoff > 0 && e.TS < cutoff {
-				continue
+			if rerr != nil { // io.EOF or read error: stop this file, keep events
+				break
 			}
-			events = append(events, e)
-		}
-		if err := scanner.Err(); err != nil {
-			_ = f.Close()
-			return nil, err
 		}
 		_ = f.Close()
 	}
