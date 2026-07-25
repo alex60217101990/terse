@@ -45,28 +45,12 @@ func TestPreToolUse_AllowsOnFirstRead(t *testing.T) {
 }
 
 func TestPreToolUse_DeniesUnchanged(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	// Create temp file.
-	f, _ := os.CreateTemp("", "qdf-pre-*.go")
-	content := []byte("package main\n")
-	f.Write(content)
-	f.Close()
-	defer os.Remove(f.Name())
-
-	// Pre-populate cache with current mtime.
-	info, _ := os.Stat(f.Name())
-	s := cache.NewSessionState()
-	s.Turn = 2
-	s.Files[f.Name()] = cache.FileEntry{
-		Hash:    [32]byte{1},
-		Turn:    2,
-		Content: content,
-		ModTime: info.ModTime().UnixNano(),
-	}
-	_ = cache.Save("sess-pre-2", s)
+	// Seed through the real write path so the cached entry carries a genuine
+	// CtimeNS, exactly as production does — a deny requires a real ctime match.
+	_, sid, path := seedCachedFile(t, "package main\n")
 
 	var out strings.Builder
-	err := hook.HandlePreToolUse(strings.NewReader(makePreToolInput(t, "sess-pre-2", f.Name())), &out)
+	err := hook.HandlePreToolUse(strings.NewReader(makePreToolInput(t, sid, path)), &out)
 	if err != nil {
 		t.Fatalf("HandlePreToolUse: %v", err)
 	}
@@ -241,12 +225,31 @@ func TestPreToolUse_TrulyUnchanged_Denies(t *testing.T) {
 	}
 }
 
-// A pre-upgrade cache entry (CtimeNS==0) must not force a re-read on an
-// otherwise-unchanged file — degrade to mtime+size.
-func TestPreToolUse_ZeroCachedCtime_FallsBackToMtimeSize(t *testing.T) {
+// A deny asserts "unchanged, don't re-read" with no content in hand, so it is
+// the one path that cannot be downgraded to a safe passthrough if wrong. When
+// ctime is unavailable (a pre-CtimeNS cache entry, or a platform without it) a
+// deny would rest on mtime+size alone — which cp -p / touch -r can forge across
+// a same-size content change, serving stale content as authoritative. So an
+// unavailable ctime must NOT deny; it falls through to allow (the PostToolUse
+// handler then makes a content-based, never-worse decision). One extra read of
+// a stale-cache file, never stale content.
+func TestPreToolUse_ZeroCachedCtime_Allows(t *testing.T) {
 	store, sid, path := seedCachedFile(t, "package a\nfunc F(){}\n")
 	zeroCachedCtime(t, store, sid, path) // set entry.CtimeNS = 0
-	if dec := runPreToolUse(t, store, sid, path); dec != "deny" {
-		t.Errorf("zero cached ctime must fall back to mtime+size (deny), got %q", dec)
+	if dec := runPreToolUse(t, store, sid, path); dec == "deny" {
+		t.Errorf("zero cached ctime must not deny (no content-safe recovery), got %q", dec)
+	}
+}
+
+// The stale-content hazard the above guards against: zero cached ctime, then a
+// same-size content change with mtime forged back. Must be allowed, not denied.
+func TestPreToolUse_ZeroCtimeStaleContent_Allows(t *testing.T) {
+	store, sid, path := seedCachedFile(t, "package a\nfunc F(){}\n")
+	old := statFileTimes(t, path)
+	zeroCachedCtime(t, store, sid, path)
+	overwriteSameSize(t, path, "package a\nfunc G(){}\n")
+	_ = os.Chtimes(path, time.Time{}, time.Unix(0, old.mtimeNS)) // forge mtime back
+	if dec := runPreToolUse(t, store, sid, path); dec == "deny" {
+		t.Errorf("stale content under zero ctime + forged mtime must be allowed, got %q", dec)
 	}
 }
