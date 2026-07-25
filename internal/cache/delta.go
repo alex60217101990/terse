@@ -186,7 +186,12 @@ func writeHunks(buf *bytes.Buffer, a, b []string, edits []edit, ctx int) {
 			for k < n && edits[k].kind == '=' {
 				k++
 			}
-			if k-j <= ctx && k < n {
+			// Merge the equal-run into this hunk when short enough that the two
+			// changes' context windows (ctx each side) touch or overlap: gap <=
+			// 2*ctx. Using ctx alone left runs of ctx<G<=2*ctx as separate hunks
+			// whose ranges (prev hi=j+ctx, next lo=i-ctx) overlapped — duplicating
+			// context and emitting @@ headers that overran the file.
+			if k-j <= 2*ctx && k < n {
 				j = k
 			} else {
 				break

@@ -153,3 +153,24 @@ func BenchmarkUnifiedDiff(b *testing.B) {
 		_ = cache.UnifiedDiff(oldB, newB, 3)
 	}
 }
+
+// TestUnifiedDiff_NoOverlappingHunks is a correctness regression: two changes
+// separated by an equal-run G with ctx < G <= 2*ctx must merge into ONE hunk.
+// The old merge threshold (G <= ctx) left them as two hunks whose ranges
+// overlapped — duplicating context lines and emitting @@ headers that overran
+// the file (e.g. "@@ -5,4" on a 6-line file). Trigger is extremely common:
+// any two edits 4-5 unchanged lines apart at the default ctx=3.
+func TestUnifiedDiff_NoOverlappingHunks(t *testing.T) {
+	old := "a\nx\nx\nx\nx\nb\n"
+	nw := "A\nx\nx\nx\nx\nB\n"
+	d := string(cache.UnifiedDiff([]byte(old), []byte(nw), 3))
+	if h := strings.Count(d, "@@ -"); h != 1 {
+		t.Fatalf("want 1 merged hunk, got %d\n%s", h, d)
+	}
+	if x := strings.Count(d, "\n x"); x != 4 {
+		t.Fatalf("want 4 context 'x' lines (no duplication), got %d\n%s", x, d)
+	}
+	if !strings.Contains(d, "@@ -1,6 +1,6 @@") {
+		t.Fatalf("want header spanning the whole 6-line file, got:\n%s", d)
+	}
+}
