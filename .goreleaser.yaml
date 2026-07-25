@@ -1,0 +1,178 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+# qdf-hook (the daemon/CLI) is the only GoReleaser "build": it's the only
+# artifact built from Go source. qdf-hookc — the native POSIX socket client —
+# is cross-compiled by `make client-all` (zig cc) in release.yml *before*
+# GoReleaser runs; GoReleaser has no "prebuilt binary" builder in the OSS
+# edition, so those binaries are folded in downstream via checksum/release
+# extra_files instead of a fabricated build id (see below).
+builds:
+  - id: qdf-hook
+    main: ./cmd/qdf-hook
+    binary: qdf-hook
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.appVersion={{ .Version }}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: default
+    ids: [qdf-hook]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  # Fold the zig-built native clients (produced by `make client-all` in
+  # release.yml, one per linux/darwin x amd64/arm64) into the same checksum
+  # manifest as the Go archives, so `signs` below covers both.
+  extra_files:
+    - glob: bin/qdf-hookc-*
+
+sboms:
+  - id: archive
+    artifacts: archive
+
+# Keyless cosign signing over OIDC (release.yml grants id-token: write) —
+# no private key material is stored or referenced here.
+signs:
+  - id: checksum
+    cmd: cosign
+    certificate: "${certificate}"
+    args:
+      - sign-blob
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    artifacts: checksum
+    output: true
+
+# NOTE: `dockers`/`docker_manifests` are GoReleaser's classic docker pipe;
+# it emits a deprecation notice pointing at `dockers_v2` but remains fully
+# supported as of GoReleaser v2.17 (`goreleaser check` passes clean).
+dockers:
+  - id: qdf-hookd-amd64
+    ids: [qdf-hook]
+    goos: linux
+    goarch: amd64
+    dockerfile: deploy/docker/daemon/Dockerfile
+    use: buildx
+    extra_files:
+      - go.mod
+      - go.sum
+      - cmd
+      - internal
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-amd64"
+      - "ghcr.io/alex60217101990/qdf-hookd:latest-amd64"
+
+  - id: qdf-hookd-arm64
+    ids: [qdf-hook]
+    goos: linux
+    goarch: arm64
+    dockerfile: deploy/docker/daemon/Dockerfile
+    use: buildx
+    extra_files:
+      - go.mod
+      - go.sum
+      - cmd
+      - internal
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-arm64"
+      - "ghcr.io/alex60217101990/qdf-hookd:latest-arm64"
+
+  # qdf-hookc's Dockerfile cross-compiles client/qc.c with zig cc *inside*
+  # its own build stage (deploy/docker/client/Dockerfile), so it doesn't
+  # consume the qdf-hook Go artifact; `ids` only gates/orders this pipe
+  # behind the qdf-hook build finishing for this goos/goarch.
+  - id: qdf-hookc-amd64
+    ids: [qdf-hook]
+    goos: linux
+    goarch: amd64
+    dockerfile: deploy/docker/client/Dockerfile
+    use: buildx
+    extra_files:
+      - client/qc.c
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--build-arg=TARGETARCH=amd64"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-amd64"
+      - "ghcr.io/alex60217101990/qdf-hookc:latest-amd64"
+
+  - id: qdf-hookc-arm64
+    ids: [qdf-hook]
+    goos: linux
+    goarch: arm64
+    dockerfile: deploy/docker/client/Dockerfile
+    use: buildx
+    extra_files:
+      - client/qc.c
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--build-arg=TARGETARCH=arm64"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-arm64"
+      - "ghcr.io/alex60217101990/qdf-hookc:latest-arm64"
+
+docker_manifests:
+  - name_template: "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-amd64"
+      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/alex60217101990/qdf-hookd:latest"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookd:latest-amd64"
+      - "ghcr.io/alex60217101990/qdf-hookd:latest-arm64"
+  - name_template: "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-amd64"
+      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/alex60217101990/qdf-hookc:latest"
+    image_templates:
+      - "ghcr.io/alex60217101990/qdf-hookc:latest-amd64"
+      - "ghcr.io/alex60217101990/qdf-hookc:latest-arm64"
+
+release:
+  # Attach the zig-built native clients directly as release assets (not
+  # part of any archive/build), alongside the Go archives.
+  extra_files:
+    - glob: bin/qdf-hookc-*
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
