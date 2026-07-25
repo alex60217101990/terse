@@ -5,7 +5,10 @@
 # requested target's musl triple via `-target`. That keeps the whole build off
 # QEMU — an arm64 client is produced on an amd64 runner without emulation. The
 # zig download is cached across runs. BUILDARCH/TARGETARCH come from buildx.
-FROM --platform=$BUILDPLATFORM alpine:3.20 AS build
+# Base pinned by digest (Scorecard Pinned-Dependencies), pulled from
+# mirror.gcr.io (Google's pull-through cache of Docker Hub official images) to
+# avoid Docker Hub rate limits/outages in CI.
+FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc AS build
 ARG ZIG_VERSION=0.16.0
 ARG BUILDARCH
 ARG TARGETARCH
