@@ -1,5 +1,13 @@
 # qdf-hook
 
+[![ci](https://github.com/alex60217101990/terse/actions/workflows/ci.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/ci.yml)
+[![codeql](https://github.com/alex60217101990/terse/actions/workflows/codeql.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/codeql.yml)
+[![govulncheck](https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/alex60217101990/terse/badge)](https://securityscorecards.dev/viewer/?uri=github.com/alex60217101990/terse)
+[![Go Reference](https://pkg.go.dev/badge/github.com/alex60217101990/terse.svg)](https://pkg.go.dev/github.com/alex60217101990/terse)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alex60217101990/terse)](https://goreportcard.com/report/github.com/alex60217101990/terse)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 **Stop paying for the same tokens twice.** `qdf-hook` is a set of
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hooks that
 intercept tool output and collapse the redundant, repeated, and re-read parts
@@ -37,7 +45,7 @@ for a fresh CLI spawn — about **117×**.
 
 ```bash
 # 1. install the binary (Go 1.26+)
-go install github.com/alex60217101990/qdf-hook/cmd/qdf-hook@latest
+go install github.com/alex60217101990/terse/cmd/qdf-hook@latest
 
 # 2. wire it into Claude Code — idempotent, preserves your existing settings
 qdf-hook init
@@ -61,18 +69,18 @@ qdf-hook stats            # aggregate token savings this session
 
 A single catch-all `PostToolUse` hook now routes every tool through `post`,
 which dispatches internally — new tools need no config change. `PostToolUse`
-and `PreToolUse` talk to the resident daemon first (`nc -U <sock>` on macOS,
-`nc -N -U <sock>` on Linux/BSD — see `QDF_NC_ARGS`), falling back to the plain
-CLI subcommand when the daemon isn't up:
+and `PreToolUse` talk to the resident daemon first through the tiny native
+client `qdf-hookc` (installed next to `qdf-hook`), falling back to the plain
+CLI subcommand when the daemon isn't up or the client is absent:
 
 ```json
 {
   "hooks": {
     "PreToolUse": [
-      {"matcher": "Read", "hooks": [{"type": "command", "command": "nc -U ~/.qdf-hook/d.sock 2>/dev/null || qdf-hook pretooluse"}]}
+      {"matcher": "Read", "hooks": [{"type": "command", "command": "qdf-hookc ~/.qdf-hook/d.sock 2>/dev/null || qdf-hook pretooluse"}]}
     ],
     "PostToolUse": [
-      {"matcher": ".*", "hooks": [{"type": "command", "command": "nc -U ~/.qdf-hook/d.sock 2>/dev/null || qdf-hook post"}]}
+      {"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hookc ~/.qdf-hook/d.sock 2>/dev/null || qdf-hook post"}]}
     ],
     "PreCompact":   [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook precompact"}]}],
     "PostCompact":  [{"matcher": ".*", "hooks": [{"type": "command", "command": "qdf-hook postcompact"}]}],
@@ -193,14 +201,16 @@ long-lived process, started (and version-checked) at `SessionStart` via
 (`~/.qdf-hook/d.sock`) against one shared in-RAM state store instead of a
 per-invocation disk round trip.
 
-The `PostToolUse`/`PreToolUse` hooks are a **hybrid client**: `nc <flags> -U
-<sock> 2>/dev/null || <exe> <sub>` talks to the daemon when it's up and falls
-back to the plain CLI when it isn't. The `nc` flags are platform-specific
-(macOS's `/usr/bin/nc` has no `-N` and half-closes on stdin EOF by default;
-Linux/BSD's OpenBSD `nc` needs `-N` to half-close) — override with
-`QDF_NC_ARGS` if your `nc` differs. A `PING` handshake carrying the binary's
-version lets `daemon --ensure` detect and replace a stale daemon after an
-upgrade; `QUIT` requests a clean shutdown; an idle daemon exits on its own
+The `PostToolUse`/`PreToolUse` hooks are a **hybrid client**: `qdf-hookc <sock>
+2>/dev/null || <exe> <sub>` talks to the daemon when it's up and falls back to
+the plain CLI when it isn't. `qdf-hookc` is a tiny native AF_UNIX socket client
+(a single C file cross-compiled with `zig cc`, shipped as a release asset and
+in the `qdf-hookc` container image) installed next to `qdf-hook`; it does one
+thing — stream stdin to the socket and the reply back — with no `nc`
+portability quirks. If it's missing (e.g. Windows, which has no native client),
+the shell `||` runs `<exe> <sub>` directly. A `PING` handshake carrying the
+binary's version lets `daemon --ensure` detect and replace a stale daemon after
+an upgrade; `QUIT` requests a clean shutdown; an idle daemon exits on its own
 after 30 minutes. The daemon restores `GOMAXPROCS(NumCPU)` and the garbage
 collector on start — the one-shot CLI disables both for startup speed, but a
 long-lived process needs them.
@@ -253,7 +263,6 @@ pruned from `settings.json` on re-`init`.
 | `QDF_CACHE_TTL` | `720h` (30 d) | Max age of a cache entry before `gc` prunes it regardless of size |
 | `QDF_DECAY_LAMBDA` | `0.1` | Decay rate for utility-score eviction (sessions and blobs) |
 | `QDF_SKIP_TOOLS` | *(none)* | Comma-separated tool names to always pass through verbatim |
-| `QDF_NC_ARGS` | platform default | Override the `nc` flags the hybrid client uses to reach `qdf-hookd` |
 
 `--cache-max-size` and `--cache-ttl` flags on `daemon` and `gc` override the
 env vars for a single invocation.
@@ -278,13 +287,14 @@ hybrid client's CLI fallback covers it.
 **Do I need to manage the daemon myself?** No. `SessionStart` runs
 `daemon --ensure`, which starts it if it's not running, replaces it if it's a
 stale version, and is a no-op otherwise. It exits on its own after 30 minutes
-idle. To stop it early, send it `QUIT` (e.g. `printf 'QUIT\n' | nc -U
+idle. To stop it early, send it `QUIT` (e.g. `printf 'QUIT\n' | qdf-hookc
 ~/.qdf-hook/d.sock`) — it flushes and shuts down cleanly.
 
-**What if `nc` isn't available or behaves differently?** The hybrid command
-falls back to the plain CLI subcommand whenever `nc` fails to connect — you
-lose the daemon speedup, not correctness. Set `QDF_NC_ARGS` to override the
-flags for a non-standard `nc`.
+**What if `qdf-hookc` isn't installed?** The hybrid command falls back to the
+plain CLI subcommand whenever the native client is missing or fails to connect
+— you lose the daemon speedup, not correctness. `qdf-hookc` ships as a release
+asset (and container image) per OS/arch; `qdf-hook init` wires it in only when
+it's found next to the `qdf-hook` binary.
 
 **Plays nice with other hooks (sqz, atuin, …)?** Yes; `qdf-hook init` preserves
 them. They compose.
