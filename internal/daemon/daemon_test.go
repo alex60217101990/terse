@@ -202,16 +202,23 @@ func TestDaemon_MalformedRequestClosesGracefully(t *testing.T) {
 func TestDaemon_ContinuousTrafficNeverDropsConn(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	sock := tempSock(t)
-	go func() { _ = daemon.Serve(sock, 40*time.Millisecond, "test") }()
+	// Idle window (500ms) is generous relative to the ~15ms inter-request gap so
+	// scheduler/GC jitter on a slow or contended CI runner can't make one gap
+	// exceed it (the old 40ms-idle / 15ms-sleep margin was too tight and flaked
+	// there). The test stays sensitive: the loop runs ~0.85s of continuous
+	// traffic — well past the 500ms idle — so a daemon that FAILS to reset its
+	// idle timer on each request would exit mid-loop and drop a reply.
+	const idle = 500 * time.Millisecond
+	go func() { _ = daemon.Serve(sock, idle, "test") }()
 	waitForSock(t, sock)
 
-	for i := range 15 {
+	for i := range 50 {
 		payload := bashPayload(strings.Repeat("traffic line\n", 40))
 		out := roundtrip(t, sock, payload) // roundtrip fails the test if it hangs/errors
 		var resp protocol.HookOutput
 		if err := json.Unmarshal([]byte(out), &resp); err != nil {
 			t.Fatalf("request %d got invalid reply (daemon dropped conn / exited?): %v (body: %s)", i, err, out)
 		}
-		time.Sleep(15 * time.Millisecond) // < 40ms idle, so daemon must stay up
+		time.Sleep(15 * time.Millisecond) // << idle, so continuous traffic keeps the daemon up
 	}
 }
