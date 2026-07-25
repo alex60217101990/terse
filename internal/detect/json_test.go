@@ -2,6 +2,7 @@ package detect_test
 
 import (
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/alex60217101990/terse/internal/detect"
@@ -165,5 +166,34 @@ func BenchmarkAnalyzeJSONArray(b *testing.B) {
 	data, _ := os.ReadFile("../../testdata/json_array_1k.json")
 	for b.Loop() {
 		_, _ = detect.AnalyzeJSONArray(data, 1000)
+	}
+}
+
+// TestAnalyzeJSONArray_ColumnsBounded is a robustness regression: a single row
+// with a huge number of distinct keys must not allocate an unbounded number of
+// column accumulators. Rows are capped by maxRows, but columns were previously
+// uncapped — a one-row object with millions of keys bypassed the row cap and
+// drove ~100x memory amplification (model/attacker-controlled input).
+func TestAnalyzeJSONArray_ColumnsBounded(t *testing.T) {
+	var b []byte
+	b = append(b, '[', '{')
+	const n = 5000
+	for i := range n {
+		if i > 0 {
+			b = append(b, ',')
+		}
+		b = append(b, []byte(`"k`+strconv.Itoa(i)+`":1`)...)
+	}
+	b = append(b, '}', ']')
+
+	stats, err := detect.AnalyzeJSONArray(b, 2000)
+	if err != nil {
+		t.Fatalf("analyze: %v", err)
+	}
+	if stats.RowCount != 1 {
+		t.Fatalf("RowCount = %d, want 1", stats.RowCount)
+	}
+	if len(stats.Columns) > 256 {
+		t.Fatalf("columns unbounded: got %d, want <= 256 (maxCols)", len(stats.Columns))
 	}
 }

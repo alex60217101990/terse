@@ -49,6 +49,13 @@ type ArrayStats struct {
 
 const maxDistinct = 64 // cap cardinality tracking to save memory
 
+// maxCols caps the number of distinct columns tracked. A row cap alone does not
+// bound memory: a single row with a huge number of distinct keys bypasses it,
+// so an uncapped column map lets model/attacker-controlled input drive
+// unbounded allocation (one map+struct per key). A table wider than this isn't
+// a useful summary anyway.
+const maxCols = 256
+
 // IsJSONArray returns true if s begins with '[' and its first element starts with '{'.
 // This is an O(1) heuristic — it does not fully validate the JSON.
 func IsJSONArray(s string) bool {
@@ -100,9 +107,14 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 		_ = jsonparser.ObjectEach(row, func(key, value []byte, vt jsonparser.ValueType, _ int) error {
 			acc, exists := accs[string(key)]
 			if !exists {
+				// Bound distinct columns (see maxCols) — drop new keys past the
+				// cap rather than let a single wide row allocate without limit.
+				if len(accs) >= maxCols {
+					return nil
+				}
 				// Copy the key: it is a persistent map key / colOrder entry.
 				name := string(key)
-				acc = &colAcc{strFreq: make(map[string]int)}
+				acc = &colAcc{} // strFreq allocated lazily on the first string cell
 				accs[name] = acc
 				colOrder = append(colOrder, name)
 			}
@@ -111,6 +123,9 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			switch vt {
 			case jsonparser.String:
 				acc.hasStr = true
+				if acc.strFreq == nil {
+					acc.strFreq = make(map[string]int)
+				}
 				// jsonparser hands back the raw (still-escaped) value bytes for
 				// strings. A value containing an escape (\", \n, \uXXXX) must be
 				// unescaped before it keys the frequency map, or two encodings of

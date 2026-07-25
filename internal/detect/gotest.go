@@ -22,9 +22,17 @@ func SummarizeGoTest(s string) string {
 		pkgCount                        int // distinct package-result lines seen
 		failLines                       []string
 		currentIndented                 []string // indented lines for the current test
+		pkgFailed                       bool     // saw a package-level FAIL line
+		crash                           bool     // panic / timeout / data race
 	)
 
 	for line := range strings.SplitSeq(s, "\n") {
+		if !crash && (strings.HasPrefix(line, "panic:") ||
+			strings.HasPrefix(line, "fatal error:") ||
+			strings.Contains(line, "test timed out after") ||
+			strings.Contains(line, "DATA RACE")) {
+			crash = true
+		}
 		switch {
 		case strings.HasPrefix(line, "=== RUN"):
 			currentIndented = nil
@@ -47,11 +55,14 @@ func SummarizeGoTest(s string) string {
 				pkgCount++
 			}
 		case strings.HasPrefix(line, "FAIL\t"):
+			pkgFailed = true
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				pkg = parts[1]
 				pkgCount++
 			}
+		case line == "FAIL":
+			pkgFailed = true
 		case strings.HasPrefix(line, "    "):
 			// Indented subtest results (`    --- FAIL: T/sub`) were folded into
 			// the parent's detail but never tallied — count them here so the
@@ -75,6 +86,15 @@ func SummarizeGoTest(s string) string {
 	if pkgCount > 1 {
 		pkg = itoa(pkgCount) + " packages"
 		duration = ""
+	}
+
+	// A crash/timeout/data-race, or a package-level FAIL with no per-test
+	// --- FAIL: line, carries its diagnostic OUTSIDE the structured markers this
+	// summarizer captures. Worse, a crash/timeout has failCount==0, so it would
+	// be reported as PASS. Return "" so the pipeline passes the full, unmodified
+	// output through — the failure cause must reach the model intact.
+	if crash || (pkgFailed && failCount == 0) {
+		return ""
 	}
 
 	var sb strings.Builder

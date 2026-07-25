@@ -77,3 +77,37 @@ func TestSummarizeGoTest_CountsIndentedSubtests(t *testing.T) {
 		t.Errorf("expected the indented subtest failure to be counted (2 FAIL), got:\n%s", s)
 	}
 }
+
+// TestSummarizeGoTest_TimeoutNotPASS: a panicked/timed-out run (=== RUN present,
+// no per-test --- FAIL:, package FAIL line) must NOT be summarized as PASS. The
+// crash diagnostic must reach the model — SummarizeGoTest returns "" so the
+// pipeline passes the full output through.
+func TestSummarizeGoTest_TimeoutNotPASS(t *testing.T) {
+	in := "=== RUN   TestX\npanic: test timed out after 30s\n\ngoroutine 1 [running]:\n\ttesting.(*T).run(...)\nFAIL\tgithub.com/x/pkg\t30.0s\n"
+	got := detect.SummarizeGoTest(in)
+	if strings.Contains(got, "PASS") {
+		t.Fatalf("timed-out run summarized as PASS:\n%s", got)
+	}
+	if got != "" {
+		t.Fatalf("crash/timeout must pass through (empty summary), got:\n%s", got)
+	}
+}
+
+// TestSummarizeGoTest_PkgFailNoPerTest: a package FAIL with no per-test --- FAIL:
+// (e.g. a build/TestMain failure) must not read as PASS.
+func TestSummarizeGoTest_PkgFailNoPerTest(t *testing.T) {
+	in := "=== RUN   TestA\n--- PASS: TestA (0.00s)\nFAIL\tgithub.com/x/pkg\t0.1s\n"
+	got := detect.SummarizeGoTest(in)
+	if strings.Contains(got, "[go test PASS]") {
+		t.Fatalf("package FAIL summarized as PASS:\n%s", got)
+	}
+}
+
+// TestSummarizeGoTest_CleanPassStillSummarized: no regression on a clean pass.
+func TestSummarizeGoTest_CleanPassStillSummarized(t *testing.T) {
+	in := "=== RUN   TestA\n--- PASS: TestA (0.00s)\n=== RUN   TestB\n--- PASS: TestB (0.00s)\nPASS\nok  \tgithub.com/x/pkg\t0.10s\n"
+	got := detect.SummarizeGoTest(in)
+	if !strings.Contains(got, "[go test PASS]") || !strings.Contains(got, "2 PASS") {
+		t.Fatalf("clean pass not summarized correctly:\n%s", got)
+	}
+}
