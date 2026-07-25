@@ -22,7 +22,7 @@ client-all:
 	zig cc -O2 -target x86_64-linux-musl  -o $(BIN)/qdf-hookc-linux-amd64  client/qc.c && strip $(BIN)/qdf-hookc-linux-amd64 || true
 
 modernize:
-	$(GO) run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest ./... --fix
+	$(GO) run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest --fix ./...
 
 align:
 	$(GO) run github.com/dkorunic/betteralign/cmd/betteralign@latest -apply ./...
