@@ -38,3 +38,5 @@ docs/superpowers/sdd
 /dist/
 .superpowers/
 .claude
+# Internal design/spec/plan artifacts (superpowers) — kept local, not published
+docs/superpowers/
