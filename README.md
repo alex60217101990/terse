@@ -1,15 +1,21 @@
-# qdf-hook
+<p align="center">
+  <img src="images/terse-logo.png" alt="terse" width="520">
+</p>
 
-[![ci](https://github.com/alex60217101990/terse/actions/workflows/ci.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/ci.yml)
-[![coverage](https://codecov.io/gh/alex60217101990/terse/branch/main/graph/badge.svg)](https://codecov.io/gh/alex60217101990/terse)
-[![codeql](https://github.com/alex60217101990/terse/actions/workflows/codeql.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/codeql.yml)
-[![govulncheck](https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/alex60217101990/terse/badge)](https://securityscorecards.dev/viewer/?uri=github.com/alex60217101990/terse)
-[![Go Reference](https://pkg.go.dev/badge/github.com/alex60217101990/terse.svg)](https://pkg.go.dev/github.com/alex60217101990/terse)
-[![Go Report Card](https://goreportcard.com/badge/github.com/alex60217101990/terse)](https://goreportcard.com/report/github.com/alex60217101990/terse)
-[![Go](https://img.shields.io/github/go-mod/go-version/alex60217101990/terse?logo=go&logoColor=white&label=Go)](go.mod)
-[![native client: C via zig cc](https://img.shields.io/badge/native%20client-C%20%2F%20zig%20cc-A8B9CC?logo=c&logoColor=white)](client/qc.c)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+<h1 align="center">qdf-hook</h1>
+
+<p align="center">
+<a href="https://github.com/alex60217101990/terse/actions/workflows/ci.yml"><img src="https://github.com/alex60217101990/terse/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
+<a href="https://codecov.io/gh/alex60217101990/terse"><img src="https://codecov.io/gh/alex60217101990/terse/branch/main/graph/badge.svg" alt="coverage"></a>
+<a href="https://github.com/alex60217101990/terse/actions/workflows/codeql.yml"><img src="https://github.com/alex60217101990/terse/actions/workflows/codeql.yml/badge.svg" alt="codeql"></a>
+<a href="https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml"><img src="https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml/badge.svg" alt="govulncheck"></a>
+<a href="https://securityscorecards.dev/viewer/?uri=github.com/alex60217101990/terse"><img src="https://api.securityscorecards.dev/projects/github.com/alex60217101990/terse/badge" alt="OpenSSF Scorecard"></a>
+<a href="https://pkg.go.dev/github.com/alex60217101990/terse"><img src="https://pkg.go.dev/badge/github.com/alex60217101990/terse.svg" alt="Go Reference"></a>
+<a href="https://goreportcard.com/report/github.com/alex60217101990/terse"><img src="https://goreportcard.com/badge/github.com/alex60217101990/terse" alt="Go Report Card"></a>
+<a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/alex60217101990/terse?logo=go&logoColor=white&label=Go" alt="Go"></a>
+<a href="client/qc.c"><img src="https://img.shields.io/badge/native%20client-C%20%2F%20zig%20cc-A8B9CC?logo=c&logoColor=white" alt="native client: C via zig cc"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License: Apache-2.0"></a>
+</p>
 
 **Stop paying for the same tokens twice.** `qdf-hook` is a set of
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hooks that
