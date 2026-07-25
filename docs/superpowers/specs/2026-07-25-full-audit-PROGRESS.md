@@ -16,9 +16,9 @@ Legend: 🔎 reported · ✅ CONFIRMED+fixed · ❌ false-positive (rejected) ·
 | L4-F3 | silent-fail | misleading "fallback covers" handler comment | daemon/daemon.go | Low | ✅ fixed `436dfc3` (comment) |
 | L7#2 | lifecycle | gc --dry-run omits blob eviction preview | cmd/gc.go | Low | ✅ fixed `34f6148` |
 | L6#3 | pipeline | gotest panic/stack detail dropped from FAILURES block | detect/gotest.go | Med | ✅ subsumed by L6#2 (crash → full passthrough) |
-| L3#2 | decode-safety | Myers diff O((N+M)²) transient at the 10k-line guard | cache/delta.go | Low/Med | ⏳ OPEN — tighten guard to bound N·M/bytes |
-| L6#4 | pipeline | JSON ConstVal uses rowCount not observed (sparse cols) | detect/json.go | Low | ⏳ OPEN — cheap fix (lost signal only) |
-| L6#5 | pipeline | noise-strip "Waiting" prefix over-broad + 4 prefixes unreachable | detect/noise.go | Low | ⏳ OPEN — narrow "Waiting", add discriminators |
+| L3#2 | decode-safety | Myers diff O((N+M)²) transient at the 10k-line guard | cache/delta.go | Low/Med | ✅ fixed (edit-distance memory cap) + test |
+| L6#4 | pipeline | JSON ConstVal uses rowCount not observed (sparse cols) | detect/json.go | Low | ✅ fixed (use observed) + test |
+| L6#5 | pipeline | noise-strip "Waiting" prefix over-broad | detect/noise.go | Low | ✅ fixed (removed over-broad prefix) + test |
 | L6#6 | pipeline | §ref dedup confirms blob existence, not decodability (torn blob) | cache/ref.go | Low | ❌ loud expand error, not silent/wrong (L4-verified acceptable) |
 | L1#1 | concurrency | startTime plain pkg var (write Serve / read writeStats) | daemon/daemon.go | Low | ❌ prod happens-before; -race baseline clean (multi-Serve is test-only) |
 | L2#1 | leak | profile temp file not removed | cmd/profile.go | Low | ❌ by design — exec'd `go tool pprof` needs the file |
@@ -26,12 +26,11 @@ Legend: 🔎 reported · ✅ CONFIRMED+fixed · ❌ false-positive (rejected) ·
 | L7#3 | lifecycle | entryAllSuperseded won't prune legacy+foreign co-located entry | cmd/init.go | Low | ❌ needs hand-merged entry; old installer never wrote one |
 | L5 | zero-copy | — | — | — | ✅ NONE (verified vs stdlib json copy semantics) |
 
-**Round 1 result: 8 confirmed bugs fixed (2 High, 5 Med, 1 Low), 3 Low still open, 5 rejected. Full -race suite green, golangci-lint 0 issues.**
+**Round 1 result: 11 confirmed bugs fixed (2 High, 5 Med, 4 Low), 5 rejected. Full -race suite green, golangci-lint 0 issues.**
 
 ## Still to do
-- Finish the 3 open Lows (L3#2 delta guard, L6#4 ConstVal, L6#5 noise).
-- Perf round (measure-first, benchstat-gated) — separate phase.
-- Round 2 fan-out (until 2 dry rounds).
+- Round 2 fan-out (adversarial review of the fixes + perf-lever probe + fresh sweep of summary/analytics/bytesconv/stats).
+- Perf round (measure-first, benchstat-gated).
 
 ## Kept perf wins (benchstat-backed)
 _(perf round pending)_
