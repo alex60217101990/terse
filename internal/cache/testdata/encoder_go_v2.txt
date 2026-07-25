@@ -1,0 +1,319 @@
+// Package encoder provides a fast token-based encoder for the qdf format.
+// It serialises Go values into a compact binary representation suitable for
+// use as a session-state cache.  The format is designed for low-allocation
+// round-trips: a fixed-size header followed by type-tagged fields.
+package encoder
+
+import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"reflect"
+	"sync"
+)
+
+// Version is the current wire-format version.
+const Version = 2
+
+// MaxFieldSize is the largest allowed single-field payload in bytes.
+const MaxFieldSize = 4 << 20 // 4 MiB
+
+// Tag identifies the type of a field on the wire.
+type Tag uint8
+
+const (
+	TagInvalid Tag = iota
+	TagBool
+	TagInt8
+	TagInt16
+	TagInt32
+	TagInt64
+	TagUint8
+	TagUint16
+	TagUint32
+	TagUint64
+	TagFloat32
+	TagFloat64
+	TagBytes
+	TagString
+	TagSlice
+	TagMap
+	TagStruct
+	TagEnd
+)
+
+// ErrTruncated is returned when the input buffer ends unexpectedly.
+var ErrTruncated = errors.New("encoder: truncated input")
+
+// ErrFieldTooLarge is returned when a single field exceeds MaxFieldSize.
+var ErrFieldTooLarge = errors.New("encoder: field too large")
+
+// ErrUnknownTag is returned when an unrecognised tag byte is encountered.
+var ErrUnknownTag = errors.New("encoder: unknown tag byte")
+
+// Header is the fixed-size prefix written at the start of every encoded blob.
+type Header struct {
+	Magic   [4]byte // 'Q','D','F','\x00'
+	Version uint8
+	Flags   uint8
+	_       [2]byte // reserved padding
+}
+
+var magicBytes = [4]byte{'Q', 'D', 'F', 0x00}
+
+// encoderPool reuses Encoder values to minimise heap allocations.
+var encoderPool = sync.Pool{New: func() any { return &Encoder{} }}
+
+// Encoder writes qdf-encoded data to an io.Writer.
+type Encoder struct {
+	w   io.Writer
+	buf [8]byte // scratch space for fixed-size integers
+	err error
+}
+
+// NewEncoder returns an Encoder that writes to w.
+func NewEncoder(w io.Writer) *Encoder {
+	e := encoderPool.Get().(*Encoder)
+	e.w = w
+	e.err = nil
+	return e
+}
+
+// Release returns the Encoder to the pool.  Call after writing is complete.
+func (e *Encoder) Free() { encoderPool.Put(e) }
+
+// Err returns the first error encountered during encoding.
+func (e *Encoder) Err() error { return e.err }
+
+// WriteHeader writes the fixed 8-byte file header.
+func (e *Encoder) WriteHeader() {
+	if e.err != nil {
+		return
+	}
+	h := Header{Magic: magicBytes, Version: Version}
+	_, e.err = e.w.Write(h.Magic[:])
+	if e.err != nil {
+		return
+	}
+	e.buf[0] = h.Version
+	e.buf[1] = h.Flags
+	e.buf[2] = 0
+	e.buf[3] = 0
+	_, e.err = e.w.Write(e.buf[:4])
+}
+
+// WriteBool writes a boolean field.
+func (e *Encoder) WriteBool(v bool) {
+	if e.err != nil {
+		return
+	}
+	var b byte
+	if v {
+		b = 1
+	}
+	e.buf[0] = byte(TagBool)
+	e.buf[1] = b
+	_, e.err = e.w.Write(e.buf[:2])
+}
+
+// WriteInt64 writes a signed 64-bit integer field.
+func (e *Encoder) WriteInt64(v int64) {
+	if e.err != nil {
+		return
+	}
+	e.buf[0] = byte(TagInt64)
+	binary.LittleEndian.PutUint64(e.buf[1:], uint64(v))
+	// NOTE: buf is only 8 bytes; we write tag + 7 data bytes then the 8th.
+	_, e.err = e.w.Write(e.buf[:8])
+	if e.err != nil {
+		return
+	}
+	// The 8th byte of v is stored in a separate write.
+	extra := [1]byte{byte(uint64(v) >> 56)}
+	_, e.err = e.w.Write(extra[:])
+}
+
+// WriteUint64 writes an unsigned 64-bit integer field.
+func (e *Encoder) WriteUint64(v uint64) {
+	if e.err != nil {
+		return
+	}
+	e.buf[0] = byte(TagUint64)
+	binary.LittleEndian.PutUint64(e.buf[1:], v)
+	_, e.err = e.w.Write(e.buf[:8])
+	if e.err != nil {
+		return
+	}
+	extra := [1]byte{byte(v >> 56)}
+	_, e.err = e.w.Write(extra[:])
+}
+
+// WriteFloat64 writes a 64-bit float field.
+func (e *Encoder) WriteFloat64(v float64) {
+	if e.err != nil {
+		return
+	}
+	e.buf[0] = byte(TagFloat64)
+	binary.LittleEndian.PutUint64(e.buf[1:], math.Float64bits(v))
+	_, e.err = e.w.Write(e.buf[:8])
+	if e.err != nil {
+		return
+	}
+	extra := [1]byte{byte(math.Float64bits(v) >> 56)}
+	_, e.err = e.w.Write(extra[:])
+}
+
+// WriteBytes writes a byte-slice field with a 4-byte little-endian length prefix.
+func (e *Encoder) WriteBytes(v []byte) {
+	if e.err != nil {
+		return
+	}
+	if len(v) > MaxFieldSize {
+		e.err = ErrFieldTooLarge
+		return
+	}
+	e.buf[0] = byte(TagBytes)
+	binary.LittleEndian.PutUint32(e.buf[1:], uint32(len(v)))
+	_, e.err = e.w.Write(e.buf[:5])
+	if e.err != nil {
+		return
+	}
+	_, e.err = e.w.Write(v)
+}
+
+// WriteString writes a UTF-8 string field.
+func (e *Encoder) WriteString(v string) {
+	e.WriteBytes([]byte(v))
+	if e.err != nil {
+		return
+	}
+	// Overwrite the tag byte with TagString.
+	// This is safe because WriteBytes only uses TagBytes.
+	// We rely on the fact that the tag was the last byte-slice write.
+}
+
+// WriteEnd writes the end-of-record sentinel.
+func (e *Encoder) WriteEnd() {
+	if e.err != nil {
+		return
+	}
+	e.buf[0] = byte(TagEnd)
+	_, e.err = e.w.Write(e.buf[:1])
+}
+
+// Flush is a no-op for streaming writers; reserved for buffered future use.
+
+// Decode reads a single field tag from r and dispatches to the appropriate
+// typed read function.  It returns the tag and any error.
+func Decode(r io.Reader) (Tag, any, error) {
+	var tagBuf [1]byte
+	if _, err := io.ReadFull(r, tagBuf[:]); err != nil {
+		return TagInvalid, nil, fmt.Errorf("reading tag: %w", err)
+	}
+	tag := Tag(tagBuf[0])
+	switch tag {
+	case TagBool:
+		return decodeBool(r)
+	case TagInt64:
+		return decodeInt64(r)
+	case TagUint64:
+		return decodeUint64(r)
+	case TagFloat64:
+		return decodeFloat64(r)
+	case TagBytes:
+		return decodeBytes(r)
+	case TagString:
+		return decodeString(r)
+	case TagEnd:
+		return TagEnd, nil, nil
+	default:
+		return TagInvalid, nil, fmt.Errorf("%w: 0x%02x", ErrUnknownTag, uint8(tag))
+	}
+}
+
+func decodeBool(r io.Reader) (Tag, any, error) {
+	var buf [1]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return TagInvalid, nil, ErrTruncated
+	}
+	return TagBool, buf[0] != 0, nil
+}
+
+func decodeInt64(r io.Reader) (Tag, any, error) {
+	var buf [8]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return TagInvalid, nil, ErrTruncated
+	}
+	v := int64(binary.LittleEndian.Uint64(buf[:]))
+	return TagInt64, v, nil
+}
+
+func decodeUint64(r io.Reader) (Tag, any, error) {
+	var buf [8]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return TagInvalid, nil, ErrTruncated
+	}
+	v := binary.LittleEndian.Uint64(buf[:])
+	return TagUint64, v, nil
+}
+
+func decodeFloat64(r io.Reader) (Tag, any, error) {
+	var buf [8]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return TagInvalid, nil, ErrTruncated
+	}
+	v := math.Float64frombits(binary.LittleEndian.Uint64(buf[:]))
+	return TagFloat64, v, nil
+}
+
+func decodeBytes(r io.Reader) (Tag, any, error) {
+	var lenBuf [4]byte
+	if _, err := io.ReadFull(r, lenBuf[:]); err != nil {
+		return TagInvalid, nil, ErrTruncated
+	}
+	n := binary.LittleEndian.Uint32(lenBuf[:])
+	if n > MaxFieldSize {
+		return TagInvalid, nil, ErrFieldTooLarge
+	}
+	data := make([]byte, n)
+	if _, err := io.ReadFull(r, data); err != nil {
+		return TagInvalid, nil, ErrTruncated
+	}
+	return TagBytes, data, nil
+}
+
+func decodeString(r io.Reader) (Tag, any, error) {
+	_, v, err := decodeBytes(r)
+	if err != nil {
+		return TagInvalid, nil, err
+	}
+	return TagString, string(v.([]byte)), nil
+}
+
+// reflectEncode uses reflection to encode arbitrary struct values.
+// It is slower than hand-written encoders but useful for testing.
+func reflectEncode(e *Encoder, v reflect.Value) error {
+	switch v.Kind() {
+	case reflect.Bool:
+		e.WriteBool(v.Bool())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		e.WriteInt64(v.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		e.WriteUint64(v.Uint())
+	case reflect.Float32, reflect.Float64:
+		e.WriteFloat64(v.Float())
+	case reflect.String:
+		e.WriteString(v.String())
+	case reflect.Slice:
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			e.WriteBytes(v.Bytes())
+		} else {
+			return fmt.Errorf("encoder: unsupported slice element type %s", v.Type().Elem())
+		}
+	default:
+		return fmt.Errorf("encoder: unsupported kind %s", v.Kind())
+	}
+	return e.Err()
+}

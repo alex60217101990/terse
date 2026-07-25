@@ -1,0 +1,102 @@
+=== RUN   TestFoo01
+--- PASS: TestFoo01 (0.00s)
+=== RUN   TestFoo02
+--- PASS: TestFoo02 (0.00s)
+=== RUN   TestFoo03
+--- PASS: TestFoo03 (0.01s)
+=== RUN   TestFoo04
+--- PASS: TestFoo04 (0.00s)
+=== RUN   TestFoo05
+--- PASS: TestFoo05 (0.00s)
+=== RUN   TestFoo06
+--- PASS: TestFoo06 (0.00s)
+=== RUN   TestFoo07
+--- PASS: TestFoo07 (0.01s)
+=== RUN   TestFoo08
+--- PASS: TestFoo08 (0.00s)
+=== RUN   TestFoo09
+--- PASS: TestFoo09 (0.00s)
+=== RUN   TestFoo10
+--- PASS: TestFoo10 (0.00s)
+=== RUN   TestBar01
+--- PASS: TestBar01 (0.00s)
+=== RUN   TestBar02
+--- PASS: TestBar02 (0.01s)
+=== RUN   TestBar03
+--- PASS: TestBar03 (0.00s)
+=== RUN   TestBar04
+--- PASS: TestBar04 (0.00s)
+=== RUN   TestBar05
+--- PASS: TestBar05 (0.00s)
+=== RUN   TestBar06
+--- PASS: TestBar06 (0.00s)
+=== RUN   TestBar07
+--- PASS: TestBar07 (0.01s)
+=== RUN   TestBar08
+--- PASS: TestBar08 (0.00s)
+=== RUN   TestBar09
+--- PASS: TestBar09 (0.00s)
+=== RUN   TestBar10
+--- PASS: TestBar10 (0.00s)
+=== RUN   TestBaz01
+--- PASS: TestBaz01 (0.00s)
+=== RUN   TestBaz02
+--- PASS: TestBaz02 (0.00s)
+=== RUN   TestBaz03
+--- PASS: TestBaz03 (0.01s)
+=== RUN   TestBaz04
+--- PASS: TestBaz04 (0.00s)
+=== RUN   TestBaz05
+--- PASS: TestBaz05 (0.00s)
+=== RUN   TestBaz06
+--- PASS: TestBaz06 (0.00s)
+=== RUN   TestBaz07
+--- PASS: TestBaz07 (0.01s)
+=== RUN   TestBaz08
+--- PASS: TestBaz08 (0.00s)
+=== RUN   TestBaz09
+--- PASS: TestBaz09 (0.00s)
+=== RUN   TestBaz10
+--- PASS: TestBaz10 (0.00s)
+=== RUN   TestQux01
+--- PASS: TestQux01 (0.00s)
+=== RUN   TestQux02
+--- PASS: TestQux02 (0.00s)
+=== RUN   TestQux03
+--- PASS: TestQux03 (0.01s)
+=== RUN   TestQux04
+--- PASS: TestQux04 (0.00s)
+=== RUN   TestQux05
+--- PASS: TestQux05 (0.00s)
+=== RUN   TestQux06
+--- PASS: TestQux06 (0.00s)
+=== RUN   TestQux07
+--- PASS: TestQux07 (0.01s)
+=== RUN   TestQux08
+--- PASS: TestQux08 (0.00s)
+=== RUN   TestQux09
+--- PASS: TestQux09 (0.00s)
+=== RUN   TestQux10
+--- PASS: TestQux10 (0.00s)
+=== RUN   TestZap01
+--- PASS: TestZap01 (0.00s)
+=== RUN   TestZap02
+--- PASS: TestZap02 (0.00s)
+=== RUN   TestZap03
+--- PASS: TestZap03 (0.01s)
+=== RUN   TestZap04
+--- PASS: TestZap04 (0.00s)
+=== RUN   TestZap05
+--- PASS: TestZap05 (0.00s)
+=== RUN   TestZap06
+--- PASS: TestZap06 (0.00s)
+=== RUN   TestZap07
+--- PASS: TestZap07 (0.01s)
+=== RUN   TestZap08
+--- PASS: TestZap08 (0.00s)
+=== RUN   TestZap09
+--- PASS: TestZap09 (0.00s)
+=== RUN   TestZap10
+--- PASS: TestZap10 (0.00s)
+PASS
+ok  	github.com/alex60217101990/qdf-hook	0.042s
