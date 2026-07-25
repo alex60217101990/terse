@@ -88,7 +88,21 @@ func myersDiff(a, b []string) []edit {
 	// trace stores the v array at each step d for backtracking.
 	trace := make([][]int, 0, n+m)
 
+	// Bound trace memory. Full-trace Myers keeps one v-snapshot (2*offset+1
+	// ints) per edit-distance step d, so cost is O((n+m)·D) ints — gigabytes
+	// when two large inputs differ heavily (D≈n+m). Cap d to a fixed int budget;
+	// beyond it myersDiff bails and both callers serve the full content
+	// (never-worse). This also bails a re-read once its changed-line count is
+	// large relative to the file: with this budget, roughly >2M/L lines changed
+	// in an L-line file (~200 for a 10k-line file, ~2000 for 1k) — well above a
+	// normal edit, and full content is the correct fallback there anyway.
+	const maxTraceInts = 16 << 20 // ~128 MiB of int snapshots (8 bytes each)
+	maxD := maxTraceInts / (2*offset + 1)
+
 	for d := range n + m + 1 {
+		if d > maxD {
+			return nil // edit script too large to bound memory → signal "no diff"
+		}
 		snap := make([]int, 2*offset+1)
 		copy(snap, v)
 		trace = append(trace, snap)
@@ -186,7 +200,12 @@ func writeHunks(buf *bytes.Buffer, a, b []string, edits []edit, ctx int) {
 			for k < n && edits[k].kind == '=' {
 				k++
 			}
-			if k-j <= ctx && k < n {
+			// Merge the equal-run into this hunk when short enough that the two
+			// changes' context windows (ctx each side) touch or overlap: gap <=
+			// 2*ctx. Using ctx alone left runs of ctx<G<=2*ctx as separate hunks
+			// whose ranges (prev hi=j+ctx, next lo=i-ctx) overlapped — duplicating
+			// context and emitting @@ headers that overran the file.
+			if k-j <= 2*ctx && k < n {
 				j = k
 			} else {
 				break

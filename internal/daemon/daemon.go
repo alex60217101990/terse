@@ -229,8 +229,12 @@ func sweepCache(nowSec int64) {
 //
 // Anything else is run through the full hook pipeline against store. It
 // never panics the daemon: a recover guards the whole handler, and any error
-// (read, dispatch, or otherwise) just results in the connection being closed
-// without a reply — the client's local-pipeline fallback covers that case.
+// (read, dispatch, or otherwise) closes the connection with no reply. An empty
+// reply is safe by the passthrough equivalence — Claude Code treats empty hook
+// stdout as "use the original output". Note the socket-first client does NOT
+// re-dispatch locally after a committed dial (stdin may be consumed), so that
+// equivalence, not a client fallback, is the real safety net; the dispatch
+// error is logged below so a systemic regression is observable.
 func handleConn(c net.Conn, store hookcore.StateStore, version string, requestShutdown func()) {
 	defer c.Close()
 	defer func() {
@@ -263,8 +267,13 @@ func handleConn(c net.Conn, store hookcore.StateStore, version string, requestSh
 	}
 
 	// DispatchBytes decodes the already-buffered request directly, skipping the
-	// json.Decoder buffering an io.Reader path would add.
-	_ = hook.DispatchBytes(store, req, c)
+	// json.Decoder buffering an io.Reader path would add. An error closes the
+	// connection with no reply (safe passthrough); log it to the daemon's
+	// stderr (→ ~/.qdf-hook/daemon.log) so a systemic decode/dispatch regression
+	// surfaces instead of silently degrading every request to passthrough.
+	if err := hook.DispatchBytes(store, req, c); err != nil {
+		log.Printf("daemon: dispatch: %v", err)
+	}
 }
 
 // writeStats emits a compact one-metric-per-line runtime snapshot for tuning

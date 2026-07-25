@@ -121,7 +121,7 @@ func TestMergeHooks_UpgradesPlainPostToHybrid(t *testing.T) {
 	if posts != 1 {
 		t.Fatalf("expected exactly 1 post hook after upgrade, got %d", posts)
 	}
-	if !strings.Contains(postCmd, "qdf-hookc") || !strings.Contains(postCmd, "|| "+exe+" post") {
+	if !strings.Contains(postCmd, "qdf-hookc") || !strings.Contains(postCmd, "|| "+shquote(exe)+" post") {
 		t.Errorf("plain post was not upgraded to hybrid: %q", postCmd)
 	}
 
@@ -233,8 +233,8 @@ func TestRunInit_HybridAndSessionStart(t *testing.T) {
 	if !strings.Contains(postCmd, sock) {
 		t.Errorf("PostToolUse command missing sock path %q: %q", sock, postCmd)
 	}
-	if !strings.Contains(postCmd, exe+" post") {
-		t.Errorf("PostToolUse command missing %q: %q", exe+" post", postCmd)
+	if !strings.Contains(postCmd, shquote(exe)+" post") {
+		t.Errorf("PostToolUse command missing %q: %q", shquote(exe)+" post", postCmd)
 	}
 
 	// (b) exactly one SessionStart daemon --ensure hook.
@@ -271,7 +271,7 @@ func TestHookCommand_UsesNativeClientNotNc(t *testing.T) {
 	if strings.Contains(cmd, "nc ") {
 		t.Errorf("hook command must not use nc: %q", cmd)
 	}
-	if !strings.Contains(cmd, "qdf-hookc") || !strings.Contains(cmd, "|| "+exe+" post") {
+	if !strings.Contains(cmd, "qdf-hookc") || !strings.Contains(cmd, "|| "+shquote(exe)+" post") {
 		t.Errorf("hook command must invoke qdf-hookc with exe fallback: %q", cmd)
 	}
 }
@@ -289,5 +289,37 @@ func TestMergeHooks_UpgradesLegacyNcToNativeClient(t *testing.T) {
 	got := hb["PostToolUse"][0].Hooks[0].Command
 	if strings.Contains(got, "nc ") || !strings.Contains(got, "qdf-hookc") {
 		t.Errorf("legacy nc not upgraded to qdf-hookc: %q", got)
+	}
+}
+
+// TestHookCommand_SpacedPathQuotedAndIdempotent: an install path containing a
+// space must be shell-quoted (so the hook execs) AND still recognized by
+// isQdfHookCommand (so re-init stays idempotent instead of appending a dup).
+func TestHookCommand_SpacedPathQuotedAndIdempotent(t *testing.T) {
+	exe := "/Users/First Last/bin/qdf-hook"
+	cmd := hookCommand(hookSpec{event: "PostToolUse", matcher: ".*", sub: "post"}, exe)
+	if !strings.Contains(cmd, `'/Users/First Last/bin/qdf-hook' post`) {
+		t.Fatalf("spaced path not quoted for exec:\n%s", cmd)
+	}
+	if !isQdfHookCommand(cmd, "post") {
+		t.Fatalf("isQdfHookCommand must match its own spaced-path command:\n%s", cmd)
+	}
+	// Plain (space-free) path: no regression.
+	plain := hookCommand(hookSpec{event: "PostToolUse", sub: "post"}, "/usr/local/bin/qdf-hook")
+	if !isQdfHookCommand(plain, "post") {
+		t.Fatalf("isQdfHookCommand regressed on plain path:\n%s", plain)
+	}
+	// A foreign tool sharing the subword must still not match.
+	if isQdfHookCommand("/opt/sqz hook post", "post") {
+		t.Fatalf("must not match a foreign tool's command")
+	}
+}
+
+func TestShFieldsRoundtrip(t *testing.T) {
+	for _, s := range []string{"/plain/path", "/has space/x", "/a/b'c"} {
+		got := shFields(shquote(s) + " post")
+		if len(got) != 2 || got[0] != s || got[1] != "post" {
+			t.Errorf("shFields(shquote(%q)+\" post\") = %q, want [%q post]", s, got, s)
+		}
 	}
 }

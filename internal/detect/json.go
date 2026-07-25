@@ -49,6 +49,13 @@ type ArrayStats struct {
 
 const maxDistinct = 64 // cap cardinality tracking to save memory
 
+// maxCols caps the number of distinct columns tracked. A row cap alone does not
+// bound memory: a single row with a huge number of distinct keys bypasses it,
+// so an uncapped column map lets model/attacker-controlled input drive
+// unbounded allocation (one map+struct per key). A table wider than this isn't
+// a useful summary anyway.
+const maxCols = 256
+
 // IsJSONArray returns true if s begins with '[' and its first element starts with '{'.
 // This is an O(1) heuristic — it does not fully validate the JSON.
 func IsJSONArray(s string) bool {
@@ -87,6 +94,11 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 	accs := make(map[string]*colAcc)
 	var colOrder []string
 	rowCount := 0
+	// Preallocation hint for per-column numeric slices: a column's values never
+	// exceed the row cap, so a dense numeric column allocates once instead of
+	// growing from nil (~11 doubling reallocs — 95% of this function's alloc
+	// space). Bounded so a large maxRows can't over-reserve a sparse column.
+	numCap := min(maxRows, 4096)
 
 	// Single-pass walk over the array with jsonparser: values are returned as
 	// slices into data (zero-copy) and scalars are parsed straight from those
@@ -100,9 +112,14 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 		_ = jsonparser.ObjectEach(row, func(key, value []byte, vt jsonparser.ValueType, _ int) error {
 			acc, exists := accs[string(key)]
 			if !exists {
+				// Bound distinct columns (see maxCols) — drop new keys past the
+				// cap rather than let a single wide row allocate without limit.
+				if len(accs) >= maxCols {
+					return nil
+				}
 				// Copy the key: it is a persistent map key / colOrder entry.
 				name := string(key)
-				acc = &colAcc{strFreq: make(map[string]int)}
+				acc = &colAcc{} // strFreq allocated lazily on the first string cell
 				accs[name] = acc
 				colOrder = append(colOrder, name)
 			}
@@ -111,6 +128,9 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 			switch vt {
 			case jsonparser.String:
 				acc.hasStr = true
+				if acc.strFreq == nil {
+					acc.strFreq = make(map[string]int)
+				}
 				// jsonparser hands back the raw (still-escaped) value bytes for
 				// strings. A value containing an escape (\", \n, \uXXXX) must be
 				// unescaped before it keys the frequency map, or two encodings of
@@ -151,6 +171,9 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 						acc.hasInt = true
 					} else {
 						acc.hasFloat = true
+					}
+					if acc.nums == nil {
+						acc.nums = make([]float64, 0, numCap)
 					}
 					acc.nums = append(acc.nums, f)
 				}
@@ -209,7 +232,11 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 		// String stats: cardinality, constant value, top-5 by frequency.
 		if acc.hasStr && len(acc.strFreq) > 0 {
 			cs.Cardinality = len(acc.strFreq)
-			nonNullRows := rowCount - acc.nulls
+			// Non-null rows *in which this column appears* — observed, not the
+			// array's total rowCount. For a sparse column (present in some rows)
+			// rowCount overcounts, so a genuinely constant value never reaches
+			// cnt == nonNullRows and ConstVal is lost.
+			nonNullRows := acc.observed - acc.nulls
 			for val, cnt := range acc.strFreq {
 				if cnt == nonNullRows {
 					cs.ConstVal = val
@@ -237,8 +264,15 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 				return strings.Compare(a.k, b.k)
 			})
 			limit := min(5, len(top))
+			// Build "%q×%d" without fmt (interface boxing + format parse) —
+			// strconv.Append into a reused buffer. Byte-identical to the old
+			// Sprintf, which §ref determinism relies on.
+			var tb []byte
 			for _, pair := range top[:limit] {
-				cs.TopVals = append(cs.TopVals, fmt.Sprintf("%q×%d", pair.k, pair.v))
+				tb = strconv.AppendQuote(tb[:0], pair.k)
+				tb = append(tb, "×"...)
+				tb = strconv.AppendInt(tb, int64(pair.v), 10)
+				cs.TopVals = append(cs.TopVals, string(tb))
 			}
 		}
 

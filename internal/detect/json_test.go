@@ -2,6 +2,7 @@ package detect_test
 
 import (
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/alex60217101990/terse/internal/detect"
@@ -165,5 +166,58 @@ func BenchmarkAnalyzeJSONArray(b *testing.B) {
 	data, _ := os.ReadFile("../../testdata/json_array_1k.json")
 	for b.Loop() {
 		_, _ = detect.AnalyzeJSONArray(data, 1000)
+	}
+}
+
+// TestAnalyzeJSONArray_ColumnsBounded is a robustness regression: a single row
+// with a huge number of distinct keys must not allocate an unbounded number of
+// column accumulators. Rows are capped by maxRows, but columns were previously
+// uncapped — a one-row object with millions of keys bypassed the row cap and
+// drove ~100x memory amplification (model/attacker-controlled input).
+func TestAnalyzeJSONArray_ColumnsBounded(t *testing.T) {
+	var b []byte
+	b = append(b, '[', '{')
+	const n = 5000
+	for i := range n {
+		if i > 0 {
+			b = append(b, ',')
+		}
+		b = append(b, []byte(`"k`+strconv.Itoa(i)+`":1`)...)
+	}
+	b = append(b, '}', ']')
+
+	stats, err := detect.AnalyzeJSONArray(b, 2000)
+	if err != nil {
+		t.Fatalf("analyze: %v", err)
+	}
+	if stats.RowCount != 1 {
+		t.Fatalf("RowCount = %d, want 1", stats.RowCount)
+	}
+	if len(stats.Columns) > 256 {
+		t.Fatalf("columns unbounded: got %d, want <= 256 (maxCols)", len(stats.Columns))
+	}
+}
+
+// TestAnalyzeJSONArray_SparseConstVal: a column present in only some rows but
+// always the same value must still report ConstVal — it was compared against
+// the array's total rowCount instead of the column's observed count, so a
+// sparse constant column silently lost its ConstVal.
+func TestAnalyzeJSONArray_SparseConstVal(t *testing.T) {
+	in := []byte(`[{"k":"x"},{"other":1},{"k":"x"}]`)
+	stats, err := detect.AnalyzeJSONArray(in, 2000)
+	if err != nil {
+		t.Fatalf("analyze: %v", err)
+	}
+	var found bool
+	for _, c := range stats.Columns {
+		if c.Name == "k" {
+			found = true
+			if c.ConstVal != "x" {
+				t.Fatalf("sparse constant column k: ConstVal = %q, want %q", c.ConstVal, "x")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("column k not found")
 	}
 }

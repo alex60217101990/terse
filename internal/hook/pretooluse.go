@@ -63,13 +63,21 @@ func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.W
 	// change combined with a forged/rewound mtime (cp -p, touch -r) still slips
 	// through mtime+size alone. ctime advances on every content or metadata
 	// change and cannot be moved backward from userspace, so it catches that
-	// residual window. ctimeOK degrades to mtime+size when either the cached or
-	// current ctime is 0 (unavailable on Windows, or a pre-upgrade cache entry
-	// written before CtimeNS existed) so old caches don't force a mass re-read.
+	// residual window. When ctime is unavailable (0 on either side — Windows, or
+	// a pre-CtimeNS cache entry) the deny is NOT taken (see below): a deny can't
+	// be recovered, so we never rest it on mtime+size alone.
 	sizeMatch := info.Size() == int64(len(entry.Content))
 	curCtime := statCtimeNS(info)
-	ctimeOK := entry.CtimeNS == 0 || curCtime == 0 || entry.CtimeNS == curCtime
-	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() && sizeMatch && ctimeOK {
+	// A deny asserts "unchanged, don't re-read" with no content in hand, so —
+	// unlike every other path — it cannot be downgraded to a safe passthrough if
+	// wrong. Require a real ctime match: if ctime is unavailable on either side
+	// (a pre-CtimeNS cache entry, or a platform without it), do NOT deny — fall
+	// through to allow, letting the PostToolUse handler make a content-based,
+	// never-worse decision. mtime+size alone can be forged (cp -p, touch -r)
+	// across a same-size content change; that residual would serve stale content
+	// as authoritative. One extra read of a stale-cache file is strictly safer.
+	ctimeMatch := entry.CtimeNS != 0 && curCtime != 0 && entry.CtimeNS == curCtime
+	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() && sizeMatch && ctimeMatch {
 		// mtime+size+ctime unchanged — safe to deny without reading.
 		hashHex := cache.ShortHex(entry.Hash[:8])
 		reason = fmt.Sprintf(

@@ -29,7 +29,9 @@ func cmdGC() *cobra.Command {
 				return fmt.Errorf("gc: %w", err)
 			}
 			if dryRun {
-				fmt.Printf("dry-run: would remove %d sessions, keep %d\n", result.Removed, result.Kept)
+				fmt.Printf("dry-run: would remove %d sessions (keep %d) + %d blobs, free %s\n",
+					result.Removed, result.Kept, result.BlobsRemoved,
+					analytics.FormatBytes(int(result.FreedBytes+result.BlobBytesFreed)))
 			} else {
 				fmt.Printf("removed %d sessions + %d blobs, freed %s\n",
 					result.Removed, result.BlobsRemoved,

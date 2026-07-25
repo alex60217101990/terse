@@ -249,12 +249,54 @@ func hookCommand(h hookSpec, exe string) string {
 			return exe + " " + h.sub
 		}
 		client := filepath.Join(filepath.Dir(exe), "qdf-hookc")
-		return fmt.Sprintf("%s %s 2>/dev/null || %s %s", client, daemon.SockPath(), exe, h.sub)
+		return fmt.Sprintf("%s %s 2>/dev/null || %s %s", shquote(client), shquote(daemon.SockPath()), shquote(exe), h.sub)
 	case h.event == "SessionStart" && h.sub == "daemon":
-		return exe + " daemon --ensure"
+		return shquote(exe) + " daemon --ensure"
 	default:
-		return exe + " " + h.sub
+		return shquote(exe) + " " + h.sub
 	}
+}
+
+// shquote wraps s in single quotes so a path containing spaces (or other shell
+// metacharacters) survives the shell that runs the hook command. Without this,
+// an install path like "/Users/First Last/qdf-hook" both fails to exec and
+// desyncs isQdfHookCommand's field matching (breaking re-init idempotence).
+func shquote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// shFields splits a command line on unquoted whitespace, honoring single quotes
+// (the only quoting shquote emits) so a quoted spaced path stays one field.
+func shFields(s string) []string {
+	var out []string
+	var cur strings.Builder
+	inQuote, started := false, false
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; {
+		case c == '\'':
+			inQuote = !inQuote
+			started = true
+		case c == '\\' && !inQuote && i+1 < len(s):
+			// Outside quotes a backslash escapes the next byte — this is how
+			// shquote emits an embedded single quote: '\'' (close, \', reopen).
+			i++
+			cur.WriteByte(s[i])
+			started = true
+		case (c == ' ' || c == '\t') && !inQuote:
+			if started {
+				out = append(out, cur.String())
+				cur.Reset()
+				started = false
+			}
+		default:
+			cur.WriteByte(c)
+			started = true
+		}
+	}
+	if started {
+		out = append(out, cur.String())
+	}
+	return out
 }
 
 // commandPresent reports whether any entry already invokes THIS tool's given
@@ -321,7 +363,7 @@ func isQdfHookCommand(c, sub string) bool {
 	if i := strings.LastIndex(c, "||"); i >= 0 {
 		c = c[i+len("||"):]
 	}
-	f := strings.Fields(c)
+	f := shFields(c)
 	if len(f) < 2 || f[1] != sub {
 		return false
 	}

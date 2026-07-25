@@ -2,8 +2,12 @@ package analytics_test
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alex60217101990/terse/internal/analytics"
 )
@@ -146,4 +150,31 @@ func lineContaining(t *testing.T, s, sub string) string {
 	}
 	t.Fatalf("no line containing %q in:\n%s", sub, s)
 	return ""
+}
+
+// TestLoadEvents_OversizedLineDoesNotAbort: a single >64KB (corrupt) line in
+// analytics.jsonl must not fail the whole `stats` read — the valid events
+// around it are still returned. (bufio.Scanner's 64KB cap used to abort.)
+func TestLoadEvents_OversizedLineDoesNotAbort(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	path := analytics.AnalyticsPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ts := time.Now().UnixNano()
+	good1 := fmt.Sprintf(`{"sid":"s","hook":"Bash","action":"ref","ts":%d,"bi":100,"bo":10,"dur":1}`, ts)
+	good2 := fmt.Sprintf(`{"sid":"s","hook":"Read","action":"full","ts":%d,"bi":200,"bo":200,"dur":2}`, ts)
+	huge := strings.Repeat("x", 200*1024) // 200 KB garbage line
+	content := good1 + "\n" + huge + "\n" + good2 + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	events, err := analytics.LoadEvents(0)
+	if err != nil {
+		t.Fatalf("LoadEvents must not fail on an oversized line: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("want 2 valid events around the garbage line, got %d", len(events))
+	}
 }

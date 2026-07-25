@@ -72,7 +72,7 @@ Per hook operation. `benchstat`, n ≥ 12, interleaved.
 | `§ref` miss (register blob) | 94 µs | 20 |
 | Session state Save + Load | **69 µs** | 29 |
 | Unified diff | **49 µs** | 39 |
-| JSON analysis (1000 rows) | **269 µs** | 2 068 |
+| JSON analysis (1000 rows) | **263 µs** | 44 |
 | Grep group (500 matches) | 134 µs | 144 |
 | Squeeze (500 ANSI lines) | 103 µs | 19 |
 | `expand` (RefGet) | 17 µs | 13 |

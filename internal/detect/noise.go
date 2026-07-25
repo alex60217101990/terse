@@ -18,7 +18,6 @@ var noisePrefixes = []string{
 	"Download complete",
 	"Pull complete",
 	"Pulling from ",
-	"Waiting",
 	"Verifying Checksum",
 	"Already exists",
 }

@@ -50,3 +50,17 @@ func BenchmarkStripNoise_Dirty(b *testing.B) {
 		_ = detect.StripNoise(in)
 	}
 }
+
+// TestStripNoise_KeepsWaitingFor: the over-broad "Waiting" prefix used to drop
+// legitimate application lines like "Waiting for database connection". Once
+// StripNoise runs (a discriminator is present), such a line must survive.
+func TestStripNoise_KeepsWaitingFor(t *testing.T) {
+	in := "go: downloading example.com/x v1.0.0\nWaiting for database connection...\ndone\n"
+	out := detect.StripNoise(in)
+	if !strings.Contains(out, "Waiting for database connection") {
+		t.Fatalf("legit 'Waiting for...' line was dropped:\n%s", out)
+	}
+	if strings.Contains(out, "go: downloading") {
+		t.Fatalf("noise line 'go: downloading' not stripped:\n%s", out)
+	}
+}
