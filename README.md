@@ -38,7 +38,7 @@ for a fresh CLI spawn — about **117×**.
 </p>
 
 - ⚡ **Fast** — re-read of an unchanged file: **49 µs**; a `§ref` cache hit:
-  **3.6 µs**; JSON analysis of 1000 rows: **269 µs**; warm daemon roundtrip:
+  **3.6 µs**; JSON analysis of 1000 rows: **263 µs**; warm daemon roundtrip:
   **~59.7 µs** (vs **~6.97 ms** for a fresh CLI spawn).
 - 🧠 **Context-aware** — tracks what the model already saw *this session and
   across sessions* and serves a reference instead of the bytes.

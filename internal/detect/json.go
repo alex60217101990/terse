@@ -94,6 +94,11 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 	accs := make(map[string]*colAcc)
 	var colOrder []string
 	rowCount := 0
+	// Preallocation hint for per-column numeric slices: a column's values never
+	// exceed the row cap, so a dense numeric column allocates once instead of
+	// growing from nil (~11 doubling reallocs — 95% of this function's alloc
+	// space). Bounded so a large maxRows can't over-reserve a sparse column.
+	numCap := min(maxRows, 4096)
 
 	// Single-pass walk over the array with jsonparser: values are returned as
 	// slices into data (zero-copy) and scalars are parsed straight from those
@@ -166,6 +171,9 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 						acc.hasInt = true
 					} else {
 						acc.hasFloat = true
+					}
+					if acc.nums == nil {
+						acc.nums = make([]float64, 0, numCap)
 					}
 					acc.nums = append(acc.nums, f)
 				}
@@ -256,8 +264,15 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 				return strings.Compare(a.k, b.k)
 			})
 			limit := min(5, len(top))
+			// Build "%q×%d" without fmt (interface boxing + format parse) —
+			// strconv.Append into a reused buffer. Byte-identical to the old
+			// Sprintf, which §ref determinism relies on.
+			var tb []byte
 			for _, pair := range top[:limit] {
-				cs.TopVals = append(cs.TopVals, fmt.Sprintf("%q×%d", pair.k, pair.v))
+				tb = strconv.AppendQuote(tb[:0], pair.k)
+				tb = append(tb, "×"...)
+				tb = strconv.AppendInt(tb, int64(pair.v), 10)
+				cs.TopVals = append(cs.TopVals, string(tb))
 			}
 		}
 
