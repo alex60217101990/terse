@@ -1,11 +1,14 @@
 # qdf-hook
 
 [![ci](https://github.com/alex60217101990/terse/actions/workflows/ci.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/ci.yml)
+[![coverage](https://codecov.io/gh/alex60217101990/terse/branch/main/graph/badge.svg)](https://codecov.io/gh/alex60217101990/terse)
 [![codeql](https://github.com/alex60217101990/terse/actions/workflows/codeql.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/codeql.yml)
 [![govulncheck](https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/alex60217101990/terse/actions/workflows/govulncheck.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/alex60217101990/terse/badge)](https://securityscorecards.dev/viewer/?uri=github.com/alex60217101990/terse)
 [![Go Reference](https://pkg.go.dev/badge/github.com/alex60217101990/terse.svg)](https://pkg.go.dev/github.com/alex60217101990/terse)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alex60217101990/terse)](https://goreportcard.com/report/github.com/alex60217101990/terse)
+[![Go](https://img.shields.io/github/go-mod/go-version/alex60217101990/terse?logo=go&logoColor=white&label=Go)](go.mod)
+[![native client: C via zig cc](https://img.shields.io/badge/native%20client-C%20%2F%20zig%20cc-A8B9CC?logo=c&logoColor=white)](client/qc.c)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 **Stop paying for the same tokens twice.** `qdf-hook` is a set of
@@ -44,23 +47,46 @@ for a fresh CLI spawn — about **117×**.
   across sessions* and serves a reference instead of the bytes.
 - 🔒 **Safe** — never changes what a tool *does*; only compresses what the model
   *sees*. A cache miss is always a fresh, correct read.
-- 🚀 **One-command install.** Single static binary, nothing to hand-edit. A
-  resident daemon starts itself in the background — there's still nothing to
-  run by hand.
+- 🚀 **Two-command setup.** `brew install`, then `qdf-hook init` to wire the
+  hooks — nothing to hand-edit. After that the resident daemon starts (and
+  self-upgrades) on its own; there's nothing to run by hand.
 
 ---
 
 ## Quick start
 
+Three steps — and **steps 2 and 3 are required**. `brew install` only drops the
+binaries; nothing compresses until you run `qdf-hook init` and restart.
+
 ```bash
-# 1. install (Homebrew — installs qdf-hook + the native qdf-hookc client)
+# 1. install — Homebrew places BOTH the qdf-hook daemon/CLI and the qdf-hookc client
 brew install alex60217101990/tap/qdf-hook
 
-# 2. wire it into Claude Code — idempotent, preserves your existing settings
+# 2. REQUIRED — wire the hooks into Claude Code (idempotent; preserves your other settings)
 qdf-hook init
 
-# 3. restart Claude Code. That's it.
+# 3. REQUIRED — restart Claude Code so it loads the hooks
 ```
+
+**After the restart you're done.** The resident daemon starts (and version-
+upgrades) itself on every session — nothing else to run. Confirm it's working:
+`qdf-hook stats`.
+
+> ⚠️ **Skipping `qdf-hook init` (or the restart) = zero compression.** That's the
+> one step people miss — `brew install` alone does not activate anything.
+
+<details>
+<summary>macOS: “cannot verify developer” on first run</summary>
+
+The binaries are ad-hoc–signed (not Developer ID). Homebrew usually clears the
+download quarantine, but if Gatekeeper still blocks one, allow it once:
+
+```bash
+xattr -d com.apple.quarantine "$(command -v qdf-hook)" "$(command -v qdf-hookc)" 2>/dev/null || true
+```
+
+or approve it under **System Settings → Privacy & Security**.
+</details>
 
 Upgrade later with `brew upgrade qdf-hook` (re-run `qdf-hook init` once after a
 major upgrade to refresh the hook wiring). Prefer Go? `go install
