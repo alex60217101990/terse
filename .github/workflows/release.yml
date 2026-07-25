@@ -50,15 +50,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Choose goreleaser args by trigger and configured secrets:
+      #  - workflow_dispatch has no tag → --snapshot (build+validate, publish
+      #    nothing) so the manual button can't fail on "git has no tag".
+      #  - a real tag push publishes; but skip the Homebrew cask unless the tap
+      #    PAT is configured, so a first release doesn't hard-fail on it.
+      - name: decide goreleaser args
+        id: gr
+        env:
+          IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          HAS_TAP: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        run: |
+          if [ "$IS_DISPATCH" = "true" ]; then
+            echo "args=release --clean --snapshot" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_TAP" != "true" ]; then
+            echo "args=release --clean --skip=homebrew" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=release --clean" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: goreleaser release
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: ${{ steps.gr.outputs.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # PAT with write access to alex60217101990/homebrew-tap so GoReleaser
           # can push the generated cask (the default GITHUB_TOKEN is scoped to
-          # this repo only). If unset, the homebrew_casks pipe is skipped.
+          # this repo only). When unset, the step above adds --skip=homebrew so
+          # the release still succeeds without publishing the cask.
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
