@@ -6,6 +6,29 @@ own `stats` analytics; latency comes from Go benchmarks compared with
 `benchstat` (n ≥ 12, interleaved) on Apple Silicon. Absolute nanoseconds are
 machine-specific — the ratios are the stable signal.
 
+## Real-world aggregate
+
+Not a benchmark rig — what `qdf-hook` actually recorded across **18,000+ tool
+calls** of ordinary Claude Code use on one machine, read straight from its own
+`stats` analytics:
+
+| | Bytes | ~Tokens |
+| --- | --- | --- |
+| Original — what Claude *would* ingest | 34.1 MB | ~8.9M |
+| Emitted — what it actually saw | 4.1 MB | ~1.1M |
+| **Saved** | **30.0 MB** | **~7.9M — 88.0 %** |
+
+Per hook: **Read 92 %** (13.2k calls, 23 MB saved — the re-read killer),
+**Edit 99 %**, **Write 96 %**, **PreToolUse deny 98 %**, **Glob 89 %**,
+**Bash 46 %** (many small command outputs correctly pass through). Agent / MCP
+/ Skill outputs flow through the pipeline and dedup on repeats.
+
+![qdf-hook stats — 88% savings across 18k tool calls](../images/stats-line.png)
+
+Same run, denser braille meter (`qdf-hook stats --style braille`):
+
+![qdf-hook stats --style braille](../images/stats-braille.png)
+
 ## Token savings
 
 Measured end-to-end through the compiled binary (`bytes in → bytes emitted`,
