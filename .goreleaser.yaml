@@ -137,13 +137,23 @@ homebrew_casks:
     # name to a flat `qdf-hookc`.
     hooks:
       post:
+        # Install the matching native client next to qdf-hook. chmod the
+        # DESTINATION (not the staged source, which the install never uses):
+        # FileUtils.cp is not guaranteed to preserve mode across Ruby/FileUtils
+        # versions and platforms, so set 0755 on the copy explicitly rather than
+        # rely on it — otherwise qdf-hookc could land non-executable and every
+        # hook would silently fall back to the CLI.
         install: |
           client = Dir["#{staged_path}/qdf-hookc/qdf-hookc-*"].first
           if client
-            FileUtils.chmod 0755, client
             bin = "#{HOMEBREW_PREFIX}/bin/qdf-hookc"
             FileUtils.cp client, bin
+            FileUtils.chmod 0755, bin
           end
+        # Remove the copied client on uninstall (the `binary` stanza only tracks
+        # qdf-hook, so this file would otherwise be orphaned).
+        uninstall: |
+          FileUtils.rm_f "#{HOMEBREW_PREFIX}/bin/qdf-hookc"
     caveats: |
       Wire qdf-hook into Claude Code, then restart it:
         qdf-hook init
