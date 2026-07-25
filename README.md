@@ -44,14 +44,19 @@ for a fresh CLI spawn — about **117×**.
 ## Quick start
 
 ```bash
-# 1. install the binary (Go 1.26+)
-go install github.com/alex60217101990/terse/cmd/qdf-hook@latest
+# 1. install (Homebrew — installs qdf-hook + the native qdf-hookc client)
+brew install alex60217101990/tap/qdf-hook
 
 # 2. wire it into Claude Code — idempotent, preserves your existing settings
 qdf-hook init
 
 # 3. restart Claude Code. That's it.
 ```
+
+Upgrade later with `brew upgrade qdf-hook` (re-run `qdf-hook init` once after a
+major upgrade to refresh the hook wiring). Prefer Go? `go install
+github.com/alex60217101990/terse/cmd/qdf-hook@latest` installs the daemon/CLI;
+the native `qdf-hookc` client then comes from a release asset or `make install`.
 
 `qdf-hook init` merges every hook into your global `~/.claude/settings.json`
 (or `qdf-hook init --project` for the current repo's `.claude/settings.json`),
