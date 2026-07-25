@@ -96,7 +96,7 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 		}
 		outPath = f.Name()
 		_, cerr := io.Copy(f, resp.Body)
-		f.Close()
+		_ = f.Close()
 		if cerr != nil {
 			return fmt.Errorf("profile: write %s: %w", outPath, cerr)
 		}
@@ -106,7 +106,7 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 			return fmt.Errorf("profile: create %s: %w", outPath, err)
 		}
 		_, cerr := io.Copy(f, resp.Body)
-		f.Close()
+		_ = f.Close()
 		if cerr != nil {
 			return fmt.Errorf("profile: write %s: %w", outPath, cerr)
 		}

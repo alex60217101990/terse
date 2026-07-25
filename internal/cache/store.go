@@ -44,7 +44,7 @@ func Load(sessionID string) (*SessionState, error) {
 	// hook invocation. Cuts the bulk of the decode allocations.
 	if err := qdf.Unmarshal(data, &s, qdf.WithNoCopy()); err != nil {
 		// Corrupt file — start fresh rather than crash.
-		return NewSessionState(), nil
+		return NewSessionState(), nil //nolint:nilerr // corrupt cache = cache miss, not a caller-facing error
 	}
 	if s.Files == nil {
 		s.Files = make(map[string]FileEntry)

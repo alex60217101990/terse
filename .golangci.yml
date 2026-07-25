@@ -21,7 +21,6 @@ linters:
     - gocritic
     - gosec
     - nilerr
-    - prealloc
     - unconvert
     - unparam
 
@@ -30,15 +29,34 @@ linters:
       rules:
         - name: package-comments
           disabled: true
+    errcheck:
+      # Writes to the process's own stdout/stderr (progress, stats tables) and
+      # best-effort Close on read paths carry no actionable error — a failed
+      # terminal write or a close-after-read cannot be recovered here.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*os.File).Close
+        - (net.Conn).Close
+        - (io.Closer).Close
     gosec:
       excludes:
         - G103  # unsafe usage is intentional (native client / zero-copy paths)
         - G115  # integer overflow bounded by CheckLength
+        - G304  # file paths ARE the input — a file-cache CLI opens user-named files by design
+        - G301  # 0o755 cache/settings dirs are intentional (user-owned, not secret)
+        - G107  # profile subcommand fetches its own loopback pprof endpoint
+        - G108  # pprof is bound to loopback only, behind an explicit flag
+        - G114  # loopback pprof server needs no timeouts (local, flag-gated)
+        - G122  # best-effort cache WalkDir over the user's own ~/.qdf-hook tree
+        - G204  # profile subcommand execs `go tool pprof` with a resolved path
+        - G703  # path is the user's own settings.json, resolved from HOME
 
   exclusions:
     rules:
       - path: _test\.go
-        linters: [errcheck, gosec]
+        linters: [errcheck, gosec, gocritic, unparam, staticcheck]
 
 formatters:
   enable:

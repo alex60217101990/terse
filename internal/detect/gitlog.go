@@ -27,7 +27,8 @@ func IsGitLogOutput(s string) bool {
 		}
 		isHex := true
 		for _, c := range hash {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			hexDigit := (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+			if !hexDigit {
 				isHex = false
 				break
 			}

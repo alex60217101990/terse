@@ -30,7 +30,7 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".qdf") {
-			return nil
+			return nil //nolint:nilerr // GC is best-effort: skip unreadable entries, don't abort the walk
 		}
 
 		info, _ := d.Info()

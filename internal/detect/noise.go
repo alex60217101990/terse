@@ -52,11 +52,12 @@ func StripNoise(content string) string {
 			line = content[start : start+nl]
 			end = start + nl + 1
 		}
-		if isNoise(line) {
+		switch {
+		case isNoise(line):
 			dropped = true
-		} else if nl < 0 {
+		case nl < 0:
 			b.WriteString(line)
-		} else {
+		default:
 			b.WriteString(content[start:end]) // line incl. its '\n', zero-copy slice
 		}
 		if nl < 0 {

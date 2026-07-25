@@ -134,7 +134,7 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 			return err
 		}
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	ul := ln.(*net.UnixListener)
 
 	store := hookcore.NewMemStore()
@@ -187,7 +187,8 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 
 		c, aerr := ul.Accept()
 		if aerr != nil {
-			if ne, ok := aerr.(net.Error); ok && ne.Timeout() {
+			var ne net.Error
+			if errors.As(aerr, &ne) && ne.Timeout() {
 				// Nothing arrived before the deadline; loop re-evaluates the
 				// flush and idle checks at the top.
 				continue

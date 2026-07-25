@@ -90,7 +90,7 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 
 	content := detect.StripNoise(inp.ToolResponse.Text())
 
-	record := func(action string, bytesOut int) error {
+	record := func(action string, bytesOut int) {
 		_ = analytics.Record(analytics.Event{
 			TS:       time.Now().UnixNano(),
 			SID:      inp.SessionID,
@@ -100,24 +100,23 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			BytesOut: bytesOut,
 			DurNS:    time.Since(start).Nanoseconds(),
 		})
-		return nil
 	}
 
 	if len(content) < 256 {
-		_ = record("passthrough", len(content))
+		record("passthrough", len(content))
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
 	key := cache.LastOutputKey(toolName, inp.ToolInput)
 
 	var action, replacement string
-	switch {
 	// Format-specific summarizers keyed by tool name.
-	case toolName == "Glob":
+	switch toolName {
+	case "Glob":
 		if t := buildGlobTree(content); t != "" && len(t) < len(content) {
 			action, replacement = "tree", t
 		}
-	case toolName == "Grep":
+	case "Grep":
 		if g, a := buildGrepSummary(content); g != "" && len(g) < len(content) {
 			action, replacement = a, g
 		}
@@ -149,10 +148,10 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	}
 
 	if replacement != "" {
-		_ = record(action, len(replacement))
+		record(action, len(replacement))
 		return protocol.EncodeOutput(w, protocol.Replace(replacement))
 	}
-	_ = record(action, len(content))
+	record(action, len(content))
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }
 

@@ -78,7 +78,7 @@ It intercepts tool output and compresses it to reduce token consumption.`,
 			return fmt.Errorf("cpuprofile: %w", err)
 		}
 		if err := pprof.StartCPUProfile(f); err != nil {
-			f.Close()
+			_ = f.Close()
 			return fmt.Errorf("cpuprofile: %w", err)
 		}
 		cpuFile = f
@@ -92,7 +92,7 @@ It intercepts tool output and compresses it to reduce token consumption.`,
 func stopProfiling() {
 	if cpuFile != nil {
 		pprof.StopCPUProfile()
-		cpuFile.Close()
+		_ = cpuFile.Close()
 	}
 	if memprofile == "" {
 		return
