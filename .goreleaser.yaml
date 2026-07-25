@@ -133,8 +133,18 @@ homebrew_casks:
     homepage: "https://github.com/alex60217101990/terse"
     description: "Claude Code token-saving hooks + resident daemon"
     # qdf-hook is auto-detected and linked from the archive. The post-install
-    # hook adds the matching native client, renamed from its per-arch archive
-    # name to a flat `qdf-hookc`.
+    # hook (1) strips the Gatekeeper quarantine flag Homebrew stamps on the
+    # download and (2) adds the matching native client, renamed from its
+    # per-arch archive name to a flat `qdf-hookc`.
+    #
+    # Why the quarantine strip is required: the release binaries are unsigned
+    # (no Apple Developer ID / notarization). On macOS, a quarantined *and*
+    # unsigned Mach-O is killed — and often deleted — by Gatekeeper on first
+    # exec, which is exactly what breaks the `binary "qdf-hook"` symlink after
+    # a plain `brew install`. postflight runs after linking but before the
+    # user ever runs the tool, so clearing com.apple.quarantine here lets both
+    # binaries launch normally with zero manual steps. must_succeed:false so a
+    # future signed/notarized release (where the flag is absent) still installs.
     hooks:
       post:
         # Install the matching native client next to qdf-hook. chmod the
@@ -144,11 +154,17 @@ homebrew_casks:
         # rely on it — otherwise qdf-hookc could land non-executable and every
         # hook would silently fall back to the CLI.
         install: |
+          system_command "/usr/bin/xattr",
+                         args: ["-dr", "com.apple.quarantine", staged_path],
+                         must_succeed: false
           client = Dir["#{staged_path}/qdf-hookc/qdf-hookc-*"].first
           if client
             bin = "#{HOMEBREW_PREFIX}/bin/qdf-hookc"
             FileUtils.cp client, bin
             FileUtils.chmod 0755, bin
+            system_command "/usr/bin/xattr",
+                           args: ["-dr", "com.apple.quarantine", bin],
+                           must_succeed: false
           end
         # Remove the copied client on uninstall (the `binary` stanza only tracks
         # qdf-hook, so this file would otherwise be orphaned).
