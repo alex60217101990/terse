@@ -33,6 +33,14 @@ archives:
     files:
       - LICENSE
       - README.md
+      # Fold the matching per-arch native client into each Unix archive so
+      # `brew install` gets both binaries. The glob is templated per archive;
+      # Windows has no native client, so its glob matches nothing — allowed
+      # because default_file_mode/anything-missing is tolerated via the
+      # wildcard (see the `*` — a literal path would error when absent).
+      - src: "bin/qdf-hookc-{{ .Os }}-{{ .Arch }}*"
+        dst: qdf-hookc
+        strip_parent: true
 
 checksum:
   name_template: "checksums.txt"
@@ -166,6 +174,38 @@ release:
   # part of any archive/build), alongside the Go archives.
   extra_files:
     - glob: bin/qdf-hookc-*
+
+# Homebrew distribution via a cask in alex60217101990/homebrew-tap. `brews`
+# (the classic formula pipe) is deprecated in GoReleaser v2, so this uses the
+# cask pipe. Requires a HOMEBREW_TAP_TOKEN secret (a PAT with write access to
+# the tap repo) — the release workflow's default GITHUB_TOKEN can't push to a
+# second repo.
+homebrew_casks:
+  - name: qdf-hook
+    ids: [default]
+    repository:
+      owner: alex60217101990
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/alex60217101990/terse"
+    description: "Claude Code token-saving hooks + resident daemon"
+    # qdf-hook is auto-detected and linked from the archive. The post-install
+    # hook adds the matching native client, renamed from its per-arch archive
+    # name to a flat `qdf-hookc`.
+    hooks:
+      post:
+        install: |
+          client = Dir["#{staged_path}/qdf-hookc/qdf-hookc-*"].first
+          if client
+            FileUtils.chmod 0755, client
+            bin = "#{HOMEBREW_PREFIX}/bin/qdf-hookc"
+            FileUtils.cp client, bin
+          end
+    caveats: |
+      Wire qdf-hook into Claude Code, then restart it:
+        qdf-hook init
+      The resident daemon starts itself at SessionStart; upgrades replace it.
 
 changelog:
   use: github
