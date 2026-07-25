@@ -12,6 +12,8 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/alex60217101990/terse/internal/bytesconv"
 )
 
 // HookAgg aggregates calls and bytes for one hook.
@@ -162,7 +164,10 @@ func LoadEvents(days int) ([]Event, error) {
 			line, rerr := r.ReadString('\n')
 			if len(line) > 0 {
 				var e Event
-				if json.Unmarshal([]byte(line), &e) == nil && (cutoff == 0 || e.TS >= cutoff) {
+				// Zero-copy: json.Unmarshal reads the bytes read-only and copies
+				// every string field out, so aliasing `line` (a fresh owned
+				// string from ReadString) via S2B retains nothing.
+				if json.Unmarshal(bytesconv.S2B(line), &e) == nil && (cutoff == 0 || e.TS >= cutoff) {
 					events = append(events, e)
 				}
 			}
