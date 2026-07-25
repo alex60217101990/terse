@@ -3,8 +3,11 @@ GO      ?= go
 LDFLAGS := -s -w -X main.appVersion=$(VERSION)
 GOFLAGS := -trimpath
 BIN     := bin
+PREFIX  ?= $(HOME)/.local
+DESTDIR := $(PREFIX)/bin
+SOCK    := $(HOME)/.qdf-hook/d.sock
 
-.PHONY: build client client-all modernize align fix fmt tidy vet lint test bench cover check \
+.PHONY: build client client-all install modernize align fix fmt tidy vet lint test bench cover check \
         docker-daemon docker-client docker-all docker-push clean
 
 build:
@@ -20,6 +23,25 @@ client-all:
 	zig cc -O2 -target x86_64-macos       -o $(BIN)/qdf-hookc-darwin-amd64 client/qc.c
 	zig cc -O2 -target aarch64-linux-musl -o $(BIN)/qdf-hookc-linux-arm64  client/qc.c && strip $(BIN)/qdf-hookc-linux-arm64 || true
 	zig cc -O2 -target x86_64-linux-musl  -o $(BIN)/qdf-hookc-linux-amd64  client/qc.c && strip $(BIN)/qdf-hookc-linux-amd64 || true
+
+# Install qdf-hook + qdf-hookc into PREFIX/bin (default ~/.local/bin).
+#
+# NEVER cp over a running daemon's binary in place: the daemon executes that
+# exact inode, and rewriting its pages invalidates the code signature so macOS
+# SIGKILLs (Killed: 9) every subsequent exec. So this target (1) QUITs any live
+# daemon, then (2) installs each binary to a temp name and `mv`s it into place —
+# an atomic rename gives a fresh inode, leaving the old one untouched. On macOS
+# it re-signs ad-hoc so the freshly written file is allowed to run.
+install: build client
+	@mkdir -p "$(DESTDIR)"
+	@printf 'QUIT\n' | "$(BIN)/qdf-hookc" "$(SOCK)" 2>/dev/null || true
+	@for b in qdf-hook qdf-hookc; do \
+		cp "$(BIN)/$$b" "$(DESTDIR)/.$$b.new.$$$$" && chmod +x "$(DESTDIR)/.$$b.new.$$$$" && \
+		mv -f "$(DESTDIR)/.$$b.new.$$$$" "$(DESTDIR)/$$b" && \
+		if [ "$$(uname)" = Darwin ]; then codesign --force -s - "$(DESTDIR)/$$b" >/dev/null 2>&1 || true; fi && \
+		echo "installed $(DESTDIR)/$$b"; \
+	done
+	@echo "Run 'qdf-hook init' (upgrades hook wiring), then restart Claude Code. The daemon self-restarts via SessionStart."
 
 modernize:
 	$(GO) run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest --fix ./...
