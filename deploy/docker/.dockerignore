@@ -1,0 +1,7 @@
+.git
+.github
+docs
+*_test.go
+bin
+dist
+deploy/docker
