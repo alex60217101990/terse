@@ -197,3 +197,27 @@ func TestAnalyzeJSONArray_ColumnsBounded(t *testing.T) {
 		t.Fatalf("columns unbounded: got %d, want <= 256 (maxCols)", len(stats.Columns))
 	}
 }
+
+// TestAnalyzeJSONArray_SparseConstVal: a column present in only some rows but
+// always the same value must still report ConstVal — it was compared against
+// the array's total rowCount instead of the column's observed count, so a
+// sparse constant column silently lost its ConstVal.
+func TestAnalyzeJSONArray_SparseConstVal(t *testing.T) {
+	in := []byte(`[{"k":"x"},{"other":1},{"k":"x"}]`)
+	stats, err := detect.AnalyzeJSONArray(in, 2000)
+	if err != nil {
+		t.Fatalf("analyze: %v", err)
+	}
+	var found bool
+	for _, c := range stats.Columns {
+		if c.Name == "k" {
+			found = true
+			if c.ConstVal != "x" {
+				t.Fatalf("sparse constant column k: ConstVal = %q, want %q", c.ConstVal, "x")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("column k not found")
+	}
+}

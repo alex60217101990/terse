@@ -224,7 +224,11 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 		// String stats: cardinality, constant value, top-5 by frequency.
 		if acc.hasStr && len(acc.strFreq) > 0 {
 			cs.Cardinality = len(acc.strFreq)
-			nonNullRows := rowCount - acc.nulls
+			// Non-null rows *in which this column appears* — observed, not the
+			// array's total rowCount. For a sparse column (present in some rows)
+			// rowCount overcounts, so a genuinely constant value never reaches
+			// cnt == nonNullRows and ConstVal is lost.
+			nonNullRows := acc.observed - acc.nulls
 			for val, cnt := range acc.strFreq {
 				if cnt == nonNullRows {
 					cs.ConstVal = val
