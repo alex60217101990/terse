@@ -1,8 +1,10 @@
 package protocol
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
+	"strings"
 )
 
 // HookInput is the JSON Claude Code sends to any PostToolUse hook on stdin.
@@ -38,14 +40,81 @@ type ToolResponse struct {
 // whole originalFile) — EchoLen lets handleWrite size that echo for its
 // never-worse compression decision, which Text()==0 could not.
 func (t *ToolResponse) UnmarshalJSON(data []byte) error {
-	type alias ToolResponse
-	var a alias
-	if err := json.Unmarshal(data, &a); err != nil {
+	t.rawLen = len(data)
+
+	// MCP tools and completed Agent tasks don't use the plain object shape the
+	// fields below expect: MCP sends tool_response as a content-block ARRAY
+	// ([{"type":"text","text":"..."}, ...]) and a completed Agent sends an
+	// object whose "content" is that same block array (not a string). Decoding
+	// either into ToolResponse straight used to error and abort the whole hook
+	// (empty output, zero compression for every MCP/Agent result). Fold both
+	// into Content so Text() exposes them to the pipeline like any other output.
+	if head := bytes.TrimLeft(data, " \t\r\n"); len(head) > 0 && head[0] == '[' {
+		t.Content = blocksText(data)
+		return nil
+	}
+
+	// Object shape. Decode "content" as a raw message so it can be either a
+	// string (the usual case) or a content-block array (completed Agent).
+	var r struct {
+		File    *FileResponse   `json:"file"`
+		Content json.RawMessage `json:"content"`
+		Stdout  string          `json:"stdout"`
+		Stderr  string          `json:"stderr"`
+		Output  string          `json:"output"`
+	}
+	if err := json.Unmarshal(data, &r); err != nil {
 		return err
 	}
-	*t = ToolResponse(a)
-	t.rawLen = len(data)
+	t.File = r.File
+	t.Stdout = r.Stdout
+	t.Stderr = r.Stderr
+	t.Output = r.Output
+	t.Content = contentText(r.Content)
 	return nil
+}
+
+// contentText decodes a tool_response "content" value that may be a JSON
+// string (the common case) or a content-block array (completed Agent),
+// returning the plain text either way. Empty for anything else.
+func contentText(raw json.RawMessage) string {
+	head := bytes.TrimLeft(raw, " \t\r\n")
+	if len(head) == 0 {
+		return ""
+	}
+	switch head[0] {
+	case '"':
+		var s string
+		if json.Unmarshal(raw, &s) == nil {
+			return s
+		}
+	case '[':
+		return blocksText(raw)
+	}
+	return ""
+}
+
+// blocksText concatenates the "text" of every block in a content-block array
+// ([{"type":"text","text":"..."}, ...]), skipping non-text blocks.
+func blocksText(raw []byte) string {
+	var blocks []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if json.Unmarshal(raw, &blocks) != nil {
+		return ""
+	}
+	var sb strings.Builder
+	for _, b := range blocks {
+		if b.Text == "" {
+			continue
+		}
+		if sb.Len() > 0 {
+			sb.WriteByte('\n')
+		}
+		sb.WriteString(b.Text)
+	}
+	return sb.String()
 }
 
 // EchoLen is the byte size of the raw tool_response — a proxy for how much the
