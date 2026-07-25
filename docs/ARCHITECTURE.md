@@ -39,9 +39,38 @@ Claude Code event ──stdin(JSON)──▶ qdf-hookc ~/.qdf-hook/d.sock ──
                                                                      └── appends ~/.qdf-hook/analytics.jsonl (same format)
 ```
 
-`nc` failing to connect (no daemon running) falls through the `||` to the
-plain `qdf-hook <sub>` one-shot path, so both modes produce byte-identical hook
-output — the daemon only changes how fast it arrives.
+`qdf-hookc` failing to connect (no daemon running) falls through the `||` to
+the plain `qdf-hook <sub>` one-shot path, so both modes produce byte-identical
+hook output — the daemon only changes how fast it arrives.
+
+A `Read` round-trip shows the two ways it can end — denied before execution, or
+compressed after:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CC as Claude Code
+    participant H as hook<br/>qdf-hookc or CLI
+    participant P as pipeline
+    participant S as state<br/>RAM and disk
+    CC->>H: PreToolUse Read {file_path}
+    H->>S: stat file + look up cached entry
+    alt mtime + size + ctime match, seen since compact
+        H-->>CC: deny — §unchanged§ (file never read, 0 tokens)
+    else new / changed / windowed
+        H-->>CC: allow
+        CC->>H: PostToolUse Read {file.content}
+        H->>P: dispatch
+        alt first read
+            P->>S: cache full content
+            P-->>CC: full content (passthrough)
+        else re-read, changed
+            P-->>CC: unified diff (delta)
+        else re-read, identical
+            P-->>CC: §unchanged§ marker
+        end
+    end
+```
 
 ## Packages
 
@@ -140,6 +169,20 @@ through `SqueezeOutput`: ANSI/VT escape stripping + run-length collapse of
 identical consecutive lines (`line ⨯N`). Self-describing, gated at ≥10 % win.
 
 ### 7. Resident daemon and hybrid client
+
+Lifecycle — `SessionStart` runs `daemon --ensure`, which starts, reuses, or
+version-replaces the daemon; it exits itself after 30 min idle:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Ensure: SessionStart<br/>daemon --ensure
+    Ensure --> Serving: no daemon → start detached
+    Ensure --> Serving: PING ok, version matches → reuse
+    Ensure --> Replacing: PING ok, stale version
+    Replacing --> Serving: QUIT old, start new
+    Serving --> Serving: hook request<br/>(in-RAM, ~60µs)
+    Serving --> [*]: 30 min idle, or QUIT
+```
 
 `internal/daemon.Serve` listens on `~/.qdf-hook/d.sock` and dispatches every
 connection through the same `hook.DispatchBytes` the CLI's `post` subcommand

@@ -21,12 +21,21 @@ Repeated command output (any tool)    →  §ref token        (−98.2 %)
 go test -v, 50 tests pass             →  3 lines           (−99 %)
 ```
 
-Measured end-to-end on a realistic mixed session: **−72 % tokens**, trending to
-**90 %+** as a session re-reads and re-runs. Every hot path runs in **tens of
+Measured across **18,000+ real tool calls** in day-to-day Claude Code usage:
+**88 % of tool-output tokens eliminated** — 34 MB of raw output collapsed to
+4 MB, about **7.9M tokens saved**. Every hot path runs in **tens of
 microseconds** — a sub-1 % sliver of the process-spawn cost, so the savings are
 effectively free. An optional resident daemon (`qdf-hookd`) cuts the per-hook
 cost further still: a warm daemon roundtrip is **~59.7 µs** versus **~6.97 ms**
 for a fresh CLI spawn — about **117×**.
+
+<p align="center">
+  <img src="images/stats-line.png"
+       alt="qdf-hook stats: 88% token savings across 18k tool calls — Read 92%, Edit 99%, Write 96%, PreToolUse deny 98%"
+       width="620">
+  <br>
+  <em><code>qdf-hook stats</code> — real numbers from one machine's usage. Run it anytime to see yours.</em>
+</p>
 
 - ⚡ **Fast** — re-read of an unchanged file: **49 µs**; a `§ref` cache hit:
   **3.6 µs**; JSON analysis of 1000 rows: **269 µs**; warm daemon roundtrip:
@@ -164,6 +173,27 @@ CLI invocation of the same pipeline.
 ---
 
 ## How it works
+
+**System topology** — every Claude Code tool event flows through a hook that
+prefers the resident daemon and falls back to the one-shot CLI:
+
+```mermaid
+flowchart LR
+    CC[Claude Code]
+    subgraph hook["hook command per tool event"]
+      direction LR
+      QC["qdf-hookc sock"] -.->|fallback if down| CLI["qdf-hook CLI"]
+    end
+    CC -->|tool JSON on stdin| hook
+    QC ==>|warm ~60µs| D["qdf-hookd<br/>resident daemon<br/>in-RAM store"]
+    CLI -->|cold ~7ms| P["compression pipeline<br/>noise-strip · summarize<br/>§ref · delta · squeeze"]
+    D --> P
+    P -->|fewer tokens back| CC
+    D <--> C[("~/.qdf-hook<br/>refs · sessions · analytics")]
+    CLI <--> C
+```
+
+**Per-tool pipeline** — what each tool's output becomes:
 
 ```mermaid
 flowchart LR
