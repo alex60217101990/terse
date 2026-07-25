@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 func dispatchInput(t *testing.T, tool, content string) string {

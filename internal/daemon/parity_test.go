@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/daemon"
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/daemon"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
 // genericPayload builds a full PostToolUse JSON payload for toolName with the
@@ -81,7 +81,7 @@ func goTestOutputContent() string {
 		sb.WriteString(" (0.00s)\n")
 	}
 	sb.WriteString("PASS\n")
-	sb.WriteString("ok  \tgithub.com/alex60217101990/qdf-hook/internal/hook\t0.012s\n")
+	sb.WriteString("ok  \tgithub.com/alex60217101990/terse/internal/hook\t0.012s\n")
 	return sb.String()
 }
 

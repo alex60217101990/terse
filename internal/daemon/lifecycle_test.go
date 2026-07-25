@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/daemon"
+	"github.com/alex60217101990/terse/internal/daemon"
 )
 
 // appVersion mirrors cmd/qdf-hook's default appVersion (main.go), which is
@@ -39,7 +39,7 @@ func runLifecycleTests(m *testing.M) int {
 	defer os.RemoveAll(dir)
 
 	exe := filepath.Join(dir, "qdf-hook")
-	build := exec.Command("go", "build", "-o", exe, "github.com/alex60217101990/qdf-hook/cmd/qdf-hook")
+	build := exec.Command("go", "build", "-o", exe, "github.com/alex60217101990/terse/cmd/qdf-hook")
 	build.Env = append(os.Environ(), "GOWORK=off")
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "lifecycle_test: building qdf-hook: %v\n%s\n", err, out)

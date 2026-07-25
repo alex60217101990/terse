@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/analytics"
-	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
-	"github.com/alex60217101990/qdf-hook/internal/cache"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/analytics"
+	"github.com/alex60217101990/terse/internal/bytesconv"
+	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 // HandleRead processes a PostToolUse hook call for the Read tool.
@@ -151,7 +151,6 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 
 	return protocol.EncodeOutput(w, out)
 }
-
 
 func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.HookOutput {
 	hashHex := cache.ShortHex(hash[:8])

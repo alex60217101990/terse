@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/terse/internal/cache"
 )
 
 func TestUnifiedDiff_NoChange(t *testing.T) {

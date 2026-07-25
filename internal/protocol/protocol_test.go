@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 func TestDecodeHookInput(t *testing.T) {

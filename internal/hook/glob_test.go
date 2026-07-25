@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 func makeGlobInput(t *testing.T, sessionID string, files []string) string {

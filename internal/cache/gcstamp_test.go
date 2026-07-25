@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/terse/internal/cache"
 )
 
 func TestShouldRunGC_Throttle(t *testing.T) {

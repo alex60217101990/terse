@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/daemon"
+	"github.com/alex60217101990/terse/internal/daemon"
 )
 
 func TestIsQdfHookCommand(t *testing.T) {
@@ -17,7 +17,7 @@ func TestIsQdfHookCommand(t *testing.T) {
 	}{
 		{"/Users/x/.local/bin/qdf-hook precompact", "precompact", true},
 		{"qdf-hook read", "read", true},
-		{"/tmp/qdf-hook.test precompact", "precompact", true},         // go test binary
+		{"/tmp/qdf-hook.test precompact", "precompact", true},          // go test binary
 		{"/opt/homebrew/bin/sqz hook precompact", "precompact", false}, // must NOT match
 		{"atuin hook claude-code", "read", false},
 		{"qdf-hook read", "bash", false},

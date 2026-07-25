@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/detect"
-	"github.com/alex60217101990/qdf-hook/internal/summary"
+	"github.com/alex60217101990/terse/internal/detect"
+	"github.com/alex60217101990/terse/internal/summary"
 )
 
 func TestIsJSONArray(t *testing.T) {

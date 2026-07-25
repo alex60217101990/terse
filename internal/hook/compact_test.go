@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 func makeCompactInput(t *testing.T, sessionID string) string {
@@ -148,4 +148,3 @@ func TestPostCompact_NoFiles_Passthrough(t *testing.T) {
 		t.Error("PostCompact with empty state should pass through")
 	}
 }
-

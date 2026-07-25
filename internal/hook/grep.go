@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
 // grepFileCap is the max matching lines shown per file before eliding.

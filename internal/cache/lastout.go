@@ -8,7 +8,7 @@ import (
 	"time"
 
 	qdf "github.com/alex60217101990/qdf"
-	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
+	"github.com/alex60217101990/terse/internal/bytesconv"
 )
 
 // lastEntry is the previous output of a tool call, for re-run delta encoding.

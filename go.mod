@@ -1,4 +1,4 @@
-module github.com/alex60217101990/qdf-hook
+module github.com/alex60217101990/terse
 
 go 1.26.5
 

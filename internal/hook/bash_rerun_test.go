@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 func mkBashRerun(out string) string {
 	inp := map[string]any{
-		"session_id": "rerun",
-		"tool_name":  "Bash",
-		"tool_input": map[string]any{"command": "./run.sh", "working_directory": "/p"},
+		"session_id":    "rerun",
+		"tool_name":     "Bash",
+		"tool_input":    map[string]any{"command": "./run.sh", "working_directory": "/p"},
 		"tool_response": map[string]any{"content": out},
 	}
 	b, _ := json.Marshal(inp)

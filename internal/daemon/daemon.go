@@ -21,10 +21,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
-	"github.com/alex60217101990/qdf-hook/internal/cache"
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/bytesconv"
+	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
 // flushInterval is how often Serve flushes dirty state to disk while running.

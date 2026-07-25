@@ -3,7 +3,7 @@ package hookcore
 import (
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/terse/internal/cache"
 )
 
 // diskStore is the on-disk StateStore implementation used by the CLI. It

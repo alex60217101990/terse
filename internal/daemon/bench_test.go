@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/daemon"
+	"github.com/alex60217101990/terse/internal/daemon"
 )
 
 // benchPayload is the single fixed payload both benchmarks send, so the

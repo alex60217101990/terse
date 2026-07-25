@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 // TestTryRerunDelta_LargeInputSkipsDiff guards the O((N+M)²) Myers diff: a

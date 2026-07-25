@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/analytics"
-	"github.com/alex60217101990/qdf-hook/internal/cache"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/analytics"
+	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 // HandleWrite compresses Write/Edit/MultiEdit tool responses.

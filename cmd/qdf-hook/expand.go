@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/spf13/cobra"
 )
 

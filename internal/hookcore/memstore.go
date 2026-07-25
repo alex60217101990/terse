@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/terse/internal/cache"
 )
 
 // shardCount is the number of independently-locked session shards. 16 keeps

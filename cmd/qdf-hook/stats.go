@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alex60217101990/qdf-hook/internal/analytics"
+	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/spf13/cobra"
 )
 

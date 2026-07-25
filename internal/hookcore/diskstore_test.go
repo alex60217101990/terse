@@ -3,8 +3,8 @@ package hookcore_test
 import (
 	"testing"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
 func TestDiskStore_RoundTrip(t *testing.T) {

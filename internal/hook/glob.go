@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
 // HandleGlob is retained for backward compatibility; Glob is handled by the

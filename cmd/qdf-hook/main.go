@@ -9,9 +9,9 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/daemon"
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/daemon"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/spf13/cobra"
 )
 

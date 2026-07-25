@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/alex60217101990/qdf-hook/internal/detect"
+	"github.com/alex60217101990/terse/internal/detect"
 )
 
 func TestIsGitLogOutput(t *testing.T) {

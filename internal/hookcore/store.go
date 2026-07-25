@@ -5,7 +5,7 @@
 // can safely import hookcore without an import cycle.
 package hookcore
 
-import "github.com/alex60217101990/qdf-hook/internal/cache"
+import "github.com/alex60217101990/terse/internal/cache"
 
 // StateStore is the storage surface the compression pipeline needs: session
 // state (per-file read/write tracking) plus the two content-addressed caches

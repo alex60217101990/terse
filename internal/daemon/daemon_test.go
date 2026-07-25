@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/daemon"
-	"github.com/alex60217101990/qdf-hook/internal/protocol"
+	"github.com/alex60217101990/terse/internal/daemon"
+	"github.com/alex60217101990/terse/internal/protocol"
 )
 
 // tempSock returns a short-path unix socket for the test. It deliberately

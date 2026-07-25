@@ -3,10 +3,10 @@ package hook
 import (
 	"io"
 
-	"github.com/alex60217101990/qdf-hook/internal/bytesconv"
-	"github.com/alex60217101990/qdf-hook/internal/detect"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
-	"github.com/alex60217101990/qdf-hook/internal/summary"
+	"github.com/alex60217101990/terse/internal/bytesconv"
+	"github.com/alex60217101990/terse/internal/detect"
+	"github.com/alex60217101990/terse/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/summary"
 )
 
 // minSummaryRatio: only replace tool output if the summary is at most this

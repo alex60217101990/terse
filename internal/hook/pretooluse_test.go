@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
-	"github.com/alex60217101990/qdf-hook/internal/hook"
-	"github.com/alex60217101990/qdf-hook/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/hook"
+	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
 func makePreToolInput(t *testing.T, sessionID, path string) string {
@@ -221,10 +221,10 @@ func zeroCachedCtime(t *testing.T, store hookcore.StateStore, sid, path string) 
 // denied — the new ctime reveals the change even though mtime was rewound.
 func TestPreToolUse_CtimePreservedMtimeChangedContent_Allows(t *testing.T) {
 	store, sid, path := seedCachedFile(t, "package a\nfunc F(){}\n") // caches entry incl. CtimeNS
-	old := statFileTimes(t, path)                                   // {mtimeNS, size}
+	old := statFileTimes(t, path)                                    // {mtimeNS, size}
 
 	// Change content to the SAME size, then rewind mtime to the cached value.
-	overwriteSameSize(t, path, "package a\nfunc G(){}\n")     // len unchanged
+	overwriteSameSize(t, path, "package a\nfunc G(){}\n")        // len unchanged
 	_ = os.Chtimes(path, time.Time{}, time.Unix(0, old.mtimeNS)) // forge mtime back
 
 	dec := runPreToolUse(t, store, sid, path)

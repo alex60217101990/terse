@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alex60217101990/qdf-hook/internal/cache"
+	"github.com/alex60217101990/terse/internal/cache"
 )
 
 // writeBlob makes a fake blob file of n bytes with a given mtime.
