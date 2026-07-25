@@ -34,3 +34,23 @@ Legend: 🔎 reported · ✅ CONFIRMED+fixed · ❌ false-positive (rejected) ·
 
 ## Kept perf wins (benchstat-backed)
 _(perf round pending)_
+
+## Round 2 — adversarial fix-review + fresh sweep + perf-levers (all verified by main thread)
+
+| # | lens | finding | disposition |
+|---|------|---------|-------------|
+| adversarial | review of the 11 round-1 fixes | no correctness regressions; all solid | ✅ verified clean; delta memory budget raised 64→128MiB (coverage) |
+| sweep | stats: one >64KB line aborts whole LoadEvents | ✅ fixed (bufio.Reader, best-effort skip) + test |
+| sweep | FormatBytes(math.MinInt) infinite recursion | ❌ unreachable (byte deltas never near MinInt) |
+| sweep | summary/analytics/bytesconv/stats/expand/gitlog/bench/glob/grep/write/compact | ✅ NONE (verified correct) |
+| perf L1 | daemon decode encoding/json → jsonparser (measured 3.2× on 4.5KB) | ❌ rejected: ~20µs absolute on an already-imperceptible warm path (sub-1% of the spawn cost the daemon removed) vs high correctness risk of a hand-decoder on the polymorphic shapes. Available if a profile ever shows decode as the bottleneck. |
+| perf L2+L3 | JSON analyzer: prealloc nums + strconv TopVals | 💨✅ KEPT — benchstat n=8 p=0.000: sec/op −2.69%, B/op −64.52%, allocs/op −37.14%, output byte-identical |
+| perf (skip) | fnv inline, copySession deep-copy, sha256 scratch | ❌ measured already-optimal (agent-verified, confirmed) |
+
+**Round 2 result: +1 bug fixed (LoadEvents), +1 tuning (delta budget), +1 benchstat-proven perf win (JSON −64% B/op). Adversarial review found no regressions. Full -race green, lint 0.**
+
+## Final tally
+- **12 bugs fixed** (2 High, 5 Med, 5 Low), each with a regression test.
+- **1 perf win kept** (JSON analyzer, benchstat-gated).
+- **7 findings rejected** as false-positive / by-design / not-worthwhile, each with reasoning.
+- Whole suite `-race` green; golangci-lint 0 issues; every kept perf change benchstat-backed.
