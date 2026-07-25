@@ -69,105 +69,47 @@ signs:
     artifacts: checksum
     output: true
 
-# NOTE: `dockers`/`docker_manifests` are GoReleaser's classic docker pipe;
-# it emits a deprecation notice pointing at `dockers_v2` but remains fully
-# supported as of GoReleaser v2.17 (`goreleaser check` passes clean).
-dockers:
-  - id: qdf-hookd-amd64
-    ids: [qdf-hook]
-    goos: linux
-    goarch: amd64
+# Buildx-native multi-arch build+push (the classic dockers/docker_manifests
+# pipe is deprecated and cannot attach an SBOM). One entry per image builds
+# every platform into a single manifest and attaches an SBOM attestation to
+# the pushed image in ghcr (buildx also adds default provenance on push).
+# `provenance` is not a dockers_v2 field in GoReleaser v2.17, so SBOM is the
+# explicit attestation here. Both Dockerfiles cross-compile on the native
+# build platform, so no QEMU is involved.
+dockers_v2:
+  - id: qdf-hookd
     dockerfile: deploy/docker/daemon/Dockerfile
-    use: buildx
+    platforms: [linux/amd64, linux/arm64]
+    images:
+      - ghcr.io/alex60217101990/qdf-hookd
+    tags:
+      - "{{ .Version }}"
+      - latest
+    build_args:
+      VERSION: "{{ .Version }}"
+    labels:
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    sbom: true
     extra_files:
       - go.mod
       - go.sum
       - cmd
       - internal
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--build-arg=VERSION={{ .Version }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-amd64"
-      - "ghcr.io/alex60217101990/qdf-hookd:latest-amd64"
-
-  - id: qdf-hookd-arm64
-    ids: [qdf-hook]
-    goos: linux
-    goarch: arm64
-    dockerfile: deploy/docker/daemon/Dockerfile
-    use: buildx
-    extra_files:
-      - go.mod
-      - go.sum
-      - cmd
-      - internal
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--build-arg=VERSION={{ .Version }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-arm64"
-      - "ghcr.io/alex60217101990/qdf-hookd:latest-arm64"
-
-  # qdf-hookc's Dockerfile cross-compiles client/qc.c with zig cc *inside*
-  # its own build stage (deploy/docker/client/Dockerfile), so it doesn't
-  # consume the qdf-hook Go artifact; `ids` only gates/orders this pipe
-  # behind the qdf-hook build finishing for this goos/goarch.
-  - id: qdf-hookc-amd64
-    ids: [qdf-hook]
-    goos: linux
-    goarch: amd64
+  - id: qdf-hookc
     dockerfile: deploy/docker/client/Dockerfile
-    use: buildx
+    platforms: [linux/amd64, linux/arm64]
+    images:
+      - ghcr.io/alex60217101990/qdf-hookc
+    tags:
+      - "{{ .Version }}"
+      - latest
+    labels:
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    sbom: true
     extra_files:
       - client/qc.c
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--build-arg=TARGETARCH=amd64"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-amd64"
-      - "ghcr.io/alex60217101990/qdf-hookc:latest-amd64"
-
-  - id: qdf-hookc-arm64
-    ids: [qdf-hook]
-    goos: linux
-    goarch: arm64
-    dockerfile: deploy/docker/client/Dockerfile
-    use: buildx
-    extra_files:
-      - client/qc.c
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--build-arg=TARGETARCH=arm64"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-arm64"
-      - "ghcr.io/alex60217101990/qdf-hookc:latest-arm64"
-
-docker_manifests:
-  - name_template: "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-amd64"
-      - "ghcr.io/alex60217101990/qdf-hookd:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/alex60217101990/qdf-hookd:latest"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookd:latest-amd64"
-      - "ghcr.io/alex60217101990/qdf-hookd:latest-arm64"
-  - name_template: "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-amd64"
-      - "ghcr.io/alex60217101990/qdf-hookc:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/alex60217101990/qdf-hookc:latest"
-    image_templates:
-      - "ghcr.io/alex60217101990/qdf-hookc:latest-amd64"
-      - "ghcr.io/alex60217101990/qdf-hookc:latest-arm64"
 
 release:
   # Attach the zig-built native clients directly as release assets (not
