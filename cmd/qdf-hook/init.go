@@ -231,43 +231,25 @@ func upgradeExisting(entries []hookEntry, sub, want string) bool {
 // hookCommand builds the full command line for a hookSpec. Most events run
 // the qdf-hook binary directly ("<exe> <sub>"); two are special-cased:
 //
-//   - PostToolUse ("post") is the daemon/CLI hybrid: nc talks to qdf-hookd
-//     over its unix socket when one is listening, falling back to the plain
-//     CLI when it isn't. The -N flag is mandatory, not cosmetic: Claude Code
-//     feeds the tool_response JSON to the hook's stdin, and the daemon reads
-//     with io.ReadAll to EOF — it only replies once the client half-closes
-//     its write side. The nc flags for that are platform-specific (see
-//     ncArgs): OpenBSD nc (Linux) needs -N to half-close on stdin EOF, while
-//     macOS's /usr/bin/nc has no -N flag and half-closes by default — passing
-//     -N there makes nc error out and fall back to the CLI (correct, but the
-//     daemon is never used). Either way, if nc fails, `|| <exe> <sub>` runs
-//     the CLI with the full stdin (nc hasn't consumed it on a connect/flag
-//     failure).
+//   - PostToolUse ("post") and PreToolUse ("pretooluse") go through the
+//     daemon/CLI hybrid so a warm qdf-hookd answers from RAM (a repeated
+//     Read's mtime check never pays a fresh process + disk decode). On Unix
+//     the tiny native client qdf-hookc — installed next to qdf-hook, resolved
+//     via filepath.Dir(exe) — dials the daemon's unix socket; on any failure
+//     the shell `||` falls back to `<exe> <sub>`, which itself dials the
+//     socket then dispatches inline. Windows has no native client, so it
+//     runs `<exe> <sub>` directly.
 //   - SessionStart ("daemon") starts/refreshes the daemon so the socket is
 //     already live before the first PostToolUse hook fires.
-// ncArgs returns the nc flags for the daemon socket, per platform. OpenBSD nc
-// (Linux and *BSD) needs -N to shut its write side on stdin EOF so the daemon's
-// read-to-EOF unblocks; macOS's /usr/bin/nc has no -N flag and half-closes on
-// EOF by default, so -N there would just make nc error and force the CLI
-// fallback. Override with QDF_NC_ARGS for a non-standard nc.
-func ncArgs() string {
-	if v := os.Getenv("QDF_NC_ARGS"); v != "" {
-		return v
-	}
-	if runtime.GOOS == "darwin" {
-		return "-U"
-	}
-	return "-N -U"
-}
-
 func hookCommand(h hookSpec, exe string) string {
 	switch {
-	// PostToolUse and PreToolUse both go through the daemon/CLI hybrid so a
-	// warm qdf-hookd answers from RAM (a repeated Read's mtime check never
-	// pays a fresh process + disk decode); the fallback subcommand differs.
 	case h.event == "PostToolUse" && h.sub == "post",
 		h.event == "PreToolUse" && h.sub == "pretooluse":
-		return fmt.Sprintf("nc %s %s 2>/dev/null || %s %s", ncArgs(), daemon.SockPath(), exe, h.sub)
+		if runtime.GOOS == "windows" {
+			return exe + " " + h.sub
+		}
+		client := filepath.Join(filepath.Dir(exe), "qdf-hookc")
+		return fmt.Sprintf("%s %s 2>/dev/null || %s %s", client, daemon.SockPath(), exe, h.sub)
 	case h.event == "SessionStart" && h.sub == "daemon":
 		return exe + " daemon --ensure"
 	default:

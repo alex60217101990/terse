@@ -121,7 +121,7 @@ func TestMergeHooks_UpgradesPlainPostToHybrid(t *testing.T) {
 	if posts != 1 {
 		t.Fatalf("expected exactly 1 post hook after upgrade, got %d", posts)
 	}
-	if !strings.Contains(postCmd, "nc "+ncArgs()+" ") || !strings.Contains(postCmd, "|| "+exe+" post") {
+	if !strings.Contains(postCmd, "qdf-hookc") || !strings.Contains(postCmd, "|| "+exe+" post") {
 		t.Errorf("plain post was not upgraded to hybrid: %q", postCmd)
 	}
 
@@ -221,8 +221,11 @@ func TestRunInit_HybridAndSessionStart(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(postCmd, "nc "+ncArgs()+" ") {
-		t.Errorf("PostToolUse command missing %q: %q", "nc "+ncArgs()+" ", postCmd)
+	if !strings.Contains(postCmd, "qdf-hookc") {
+		t.Errorf("PostToolUse command missing %q: %q", "qdf-hookc", postCmd)
+	}
+	if strings.Contains(postCmd, "nc ") {
+		t.Errorf("PostToolUse command must not use nc: %q", postCmd)
 	}
 	if !strings.Contains(postCmd, "|| ") {
 		t.Errorf("PostToolUse command missing %q: %q", "|| ", postCmd)
@@ -256,5 +259,35 @@ func TestRunInit_HybridAndSessionStart(t *testing.T) {
 	}
 	if n := countMatching(hb2, "SessionStart", isEnsure); n != 1 {
 		t.Errorf("expected still exactly 1 SessionStart ensure hook after second init, got %d", n)
+	}
+}
+
+// TestHookCommand_UsesNativeClientNotNc covers Task 5: the daemon-hybrid
+// command line must invoke the native qdf-hookc client (with the exe
+// fallback after "||") and must never shell out to nc.
+func TestHookCommand_UsesNativeClientNotNc(t *testing.T) {
+	exe := "/Users/x/.local/bin/qdf-hook"
+	cmd := hookCommand(hookSpec{sub: "post", event: "PostToolUse", matcher: ".*"}, exe)
+	if strings.Contains(cmd, "nc ") {
+		t.Errorf("hook command must not use nc: %q", cmd)
+	}
+	if !strings.Contains(cmd, "qdf-hookc") || !strings.Contains(cmd, "|| "+exe+" post") {
+		t.Errorf("hook command must invoke qdf-hookc with exe fallback: %q", cmd)
+	}
+}
+
+// TestMergeHooks_UpgradesLegacyNcToNativeClient covers the upgrade path from
+// a pre-qdf-hookc install: re-running init must rewrite a legacy nc-based
+// hybrid command in place to the qdf-hookc form, not skip or duplicate it.
+func TestMergeHooks_UpgradesLegacyNcToNativeClient(t *testing.T) {
+	exe := "/Users/x/.local/bin/qdf-hook"
+	hb := hooksBlock{"PostToolUse": []hookEntry{{Matcher: ".*", Hooks: []hookCmd{
+		{Type: "command", Command: "nc -U ~/.qdf-hook/d.sock 2>/dev/null || " + exe + " post"}}}}}
+	if changed := mergeHooks(hb, exe); changed == 0 {
+		t.Fatal("expected legacy nc entry to be upgraded")
+	}
+	got := hb["PostToolUse"][0].Hooks[0].Command
+	if strings.Contains(got, "nc ") || !strings.Contains(got, "qdf-hookc") {
+		t.Errorf("legacy nc not upgraded to qdf-hookc: %q", got)
 	}
 }
