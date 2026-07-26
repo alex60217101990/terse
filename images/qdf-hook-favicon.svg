@@ -20,6 +20,11 @@
       <stop offset="0%"  stop-color="#22d3ee"/>
       <stop offset="100%" stop-color="#6ff0ff"/>
     </linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#eef1f7"/>
+      <stop offset="50%" stop-color="#c3cad8"/>
+      <stop offset="100%" stop-color="#9aa3b8"/>
+    </linearGradient>
     <radialGradient id="neck" cx="50%" cy="50%" r="50%">
       <stop offset="0%"  stop-color="#7ff3ff" stop-opacity="0.95"/>
       <stop offset="55%" stop-color="#2ad6f0" stop-opacity="0.55"/>
@@ -97,6 +102,21 @@
       <circle cx="460" cy="334" r="4.5"/>
       <circle cx="452" cy="362" r="4.5"/>
     </g>
+  </g>
+
+  <!-- ============ CENTER: vertical wordmark at the conversion source ============ -->
+  <g font-family="'Helvetica Neue',Arial,sans-serif" font-weight="800"
+     text-anchor="middle" fill="url(#silver)"
+     stroke="#0f1830" stroke-width="3.2" paint-order="stroke"
+     style="letter-spacing:0px">
+    <text x="256" y="120" font-size="42">Q</text>
+    <text x="256" y="162" font-size="42">D</text>
+    <text x="256" y="204" font-size="42">F</text>
+    <text x="256" y="240" font-size="34" fill="#7ff3ff" stroke="none">·</text>
+    <text x="256" y="288" font-size="42">H</text>
+    <text x="256" y="330" font-size="42">O</text>
+    <text x="256" y="372" font-size="42">O</text>
+    <text x="256" y="414" font-size="42">K</text>
   </g>
 
   <circle cx="256" cy="256" r="247" fill="none" stroke="#2b3a63" stroke-width="2" opacity="0.6"/>
