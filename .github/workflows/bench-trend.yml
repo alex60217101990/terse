@@ -1,0 +1,156 @@
+name: bench-trend
+
+# Continuous Go benchmark trend + regression alert, published to GitHub Pages.
+#
+#   push to main  -> run all benchmarks, append a data point to the history on
+#                    the gh-pages branch, and (re)publish the Chart.js trend
+#                    dashboard + a landing page. Never fails the build.
+#   pull_request  -> run the same benchmarks and compare against the gh-pages
+#                    baseline; if a metric regresses past the threshold, post a
+#                    PR comment (and job summary) and ping the maintainer. Never
+#                    stores data, never fails the build.
+#
+# Numbers come from shared GitHub runners, so treat them as a *relative trend*,
+# not absolute timings — hence a loose alert threshold (see below).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least-privilege default; the job elevates only what it needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: bench-trend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: bench-trend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push benchmark history + pages to gh-pages
+      pull-requests: write # post the regression alert comment on PRs
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Restore build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: ~/.cache/go-build
+          key: gocache-benchtrend-${{ runner.os }}-${{ hashFiles('**/go.sum', '**/*.go') }}
+          restore-keys: |
+            gocache-benchtrend-${{ runner.os }}-
+
+      - name: run benchmarks
+        run: |
+          set -euo pipefail
+          go test -bench=. -benchmem -run='^$' -benchtime=2s -count=1 -timeout=20m ./... | tee output.txt
+
+      # github-action-benchmark fetches gh-pages before writing and hard-fails
+      # (git exit 128) if the branch is absent — it does not bootstrap it.
+      - name: ensure gh-pages branch exists
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "gh-pages already exists"
+          else
+            echo "creating empty gh-pages branch"
+            tmp="$(mktemp -d)"
+            git -C "$tmp" init -q
+            git -C "$tmp" checkout -q --orphan gh-pages
+            git -C "$tmp" \
+              -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q --allow-empty -m "init gh-pages"
+            git -C "$tmp" push -q \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+              gh-pages
+          fi
+
+      # --- main: append to history + (re)publish the trend dashboard ---
+      - name: store benchmark result (push to gh-pages)
+        if: github.event_name == 'push'
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        with:
+          name: terse Go Benchmarks
+          tool: go
+          output-file-path: output.txt
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Loose on main (store, don't nag): shared runners are noisy and a
+          # single cross-runner point can't reliably detect sub-2x moves.
+          alert-threshold: "200%"
+          comment-on-alert: false
+          fail-on-alert: false
+
+      - name: check gh-pages branch exists
+        id: ghpages
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::gh-pages branch does not exist yet; PR baseline comparison is skipped until the first push to main creates it."
+          fi
+
+      # --- PR: comment-only regression alert, never store, never fail ---
+      - name: compare benchmark result (PR alert)
+        if: github.event_name == 'pull_request' && steps.ghpages.outputs.exists == 'true'
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        with:
+          name: terse Go Benchmarks
+          tool: go
+          output-file-path: output.txt
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          save-data-file: false
+          # Tighter on PRs so real regressions get flagged; still comment-only.
+          alert-threshold: "150%"
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
+          alert-comment-cc-users: "@alex60217101990"
+
+      # --- main: coverage snapshot + landing page, staged into ./public ---
+      - name: coverage snapshot + landing
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          go test -coverprofile=coverage.out -covermode=atomic ./... || true
+          mkdir -p public
+          if [ -f coverage.out ]; then
+            go tool cover -html=coverage.out -o public/coverage.html
+          fi
+          cp .github/pages/index.html public/index.html
+          # Brand assets are optional here — they may not exist on main yet if
+          # the logo PR hasn't merged. Tolerate their absence.
+          cp images/qdf-hook-favicon.svg public/ 2>/dev/null || true
+          cp images/qdf-hook-banner.png  public/ 2>/dev/null || true
+
+      # Runs AFTER the benchmark action's push; keep_files preserves dev/bench/.
+      - name: publish landing + coverage to gh-pages
+        if: github.event_name == 'push'
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./public
+          keep_files: true
