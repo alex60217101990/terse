@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/terse-logo.png" alt="terse" width="520">
+  <img src="images/qdf-hook-banner.png" alt="terse" width="520">
 </p>
 
 <h1 align="center">qdf-hook</h1>
