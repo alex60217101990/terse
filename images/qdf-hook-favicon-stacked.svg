@@ -110,10 +110,10 @@
   <g font-family="'Helvetica Neue',Arial,sans-serif" font-weight="800"
      text-anchor="middle" dominant-baseline="central"
      stroke="#0f1830" stroke-width="4" paint-order="stroke">
-    <text x="256" y="176" font-size="128" fill="url(#silver)" opacity="0.55">Q</text>
-    <text x="256" y="336" font-size="128" fill="url(#silver)" opacity="0.55">H</text>
+    <text x="272" y="176" font-size="128" fill="url(#silver)" opacity="0.55">Q</text>
+    <text x="272" y="336" font-size="128" fill="url(#silver)" opacity="0.55">H</text>
   </g>
-  <line x1="256" y1="242" x2="256" y2="270" stroke="#7ff3ff" stroke-width="7"
+  <line x1="272" y1="242" x2="272" y2="270" stroke="#7ff3ff" stroke-width="7"
         stroke-linecap="round" opacity="0.3"/>
 
   <circle cx="256" cy="256" r="247" fill="none" stroke="#2b3a63" stroke-width="2" opacity="0.6"/>
