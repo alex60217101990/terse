@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="qdf-hook">
+  <title>qdf-hook</title>
+  <desc>Tangled multicolor fibers on the left collapse through a bright cyan neck into ordered parallel lines on the right — verbose input compressed into terse output.</desc>
+
+  <defs>
+    <!-- dark navy disc, faint center lift -->
+    <radialGradient id="bg" cx="46%" cy="46%" r="62%">
+      <stop offset="0%"  stop-color="#1b2748"/>
+      <stop offset="70%" stop-color="#152039"/>
+      <stop offset="100%" stop-color="#0f1830"/>
+    </radialGradient>
+    <!-- left tangle color ramp -->
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"  stop-color="#8b5cf6"/>
+      <stop offset="45%" stop-color="#e85d9e"/>
+      <stop offset="100%" stop-color="#ff9e4f"/>
+    </linearGradient>
+    <!-- ordered cyan output -->
+    <linearGradient id="cool" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"  stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#6ff0ff"/>
+    </linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#eef1f7"/>
+      <stop offset="50%" stop-color="#c3cad8"/>
+      <stop offset="100%" stop-color="#9aa3b8"/>
+    </linearGradient>
+    <radialGradient id="neck" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#7ff3ff" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#2ad6f0" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#2ad6f0" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="disc"><circle cx="256" cy="256" r="248"/></clipPath>
+  </defs>
+
+  <circle cx="256" cy="256" r="248" fill="url(#bg)"/>
+
+  <g clip-path="url(#disc)" fill="none" stroke-linecap="round">
+
+    <!-- ============ LEFT: tangled fibers converging to the neck (255,256) ============ -->
+    <g stroke="url(#warm)" stroke-width="3.4" opacity="0.92">
+      <path d="M255 256 C 175 235, 150 150, 60 92"/>
+      <path d="M255 256 C 165 240, 120 160, 44 150"/>
+      <path d="M255 256 C 170 250, 110 205, 70 205"/>
+      <path d="M255 256 C 160 254, 105 250, 40 250"/>
+      <path d="M255 256 C 168 262, 120 300, 60 302"/>
+      <path d="M255 256 C 165 268, 110 345, 50 360"/>
+      <path d="M255 256 C 178 278, 150 405, 76 420"/>
+      <path d="M255 256 C 185 245, 165 120, 120 110"/>
+      <path d="M255 256 C 172 246, 130 178, 108 175"/>
+      <path d="M255 256 C 172 258, 130 298, 100 300"/>
+      <path d="M255 256 C 180 268, 150 350, 116 360"/>
+      <path d="M255 256 C 190 272, 150 420, 96 440"/>
+      <path d="M255 256 C 205 250, 175 200, 148 205"/>
+      <path d="M255 256 C 200 262, 175 315, 150 312"/>
+      <path d="M255 256 C 150 248, 95 120, 92 130"/>
+      <path d="M255 256 C 150 264, 100 388, 84 388"/>
+    </g>
+    <!-- fiber end nodes -->
+    <g fill="#ff9e4f" stroke="none">
+      <circle cx="60"  cy="92"  r="5.5" fill="#a78bfa"/>
+      <circle cx="44"  cy="150" r="5"   fill="#9b5de5"/>
+      <circle cx="70"  cy="205" r="5"   fill="#e85d9e"/>
+      <circle cx="40"  cy="250" r="5.5" fill="#ff9e4f"/>
+      <circle cx="60"  cy="302" r="5"   fill="#8b5cf6"/>
+      <circle cx="50"  cy="360" r="5"   fill="#ff6fb5"/>
+      <circle cx="76"  cy="420" r="5.5" fill="#ffb86c"/>
+      <circle cx="120" cy="110" r="4.5" fill="#9b5de5"/>
+      <circle cx="108" cy="175" r="4.5" fill="#e85d9e"/>
+      <circle cx="100" cy="300" r="4.5" fill="#8b5cf6"/>
+      <circle cx="116" cy="360" r="4.5" fill="#ff9e4f"/>
+      <circle cx="96"  cy="440" r="4.5" fill="#ff6fb5"/>
+      <circle cx="148" cy="205" r="4"   fill="#c084fc"/>
+      <circle cx="150" cy="312" r="4"   fill="#ffb86c"/>
+      <circle cx="92"  cy="130" r="4"   fill="#ff6fb5"/>
+      <circle cx="84"  cy="388" r="4"   fill="#a78bfa"/>
+    </g>
+
+    <!-- ============ NECK: bright cyan compression point ============ -->
+    <ellipse cx="292" cy="256" rx="70" ry="30" fill="url(#neck)"/>
+
+    <!-- ============ RIGHT: ordered parallel lines fanning to nodes ============ -->
+    <g stroke="url(#cool)" stroke-width="3" opacity="0.95">
+      <path d="M262 256 C 320 256, 360 150, 452 150"/>
+      <path d="M262 256 C 322 256, 360 176, 460 176"/>
+      <path d="M262 256 C 322 256, 360 202, 466 202"/>
+      <path d="M262 256 C 322 256, 360 228, 470 228"/>
+      <path d="M262 256 C 324 256, 362 254, 472 254"/>
+      <path d="M262 256 C 322 256, 360 280, 470 282"/>
+      <path d="M262 256 C 322 256, 360 306, 466 308"/>
+      <path d="M262 256 C 322 256, 360 332, 460 334"/>
+      <path d="M262 256 C 320 256, 360 360, 452 362"/>
+    </g>
+    <g fill="#6ff0ff" stroke="none">
+      <circle cx="452" cy="150" r="4.5"/>
+      <circle cx="460" cy="176" r="4.5"/>
+      <circle cx="466" cy="202" r="4.5"/>
+      <circle cx="470" cy="228" r="4.5"/>
+      <circle cx="472" cy="254" r="5"/>
+      <circle cx="470" cy="282" r="4.5"/>
+      <circle cx="466" cy="308" r="4.5"/>
+      <circle cx="460" cy="334" r="4.5"/>
+      <circle cx="452" cy="362" r="4.5"/>
+    </g>
+  </g>
+
+  <!-- ============ CENTER: Q over H, vertical dash at the transition ============ -->
+  <!-- Q above, H below, and a faint vertical dash marks the exact transition
+       point (the cyan neck) between them. -->
+  <g font-family="'Helvetica Neue',Arial,sans-serif" font-weight="800"
+     text-anchor="middle" dominant-baseline="central"
+     stroke="#0f1830" stroke-width="4" paint-order="stroke">
+    <text x="256" y="176" font-size="128" fill="url(#silver)" opacity="0.55">Q</text>
+    <text x="256" y="336" font-size="128" fill="url(#silver)" opacity="0.55">H</text>
+  </g>
+  <line x1="256" y1="242" x2="256" y2="270" stroke="#7ff3ff" stroke-width="7"
+        stroke-linecap="round" opacity="0.3"/>
+
+  <circle cx="256" cy="256" r="247" fill="none" stroke="#2b3a63" stroke-width="2" opacity="0.6"/>
+</svg>
