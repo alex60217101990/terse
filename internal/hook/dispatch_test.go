@@ -175,6 +175,23 @@ func TestDispatch_BashGitDiff_FoldedAndRecoverable(t *testing.T) {
 	}
 }
 
+func TestDispatch_BashGoPanic_Summarized(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	b.WriteString("panic: runtime error: index out of range [7] with length 3\n\ngoroutine 1 [running]:\n")
+	for i := range 40 {
+		fmt.Fprintf(&b, "example.com/pkg.func%d(0x%x)\n\t/src/pkg/file%d.go:%d +0x%x\n", i, i, i, 10+i, i)
+	}
+	resp := runDispatch(t, "Bash", b.String())
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("long panic should compress")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "panic: runtime error") || !strings.Contains(got, "⋯") {
+		t.Errorf("message + fold marker required:\n%s", got)
+	}
+}
+
 func TestDispatch_BashDockerPs_TableSummarized(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	var b strings.Builder

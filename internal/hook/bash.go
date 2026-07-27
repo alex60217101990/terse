@@ -110,6 +110,15 @@ func tryGitDiff(content string) string {
 	return s
 }
 
+// tryStackTrace elides the middle frames of long stack traces.
+func tryStackTrace(content string) string {
+	s := detect.SummarizeStackTrace(content)
+	if !worth(s, content, minSummaryRatioLoose) {
+		return ""
+	}
+	return s
+}
+
 // tryTable compresses tabular output (docker/kubectl/ls/CSV/TSV) to header +
 // head/tail rows. Strict gate: it drops rows, so demand a 2x win.
 func tryTable(content string) string {
