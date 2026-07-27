@@ -124,9 +124,16 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 
 	if replacement == "" {
 		if s := tryJSON(content); s != "" {
-			action, replacement = "summary", s
+			// Columnar is the most lossy transform (all rows dropped). Register
+			// the raw array so the model can recover it, and point at it — the
+			// summary alone is otherwise unrecoverable off the Read path.
+			hash := refTokenFor(store, content)
+			action = "columnar"
+			replacement = s + fmt.Sprintf("[full rows: qdf-hook expand %s]\n", hash)
 		} else if s := tryGoTest(content); s != "" {
 			action, replacement = "summary", s
+		} else if s := tryGrep(content); s != "" {
+			action, replacement = "grep", s
 		} else if s := tryGitLog(content); s != "" {
 			action, replacement = "summary", s
 		} else if s := tryBench(content); s != "" {
@@ -190,6 +197,19 @@ func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (st
 // outputs where a ~60-byte token would not pay off. The token format and hash
 // (cache.RefHashOf, the same sha256[:16] hex cache.Dedup uses) match
 // cache.Dedup exactly for parity.
+// refTokenFor registers content in the ref store (idempotently) and returns its
+// hash, so a lossy summary can point the model at the recoverable original via
+// `qdf-hook expand <hash>`. Unlike dedupWithStore it always stores and returns a
+// hash — it is for making a summary recoverable, not for skipping duplicate
+// output.
+func refTokenFor(store hookcore.StateStore, content string) string {
+	hash := cache.RefHashOf(content)
+	if !store.RefSeen(hash) {
+		store.RefPut(hash, content)
+	}
+	return hash
+}
+
 func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) {
 	if len(content) < minSize {
 		return "", false

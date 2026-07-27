@@ -7,12 +7,19 @@ import (
 	"github.com/alex60217101990/terse/internal/detect"
 )
 
-// ColumnarSummary returns a compact human-readable columnar summary of a JSON array.
-// The output conveys schema and statistics in minimal tokens.
-func ColumnarSummary(path string, stats *detect.ArrayStats) string {
+// ColumnarSummary returns a compact human-readable columnar summary of a JSON
+// array: schema plus per-column statistics in minimal tokens. Individual row
+// values are elided — this is a lossy summary. The only production caller is
+// the generic tool-output pipeline (Bash/MCP), which appends a "qdf-hook expand
+// <hash>" recovery pointer so the full array remains retrievable; the summary
+// therefore does not, on its own, claim any particular way to fetch rows (a
+// previous version wrongly told the model to "Read with offset/limit", which is
+// meaningless for a command's output). The path parameter is unused and kept
+// only for call-site clarity.
+func ColumnarSummary(_ string, stats *detect.ArrayStats) string {
 	var sb strings.Builder
 
-	fmt.Fprintf(&sb, "[READ %s — COLUMNAR SUMMARY (%d rows)]\n", path, stats.RowCount)
+	fmt.Fprintf(&sb, "[COLUMNAR SUMMARY (%d rows) — per-column stats; row values elided]\n", stats.RowCount)
 
 	// Schema line: one compact view of all column types.
 	sb.WriteString("SCHEMA: {")
@@ -59,6 +66,5 @@ func ColumnarSummary(path string, stats *detect.ArrayStats) string {
 		}
 		sb.WriteByte('\n')
 	}
-	sb.WriteString("[Use Read with offset/limit to fetch specific rows]\n")
 	return sb.String()
 }

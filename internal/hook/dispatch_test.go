@@ -2,10 +2,12 @@ package hook_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hook"
 	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/alex60217101990/terse/internal/protocol"
@@ -77,6 +79,76 @@ func TestDispatch_MCPRepeatedBlocks_Folded(t *testing.T) {
 	}
 	if !strings.Contains(got, "↑ repeat:") {
 		t.Errorf("expected a fold back-reference marker, got:\n%s", got)
+	}
+}
+
+// grep/ripgrep "file:line:text" output run via Bash compresses through the
+// generic try-chain (buildGrepSummary), the same as the Grep tool.
+func TestDispatch_BashGrep_Compressed(t *testing.T) {
+	// 6 files with 20 matches each: past grepFileCap (8), so most match lines
+	// elide to "... +N more" — the realistic big-win shape.
+	var b strings.Builder
+	for i := range 120 {
+		fmt.Fprintf(&b, "internal/pkg/file%d.go:%d:\tfound a matching identifier here on this line\n", i%6, i)
+	}
+	content := b.String()
+	resp := runDispatch(t, "Bash", content)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("Bash grep output should be compressed, got passthrough")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if len(got) >= len(content) {
+		t.Fatalf("expected shrink: %d >= %d", len(got), len(content))
+	}
+	if !strings.Contains(got, "[grep:") {
+		t.Errorf("expected grep-grouped summary, got:\n%s", got)
+	}
+}
+
+// Columnar JSON summary off the Read path must (1) not carry the old misleading
+// "Read with offset/limit" / "[READ" wording, and (2) register the raw array so
+// it is recoverable via `qdf-hook expand <hash>`.
+func TestDispatch_ColumnarRecoverable(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := range 60 {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, `{"id":%d,"status":"ok","name":"item-%d"}`, i, i)
+	}
+	b.WriteByte(']')
+	content := b.String()
+
+	store := hookcore.NewDiskStore()
+	var o strings.Builder
+	if err := hook.Dispatch(store, strings.NewReader(dispatchInput(t, "Bash", content)), &o); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	var resp protocol.HookOutput
+	_ = json.Unmarshal([]byte(o.String()), &resp)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("JSON array should be summarized")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "COLUMNAR SUMMARY") {
+		t.Errorf("expected columnar summary, got:\n%s", got)
+	}
+	if strings.Contains(got, "Use Read with offset") || strings.Contains(got, "[READ ") {
+		t.Errorf("misleading Read-path wording must be gone, got:\n%s", got)
+	}
+	// Extract the recovery hash and confirm the raw array round-trips.
+	marker := "qdf-hook expand "
+	idx := strings.Index(got, marker)
+	if idx < 0 {
+		t.Fatalf("expected a recovery pointer, got:\n%s", got)
+	}
+	hash := strings.FieldsFunc(got[idx+len(marker):], func(r rune) bool {
+		return !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f'))
+	})[0]
+	if recovered, ok := cache.RefGet(hash); !ok || recovered != content {
+		t.Fatalf("raw array not recoverable via expand %s (ok=%v)", hash, ok)
 	}
 }
 

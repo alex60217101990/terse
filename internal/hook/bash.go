@@ -9,9 +9,23 @@ import (
 	"github.com/alex60217101990/terse/internal/summary"
 )
 
-// minSummaryRatio: only replace tool output if the summary is at most this
-// fraction of the original. Below this, compression isn't worth the overhead.
-const minSummaryRatio = 0.5
+// Summary gates: only replace tool output when the summary is at most this
+// fraction of the original.
+//   - minSummaryRatio (strict, 0.5): very lossy transforms that discard whole
+//     rows/records (columnar JSON). Demand at least a 2x win to justify the loss.
+//   - minSummaryRatioLoose (0.75): mildly lossy transforms that only truncate
+//     long fields / context (git log). A 25%+ win is worth keeping; the old 0.5
+//     gate silently threw away real 25–49% reductions.
+const (
+	minSummaryRatio      = 0.5
+	minSummaryRatioLoose = 0.75
+)
+
+// worth reports whether a summary is non-empty and small enough to replace the
+// original at the given ratio.
+func worth(summary, content string, ratio float64) bool {
+	return summary != "" && float64(len(summary)) <= float64(len(content))*ratio
+}
 
 // HandleBash is retained for backward compatibility. PostToolUse routing now
 // goes through Dispatch, which handles Bash (and every non-Read/Write tool) via
@@ -31,7 +45,7 @@ func tryJSON(content string) string {
 		return ""
 	}
 	s := summary.ColumnarSummary("(tool output)", stats)
-	if float64(len(s)) > float64(len(content))*minSummaryRatio {
+	if !worth(s, content, minSummaryRatio) {
 		return ""
 	}
 	return s
@@ -42,7 +56,7 @@ func tryGoTest(content string) string {
 		return ""
 	}
 	s := detect.SummarizeGoTest(content)
-	if float64(len(s)) > float64(len(content))*minSummaryRatio {
+	if !worth(s, content, minSummaryRatio) {
 		return ""
 	}
 	return s
@@ -53,7 +67,7 @@ func tryGitLog(content string) string {
 		return ""
 	}
 	s := detect.SummarizeGitLog(content)
-	if float64(len(s)) > float64(len(content))*minSummaryRatio {
+	if !worth(s, content, minSummaryRatioLoose) {
 		return ""
 	}
 	return s
@@ -64,7 +78,24 @@ func tryBench(content string) string {
 		return ""
 	}
 	s := detect.SummarizeGoBench(content)
-	if float64(len(s)) > float64(len(content))*minSummaryRatio {
+	if !worth(s, content, minSummaryRatioLoose) {
+		return ""
+	}
+	return s
+}
+
+// tryGrep compresses grep/ripgrep "file:line:text" output run via Bash (or any
+// non-Grep tool). buildGrepSummary already powers the Grep tool; this wires the
+// same content-mode compressor into the generic try-chain so `rg`/`grep` in
+// Bash compress too. Only "grouped" (content-mode) output is accepted — bare
+// path lists ("tree") are too easily confused with ordinary `ls`/`find` output
+// to fold blindly here.
+func tryGrep(content string) string {
+	s, action := buildGrepSummary(content)
+	if action != "grouped" {
+		return ""
+	}
+	if !worth(s, content, minSummaryRatio) {
 		return ""
 	}
 	return s
