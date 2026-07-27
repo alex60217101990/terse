@@ -3,6 +3,7 @@ package detect
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"maps"
 	"slices"
 	"strconv"
@@ -62,6 +63,15 @@ func SummarizeJSONObject(content string) string {
 	if err := dec.Decode(&m); err != nil {
 		return ""
 	}
+	// Decode stops after the first JSON value — {"a":1} followed by 2000 bytes
+	// of trailing garbage would otherwise "succeed" and silently summarize only
+	// the valid prefix, hiding the garbage entirely. Token() reads the next
+	// token from the stream: io.EOF means only whitespace remains (the whole
+	// input was the one object); anything else — a further value, or a syntax
+	// error on non-JSON trailing bytes — means content wasn't fully consumed.
+	if _, err := dec.Token(); err != io.EOF {
+		return ""
+	}
 	out := renderJSONObjectSummary(m)
 	if len(out) >= len(content) {
 		return ""
@@ -110,6 +120,10 @@ func formatValue(v any) string {
 	case []any:
 		return formatArray(t)
 	default:
+		// Unreachable: encoding/json.Decode into map[string]any (with
+		// UseNumber) only ever produces the types handled above. Kept as a
+		// defensive fallback rather than a panic, in case that decode
+		// contract ever changes.
 		return fmt.Sprintf("%v", t)
 	}
 }
@@ -209,6 +223,8 @@ func kindOf(v any) string {
 	case []any:
 		return "array"
 	default:
+		// Unreachable for the same reason as formatValue's default case: the
+		// decode contract bounds v to the types handled above.
 		return "string"
 	}
 }
