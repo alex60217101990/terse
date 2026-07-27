@@ -135,7 +135,10 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			action, replacement = "ref", tok
 		} else if d, ok := tryRerunDelta(store, toolName, key, content); ok {
 			action, replacement = "rerun-delta", d
-		} else if sq := detect.SqueezeOutput(content); len(sq) < len(content)*9/10 {
+		} else if sq := detect.SqueezeOutput(detect.FoldRepeatedBlocks(content)); len(sq) < len(content)*9/10 {
+			// Fold non-adjacent duplicate blocks (e.g. an MCP batch that
+			// re-dumps the same section under several query headers), then
+			// run-length/ANSI squeeze the result. Both are never-worse.
 			action, replacement = "squeezed", sq
 		} else {
 			action = "passthrough"

@@ -58,6 +58,28 @@ func TestDispatch_MCPToolJSON_Summarized(t *testing.T) {
 	}
 }
 
+// An MCP batch that re-dumps the same section under several query headers
+// (non-adjacent duplicates) gets folded on the first call — no §ref cache hit
+// needed, and run-length collapse alone can't see non-adjacent repeats.
+func TestDispatch_MCPRepeatedBlocks_Folded(t *testing.T) {
+	block := "### grant-client-interface-methods\n" +
+		strings.Repeat("func (c *client) PostAPIEntityV1Grants(ctx, body) (*Resp, error)\n", 6)
+	other := "### other-query\nsome unrelated grep output line\nanother unrelated line\n"
+	content := "## query one\n\n" + block + "\n\n" + other + "\n\n## query two\n\n" + block + "\n"
+
+	resp := runDispatch(t, "mcp__plugin_context-mode__ctx_batch_execute", content)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("MCP output with duplicate blocks should be compressed, got passthrough")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if len(got) >= len(content) {
+		t.Fatalf("expected shrink: %d >= %d", len(got), len(content))
+	}
+	if !strings.Contains(got, "↑ repeat:") {
+		t.Errorf("expected a fold back-reference marker, got:\n%s", got)
+	}
+}
+
 // A skip-listed tool is always passed through verbatim.
 func TestDispatch_SkipList_Passthrough(t *testing.T) {
 	big := strings.Repeat("todo item content line\n", 40)

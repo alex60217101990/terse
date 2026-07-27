@@ -1,0 +1,75 @@
+Executed 5 commands (66 lines, 5.5KB). Indexed 5 sections. Searched 2 queries.
+
+## Commands
+
+- private-ai-last-routes: `grep -rn routes handler.go`
+- any-admin-internal-routes: `find repo -type d -name admin`
+- grant-delete-global-search: `grep -rn Grant repo --include=*.go`
+- grant-client-interface-methods: `grep -n func client.gen.go`
+- cleanup-in-tests: `grep -rn purge tests --include=*.go`
+
+## grant delete client interface
+
+### grant-client-interface-methods
+# grant-client-interface-methods
+
+$ grep -n func client.gen.go
+
+364:// PostAPIEntityV1GrantsJSONRequestBody defines body for PostAPIEntityV1Grants
+365:type PostAPIEntityV1GrantsJSONRequestBody = CreateGrantRequest
+644:	// PostAPIEntityV1GrantsByIDItems sends the request with a typed body.
+646:	PostAPIEntityV1GrantsByIDItems(ctx context.Context, id UUID, body Body) (*Wrapper, error)
+649:func (c *client) PostAPIEntityV1GrantsWithBodyRaw(ctx context.Context, contentType string, body io.Reader) (*Raw, error) {
+650:	req, err := NewPostAPIEntityV1GrantsRequestWithBody(c.Server, contentType, body)
+664:	return ParsePostAPIEntityV1GrantsRawResponse(rsp)
+
+### grant-delete-global-search
+# grant-delete-global-search
+
+$ grep -rn Grant repo --include=*.go
+
+internal/saga/license/workflow/interfaces.go:15:// DeleteWorkflow tears a license down: it revokes the grant's ai_credit items,
+internal/saga/license/workflow/provision.go:46:// the DeleteLicense workflow (which revokes the granted credits and deletes the
+internal/saga/license/workflow/provision.go:73:	// rollback (the delete workflow) revokes everything the grant allocated.
+internal/saga/license/workflow/delete_test.go:58:func TestDelete_GrantLicense_RevokesActivationsThenLicense(t *testing.T) {
+internal/usecase/license/service.go:26:	// Delete runs the teardown workflow for the license: it revokes the grant's
+
+### cleanup-in-tests
+# cleanup-in-tests
+
+$ grep -rn purge tests --include=*.go
+
+(no output)
+
+## grant cleanup test
+
+### cleanup-in-tests
+# cleanup-in-tests
+
+$ grep -rn purge tests --include=*.go
+
+(no output)
+
+### grant-delete-global-search
+# grant-delete-global-search
+
+$ grep -rn Grant repo --include=*.go
+
+internal/saga/license/workflow/interfaces.go:15:// DeleteWorkflow tears a license down: it revokes the grant's ai_credit items,
+internal/saga/license/workflow/provision.go:46:// the DeleteLicense workflow (which revokes the granted credits and deletes the
+internal/saga/license/workflow/provision.go:73:	// rollback (the delete workflow) revokes everything the grant allocated.
+internal/saga/license/workflow/delete_test.go:58:func TestDelete_GrantLicense_RevokesActivationsThenLicense(t *testing.T) {
+internal/usecase/license/service.go:26:	// Delete runs the teardown workflow for the license: it revokes the grant's
+
+### grant-client-interface-methods
+# grant-client-interface-methods
+
+$ grep -n func client.gen.go
+
+364:// PostAPIEntityV1GrantsJSONRequestBody defines body for PostAPIEntityV1Grants
+365:type PostAPIEntityV1GrantsJSONRequestBody = CreateGrantRequest
+644:	// PostAPIEntityV1GrantsByIDItems sends the request with a typed body.
+646:	PostAPIEntityV1GrantsByIDItems(ctx context.Context, id UUID, body Body) (*Wrapper, error)
+649:func (c *client) PostAPIEntityV1GrantsWithBodyRaw(ctx context.Context, contentType string, body io.Reader) (*Raw, error) {
+650:	req, err := NewPostAPIEntityV1GrantsRequestWithBody(c.Server, contentType, body)
+664:	return ParsePostAPIEntityV1GrantsRawResponse(rsp)
