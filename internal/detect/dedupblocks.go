@@ -64,6 +64,25 @@ type tokenPair struct {
 	new string
 }
 
+// truncFirstLine returns the first line of s (its content up to the first
+// '\n', with surrounding space trimmed), capped at maxMarkerFirstLine runes.
+// trunc reports whether the cap clipped the line. It slices s in place via a
+// forward rune walk — no []rune materialization and no new backing array — so
+// a marker's first-line echo allocates nothing. Both the exact and fuzzy
+// marker paths share this single truncation source of truth.
+func truncFirstLine(s string) (first string, trunc bool) {
+	first, _, _ = strings.Cut(s, "\n")
+	first = strings.TrimSpace(first)
+	count := 0
+	for idx := range first { // ranges rune-by-rune; idx is each rune's start byte
+		if count == maxMarkerFirstLine {
+			return first[:idx], true
+		}
+		count++
+	}
+	return first, false
+}
+
 // isDigitByte reports whether c is an ASCII decimal digit.
 func isDigitByte(c byte) bool { return c >= '0' && c <= '9' }
 
@@ -240,13 +259,7 @@ func FoldRepeatedBlocks(content string) string {
 	// whether it folded: false (block kept verbatim) unless the marker is
 	// strictly shorter than the block.
 	emitFuzzy := func(bs, be int, key, block, base string, pairs []tokenPair) bool {
-		first, _, _ := strings.Cut(base, "\n")
-		first = strings.TrimSpace(first)
-		trunc := false
-		if r := []rune(first); len(r) > maxMarkerFirstLine {
-			first = string(r[:maxMarkerFirstLine])
-			trunc = true
-		}
+		first, trunc := truncFirstLine(base)
 		mlen := len(fuzzyPre) + len(first)
 		if trunc {
 			mlen += len(markerEll)
@@ -302,13 +315,7 @@ func FoldRepeatedBlocks(content string) string {
 		}
 		if _, dup := seen[key]; dup {
 			// Exact duplicate: unchanged fast path.
-			first, _, _ := strings.Cut(key, "\n")
-			first = strings.TrimSpace(first)
-			trunc := false
-			if r := []rune(first); len(r) > maxMarkerFirstLine {
-				first = string(r[:maxMarkerFirstLine])
-				trunc = true
-			}
+			first, trunc := truncFirstLine(key)
 			mlen := len(markerPre) + len(first) + len(markerSuf)
 			if trunc {
 				mlen += len(markerEll)
