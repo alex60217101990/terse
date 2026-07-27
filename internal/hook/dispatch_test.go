@@ -153,6 +153,28 @@ func TestDispatch_ColumnarRecoverable(t *testing.T) {
 	}
 }
 
+func TestDispatch_BashGitDiff_FoldedAndRecoverable(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	b.WriteString("diff --git a/x.go b/x.go\nindex 1..2 100644\n--- a/x.go\n+++ b/x.go\n@@ -1,60 +1,61 @@\n")
+	for range 55 {
+		b.WriteString(" \tunchanged padding line with some width to it\n")
+	}
+	b.WriteString("-old\n+new\n")
+	content := b.String()
+	resp := runDispatch(t, "Bash", content)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("large diff should compress")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "⋯") || !strings.Contains(got, "qdf-hook expand ") {
+		t.Errorf("expected fold marker + recovery footer:\n%s", got)
+	}
+	if !strings.Contains(got, "-old") || !strings.Contains(got, "+new") {
+		t.Errorf("changed lines must survive verbatim:\n%s", got)
+	}
+}
+
 // A skip-listed tool is always passed through verbatim.
 func TestDispatch_SkipList_Passthrough(t *testing.T) {
 	big := strings.Repeat("todo item content line\n", 40)

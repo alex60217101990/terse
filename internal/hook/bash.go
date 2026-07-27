@@ -100,3 +100,12 @@ func tryGrep(content string) string {
 	}
 	return s
 }
+
+// tryGitDiff folds long unchanged-context runs in unified diff output.
+func tryGitDiff(content string) string {
+	s := detect.SummarizeGitDiff(content)
+	if !worth(s, content, minSummaryRatioLoose) {
+		return ""
+	}
+	return s
+}

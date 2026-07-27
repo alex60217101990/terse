@@ -137,13 +137,13 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			// Columnar is the most lossy transform (all rows dropped). Register
 			// the raw array so the model can recover it, and point at it — the
 			// summary alone is otherwise unrecoverable off the Read path.
-			hash := refTokenFor(store, content)
-			action = "columnar"
-			replacement = s + fmt.Sprintf("[full rows: qdf-hook expand %s]\n", hash)
+			action, replacement = "columnar", withRecovery(store, s, content)
 		} else if s := tryGoTest(content); s != "" {
 			action, replacement = "summary", s
 		} else if s := tryGrep(content); s != "" {
 			action, replacement = "grep", s
+		} else if s := tryGitDiff(content); s != "" {
+			action, replacement = "gitdiff", withRecovery(store, s, content)
 		} else if s := tryGitLog(content); s != "" {
 			action, replacement = "summary", s
 		} else if s := tryBench(content); s != "" {
@@ -218,6 +218,12 @@ func refTokenFor(store hookcore.StateStore, content string) string {
 		store.RefPut(hash, content)
 	}
 	return hash
+}
+
+// withRecovery appends the standard lossy-summary recovery footer: the raw
+// output is registered in the ref store and the summary points at it.
+func withRecovery(store hookcore.StateStore, summary, raw string) string {
+	return summary + fmt.Sprintf("[full output: qdf-hook expand %s]\n", refTokenFor(store, raw))
 }
 
 func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) {
