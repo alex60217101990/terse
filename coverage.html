@@ -107,43 +107,45 @@
 				
 				<option value="file25">github.com/alex60217101990/terse/internal/detect/bench.go (92.3%)</option>
 				
-				<option value="file26">github.com/alex60217101990/terse/internal/detect/gitlog.go (89.8%)</option>
+				<option value="file26">github.com/alex60217101990/terse/internal/detect/dedupblocks.go (96.4%)</option>
 				
-				<option value="file27">github.com/alex60217101990/terse/internal/detect/gotest.go (86.6%)</option>
+				<option value="file27">github.com/alex60217101990/terse/internal/detect/gitlog.go (89.8%)</option>
 				
-				<option value="file28">github.com/alex60217101990/terse/internal/detect/json.go (93.8%)</option>
+				<option value="file28">github.com/alex60217101990/terse/internal/detect/gotest.go (86.6%)</option>
 				
-				<option value="file29">github.com/alex60217101990/terse/internal/detect/noise.go (93.9%)</option>
+				<option value="file29">github.com/alex60217101990/terse/internal/detect/json.go (93.8%)</option>
 				
-				<option value="file30">github.com/alex60217101990/terse/internal/detect/squeeze.go (100.0%)</option>
+				<option value="file30">github.com/alex60217101990/terse/internal/detect/noise.go (93.9%)</option>
 				
-				<option value="file31">github.com/alex60217101990/terse/internal/hook/bash.go (60.7%)</option>
+				<option value="file31">github.com/alex60217101990/terse/internal/detect/squeeze.go (100.0%)</option>
 				
-				<option value="file32">github.com/alex60217101990/terse/internal/hook/compact.go (88.1%)</option>
+				<option value="file32">github.com/alex60217101990/terse/internal/hook/bash.go (60.7%)</option>
 				
-				<option value="file33">github.com/alex60217101990/terse/internal/hook/dispatch.go (82.5%)</option>
+				<option value="file33">github.com/alex60217101990/terse/internal/hook/compact.go (88.1%)</option>
 				
-				<option value="file34">github.com/alex60217101990/terse/internal/hook/glob.go (89.3%)</option>
+				<option value="file34">github.com/alex60217101990/terse/internal/hook/dispatch.go (82.5%)</option>
 				
-				<option value="file35">github.com/alex60217101990/terse/internal/hook/grep.go (91.8%)</option>
+				<option value="file35">github.com/alex60217101990/terse/internal/hook/glob.go (89.3%)</option>
 				
-				<option value="file36">github.com/alex60217101990/terse/internal/hook/pretooluse.go (87.1%)</option>
+				<option value="file36">github.com/alex60217101990/terse/internal/hook/grep.go (91.8%)</option>
 				
-				<option value="file37">github.com/alex60217101990/terse/internal/hook/read.go (85.3%)</option>
+				<option value="file37">github.com/alex60217101990/terse/internal/hook/pretooluse.go (87.1%)</option>
 				
-				<option value="file38">github.com/alex60217101990/terse/internal/hook/statctime_linux.go (100.0%)</option>
+				<option value="file38">github.com/alex60217101990/terse/internal/hook/read.go (85.3%)</option>
 				
-				<option value="file39">github.com/alex60217101990/terse/internal/hook/statctime_unix.go (75.0%)</option>
+				<option value="file39">github.com/alex60217101990/terse/internal/hook/statctime_linux.go (100.0%)</option>
 				
-				<option value="file40">github.com/alex60217101990/terse/internal/hook/write.go (94.6%)</option>
+				<option value="file40">github.com/alex60217101990/terse/internal/hook/statctime_unix.go (75.0%)</option>
 				
-				<option value="file41">github.com/alex60217101990/terse/internal/hookcore/diskstore.go (50.0%)</option>
+				<option value="file41">github.com/alex60217101990/terse/internal/hook/write.go (94.6%)</option>
 				
-				<option value="file42">github.com/alex60217101990/terse/internal/hookcore/memstore.go (92.5%)</option>
+				<option value="file42">github.com/alex60217101990/terse/internal/hookcore/diskstore.go (50.0%)</option>
 				
-				<option value="file43">github.com/alex60217101990/terse/internal/protocol/protocol.go (74.6%)</option>
+				<option value="file43">github.com/alex60217101990/terse/internal/hookcore/memstore.go (92.5%)</option>
 				
-				<option value="file44">github.com/alex60217101990/terse/internal/summary/columnar.go (60.0%)</option>
+				<option value="file44">github.com/alex60217101990/terse/internal/protocol/protocol.go (74.6%)</option>
+				
+				<option value="file45">github.com/alex60217101990/terse/internal/summary/columnar.go (60.0%)</option>
 				
 				</select>
 			</div>
@@ -656,7 +658,7 @@ func shFields(s string) []string <span class="cov5" title="77">{
         var out []string
         var cur strings.Builder
         inQuote, started := false, false
-        for i := 0; i &lt; len(s); i++ </span><span class="cov10" title="2797">{
+        for i := 0; i &lt; len(s); i++ </span><span class="cov10" title="2776">{
                 switch c := s[i]; </span>{
                 case c == '\'':<span class="cov6" title="100">
                         inQuote = !inQuote
@@ -673,7 +675,7 @@ func shFields(s string) []string <span class="cov5" title="77">{
                                 cur.Reset()
                                 started = false
                         }</span>
-                default:<span class="cov9" title="2566">
+                default:<span class="cov9" title="2545">
                         cur.WriteByte(c)
                         started = true</span>
                 }
@@ -1786,7 +1788,7 @@ func IsBinaryContent(data []byte) bool <span class="cov1" title="3">{
         <span class="cov1" title="2">return !utf8.Valid(data)</span>
 }
 
-var bufPool = sync.Pool{New: func() any <span class="cov1" title="3">{ return new(bytes.Buffer) }</span>}
+var bufPool = sync.Pool{New: func() any <span class="cov1" title="2">{ return new(bytes.Buffer) }</span>}
 
 // UnifiedDiff computes a unified diff between old and new.
 // contextLines is the number of unchanged lines to show around each hunk.
@@ -2128,11 +2130,11 @@ func Evict(state *SessionState, maxFiles int) <span class="cov7" title="7">{
         }</span>
         // Sort ascending by score; break ties by ReadCount ascending so
         // zero-read entries are always evicted before frequently-read ones.
-        <span class="cov1" title="1">slices.SortFunc(entries, func(a, b scored) int </span><span class="cov7" title="7">{
+        <span class="cov1" title="1">slices.SortFunc(entries, func(a, b scored) int </span><span class="cov5" title="4">{
                 if c := cmp.Compare(a.score, b.score); c != 0 </span><span class="cov0" title="0">{
                         return c
                 }</span>
-                <span class="cov7" title="7">return cmp.Compare(a.readCount, b.readCount)</span>
+                <span class="cov5" title="4">return cmp.Compare(a.readCount, b.readCount)</span>
         })
         // Drop lowest-scoring entries until we're at 80% of maxFiles.
         <span class="cov1" title="1">target := maxFiles * 4 / 5
@@ -3442,6 +3444,129 @@ func SummarizeGoBench(s string) string <span class="cov2" title="2">{
 		
 		<pre class="file" id="file26" style="display: none">package detect
 
+import "strings"
+
+// minFoldBlock is the smallest block (in bytes, trailing newlines excluded)
+// worth folding. Below this a back-reference marker would cost more than the
+// duplicate it removes.
+const minFoldBlock = 64
+
+// maxMarkerFirstLine caps how much of a block's first line the marker echoes,
+// in runes, so a very long header line can't bloat the marker.
+const maxMarkerFirstLine = 56
+
+// Marker pieces. Byte lengths are compile-time constants, so a marker's size is
+// computed without building the string — the fold decision needs the length
+// before committing, and on a fold the pieces are written straight into the
+// output builder (no intermediate marker allocation).
+const (
+        markerPre = "⟦↑ repeat: \""
+        markerSuf = "\"⟧"
+        markerEll = "…"
+)
+
+// FoldRepeatedBlocks collapses NON-adjacent duplicate blocks within a single
+// payload — the case [SqueezeOutput]'s consecutive run-length pass cannot see.
+// Tool output that repeats whole sections (e.g. an MCP batch that re-dumps the
+// same grep result under several query headers) shrinks a lot here.
+//
+// A "block" is a maximal run of lines containing no blank line; blocks are
+// separated by runs of two-or-more newlines. Separators and first occurrences
+// are copied byte-for-byte, so non-duplicated content is never altered. The
+// first occurrence of a block is kept verbatim; each later identical occurrence
+// (at least minFoldBlock bytes, and only when the marker is strictly shorter)
+// is replaced by a self-describing one-line back-reference naming it by its
+// first line. No expansion step is needed — the referent is above in the same
+// text, exactly like the "⨯N" run-length markers.
+//
+// It returns the input unchanged when nothing folds, so callers can gate on
+// len(). The output builder is allocated lazily — only once a fold actually
+// happens — so the common no-duplicate payload pays for nothing but the dedup
+// map and a single scan.
+func FoldRepeatedBlocks(content string) string <span class="cov2" title="5">{
+        // A non-adjacent duplicate needs at least two blocks, i.e. a blank-line
+        // boundary. No "\n\n" (or too small) ⇒ nothing to do, allocate nothing.
+        if len(content) &lt; minFoldBlock*2 || !strings.Contains(content, "\n\n") </span><span class="cov2" title="3">{
+                return content
+        }</span>
+
+        <span class="cov1" title="2">var b strings.Builder
+        active := false // builder in use (set on the first fold)
+        written := 0    // bytes of content already committed to b
+        seen := make(map[string]struct{})
+
+        // fold checks one block [bs,be); on a duplicate that shrinks, it lazily
+        // starts the builder, flushes the verbatim gap since the last write, and
+        // emits the marker plus the block's preserved trailing newlines.
+        fold := func(bs, be int) </span><span class="cov4" title="27">{
+                block := content[bs:be]
+                key := strings.TrimRight(block, "\n")
+                if len(key) &lt; minFoldBlock </span><span class="cov4" title="17">{
+                        return
+                }</span>
+                <span class="cov3" title="10">if _, dup := seen[key]; !dup </span><span class="cov2" title="6">{
+                        seen[key] = struct{}{}
+                        return
+                }</span>
+                <span class="cov2" title="4">first, _, _ := strings.Cut(key, "\n")
+                first = strings.TrimSpace(first)
+                trunc := false
+                if r := []rune(first); len(r) &gt; maxMarkerFirstLine </span><span class="cov1" title="2">{
+                        first = string(r[:maxMarkerFirstLine])
+                        trunc = true
+                }</span>
+                <span class="cov2" title="4">mlen := len(markerPre) + len(first) + len(markerSuf)
+                if trunc </span><span class="cov1" title="2">{
+                        mlen += len(markerEll)
+                }</span>
+                <span class="cov2" title="4">if mlen &gt;= len(key) </span><span class="cov0" title="0">{ // marker wouldn't be smaller — keep verbatim
+                        return
+                }</span>
+                <span class="cov2" title="4">if !active </span><span class="cov1" title="2">{
+                        b.Grow(len(content))
+                        active = true
+                }</span>
+                <span class="cov2" title="4">b.WriteString(content[written:bs]) // verbatim gap (kept blocks + separators)
+                b.WriteString(markerPre)
+                b.WriteString(first)
+                if trunc </span><span class="cov1" title="2">{
+                        b.WriteString(markerEll)
+                }</span>
+                <span class="cov2" title="4">b.WriteString(markerSuf)
+                b.WriteString(block[len(key):]) // preserved trailing newlines
+                written = be</span>
+        }
+
+        <span class="cov1" title="2">n := len(content)
+        segStart := 0
+        i := 0
+        for i &lt; n </span><span class="cov10" title="4215">{
+                if content[i] == '\n' </span><span class="cov5" title="70">{
+                        j := i + 1
+                        for j &lt; n &amp;&amp; content[j] == '\n' </span><span class="cov4" title="27">{
+                                j++
+                        }</span>
+                        <span class="cov5" title="70">if j-i &gt;= 2 </span><span class="cov4" title="25">{ // blank line -&gt; block boundary; separator [i,j) kept verbatim
+                                fold(segStart, i)
+                                segStart = j
+                                i = j
+                                continue</span>
+                        }
+                }
+                <span class="cov9" title="4190">i++</span>
+        }
+        <span class="cov1" title="2">fold(segStart, n) // trailing block
+
+        if !active </span><span class="cov0" title="0">{
+                return content
+        }</span>
+        <span class="cov1" title="2">b.WriteString(content[written:]) // verbatim tail after the last fold
+        return b.String()</span>
+}
+</pre>
+		
+		<pre class="file" id="file27" style="display: none">package detect
+
 import (
         "strings"
 )
@@ -3522,7 +3647,7 @@ func SummarizeGitLog(s string) string <span class="cov3" title="3">{
 }
 </pre>
 		
-		<pre class="file" id="file27" style="display: none">package detect
+		<pre class="file" id="file28" style="display: none">package detect
 
 import (
         "strings"
@@ -3684,7 +3809,7 @@ func itoa(n int) string <span class="cov5" title="10">{
 }
 </pre>
 		
-		<pre class="file" id="file28" style="display: none">package detect
+		<pre class="file" id="file29" style="display: none">package detect
 
 import (
         "bytes"
@@ -3985,7 +4110,7 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) <span class
 }
 </pre>
 		
-		<pre class="file" id="file29" style="display: none">package detect
+		<pre class="file" id="file30" style="display: none">package detect
 
 import "strings"
 
@@ -4074,7 +4199,7 @@ func isNoise(line string) bool <span class="cov5" title="10">{
 }
 </pre>
 		
-		<pre class="file" id="file30" style="display: none">package detect
+		<pre class="file" id="file31" style="display: none">package detect
 
 import (
         "regexp"
@@ -4145,7 +4270,7 @@ func SqueezeOutput(content string) string <span class="cov4" title="5">{
 }
 </pre>
 		
-		<pre class="file" id="file31" style="display: none">package hook
+		<pre class="file" id="file32" style="display: none">package hook
 
 import (
         "io"
@@ -4168,35 +4293,35 @@ func HandleBash(r io.Reader, w io.Writer) error <span class="cov8" title="6">{ r
 // The try* detectors are content-sniffed and tool-agnostic: the generic pipeline
 // runs them for any tool whose output matches the shape.
 
-func tryJSON(content string) string <span class="cov10" title="8">{
-        if !detect.IsJSONArray(content) </span><span class="cov8" title="6">{
+func tryJSON(content string) string <span class="cov10" title="9">{
+        if !detect.IsJSONArray(content) </span><span class="cov8" title="7">{
                 return ""
         }</span>
         // Zero-copy view: AnalyzeJSONArray only reads the bytes.
-        <span class="cov4" title="2">stats, err := detect.AnalyzeJSONArray(bytesconv.S2B(content), 2000)
+        <span class="cov3" title="2">stats, err := detect.AnalyzeJSONArray(bytesconv.S2B(content), 2000)
         if err != nil || stats.RowCount &lt; 5 </span><span class="cov0" title="0">{
                 return ""
         }</span>
-        <span class="cov4" title="2">s := summary.ColumnarSummary("(tool output)", stats)
+        <span class="cov3" title="2">s := summary.ColumnarSummary("(tool output)", stats)
         if float64(len(s)) &gt; float64(len(content))*minSummaryRatio </span><span class="cov0" title="0">{
                 return ""
         }</span>
-        <span class="cov4" title="2">return s</span>
+        <span class="cov3" title="2">return s</span>
 }
 
-func tryGoTest(content string) string <span class="cov8" title="6">{
-        if !detect.IsGoTestOutput(content) </span><span class="cov7" title="4">{
+func tryGoTest(content string) string <span class="cov8" title="7">{
+        if !detect.IsGoTestOutput(content) </span><span class="cov7" title="5">{
                 return ""
         }</span>
-        <span class="cov4" title="2">s := detect.SummarizeGoTest(content)
+        <span class="cov3" title="2">s := detect.SummarizeGoTest(content)
         if float64(len(s)) &gt; float64(len(content))*minSummaryRatio </span><span class="cov0" title="0">{
                 return ""
         }</span>
-        <span class="cov4" title="2">return s</span>
+        <span class="cov3" title="2">return s</span>
 }
 
-func tryGitLog(content string) string <span class="cov7" title="4">{
-        if !detect.IsGitLogOutput(content) </span><span class="cov7" title="4">{
+func tryGitLog(content string) string <span class="cov7" title="5">{
+        if !detect.IsGitLogOutput(content) </span><span class="cov7" title="5">{
                 return ""
         }</span>
         <span class="cov0" title="0">s := detect.SummarizeGitLog(content)
@@ -4206,8 +4331,8 @@ func tryGitLog(content string) string <span class="cov7" title="4">{
         <span class="cov0" title="0">return s</span>
 }
 
-func tryBench(content string) string <span class="cov7" title="4">{
-        if !detect.IsGoBenchOutput(content) </span><span class="cov7" title="4">{
+func tryBench(content string) string <span class="cov7" title="5">{
+        if !detect.IsGoBenchOutput(content) </span><span class="cov7" title="5">{
                 return ""
         }</span>
         <span class="cov0" title="0">s := detect.SummarizeGoBench(content)
@@ -4218,7 +4343,7 @@ func tryBench(content string) string <span class="cov7" title="4">{
 }
 </pre>
 		
-		<pre class="file" id="file32" style="display: none">package hook
+		<pre class="file" id="file33" style="display: none">package hook
 
 import (
         "fmt"
@@ -4347,7 +4472,7 @@ func buildManifest(state *cache.SessionState) string <span class="cov10" title="
 }
 </pre>
 		
-		<pre class="file" id="file33" style="display: none">package hook
+		<pre class="file" id="file34" style="display: none">package hook
 
 import (
         "fmt"
@@ -4371,12 +4496,12 @@ import (
 // summaries for free — no per-tool hardcoding. store is the pipeline's session
 // and cache backend (the on-disk cache for the CLI, an in-memory store for a
 // future daemon).
-func Dispatch(store hookcore.StateStore, r io.Reader, w io.Writer) error <span class="cov10" title="25">{
+func Dispatch(store hookcore.StateStore, r io.Reader, w io.Writer) error <span class="cov10" title="26">{
         inp, err := protocol.DecodeInput(r)
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("DecodeInput: %w", err)
         }</span>
-        <span class="cov10" title="25">return routeInput(store, inp, w)</span>
+        <span class="cov10" title="26">return routeInput(store, inp, w)</span>
 }
 
 // DispatchBytes is Dispatch for callers that already hold the whole request in
@@ -4393,7 +4518,7 @@ func DispatchBytes(store hookcore.StateStore, req []byte, w io.Writer) error <sp
         <span class="cov0" title="0">return routeInput(store, inp, w)</span>
 }
 
-func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error <span class="cov10" title="25">{
+func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error <span class="cov10" title="26">{
         // PreToolUse (the Read mtime fast-path) is distinguished by the event name
         // Claude sends in the payload — the daemon multiplexes both events over one
         // socket, unlike the CLI where the subcommand picked the handler. Anything
@@ -4401,45 +4526,45 @@ func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
         if inp.HookEventName == "PreToolUse" </span><span class="cov4" title="4">{
                 return handlePreToolUse(store, inp, w)
         }</span>
-        <span class="cov9" title="21">switch inp.ToolName </span>{
+        <span class="cov9" title="22">switch inp.ToolName </span>{
         case "Read":<span class="cov0" title="0">
                 return handleRead(store, inp, w)</span>
         case "Write", "Edit", "MultiEdit":<span class="cov5" title="5">
                 return handleWrite(store, inp, w)</span>
-        default:<span class="cov8" title="16">
+        default:<span class="cov8" title="17">
                 return handleGeneric(store, inp.ToolName, inp, w)</span>
         }
 }
 
 // skipTool reports whether a tool's output must be passed through verbatim (the
 // model needs it exactly). Extend via QDF_SKIP_TOOLS (comma-separated).
-func skipTool(tool string) bool <span class="cov8" title="16">{
+func skipTool(tool string) bool <span class="cov8" title="17">{
         switch tool </span>{
         case "TodoWrite", "ExitPlanMode":<span class="cov1" title="1">
                 return true</span>
         }
-        <span class="cov8" title="15">if env := os.Getenv("QDF_SKIP_TOOLS"); env != "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="16">if env := os.Getenv("QDF_SKIP_TOOLS"); env != "" </span><span class="cov0" title="0">{
                 for t := range strings.SplitSeq(env, ",") </span><span class="cov0" title="0">{
                         if strings.TrimSpace(t) == tool </span><span class="cov0" title="0">{
                                 return true
                         }</span>
                 }
         }
-        <span class="cov8" title="15">return false</span>
+        <span class="cov8" title="16">return false</span>
 }
 
 // handleGeneric applies the tool-agnostic compression pipeline to any tool's
 // output. All steps are never-worse (emit the compact form only when strictly
 // smaller).
-func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.HookInput, w io.Writer) error <span class="cov8" title="16">{
+func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.HookInput, w io.Writer) error <span class="cov8" title="17">{
         start := time.Now()
         if inp.ToolResponse == nil || skipTool(toolName) </span><span class="cov1" title="1">{
                 return protocol.EncodeOutput(w, protocol.Passthrough())
         }</span>
 
-        <span class="cov8" title="15">content := detect.StripNoise(inp.ToolResponse.Text())
+        <span class="cov8" title="16">content := detect.StripNoise(inp.ToolResponse.Text())
 
-        record := func(action string, bytesOut int) </span><span class="cov8" title="15">{
+        record := func(action string, bytesOut int) </span><span class="cov8" title="16">{
                 _ = analytics.Record(analytics.Event{
                         TS:       time.Now().UnixNano(),
                         SID:      inp.SessionID,
@@ -4451,12 +4576,12 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
                 })
         }</span>
 
-        <span class="cov8" title="15">if len(content) &lt; 256 </span><span class="cov4" title="3">{
+        <span class="cov8" title="16">if len(content) &lt; 256 </span><span class="cov4" title="3">{
                 record("passthrough", len(content))
                 return protocol.EncodeOutput(w, protocol.Passthrough())
         }</span>
 
-        <span class="cov7" title="12">key := cache.LastOutputKey(toolName, inp.ToolInput)
+        <span class="cov8" title="13">key := cache.LastOutputKey(toolName, inp.ToolInput)
 
         var action, replacement string
         // Format-specific summarizers keyed by tool name.
@@ -4471,20 +4596,23 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
                 }</span>
         }
 
-        <span class="cov7" title="12">if replacement == "" </span><span class="cov6" title="8">{
+        <span class="cov8" title="13">if replacement == "" </span><span class="cov7" title="9">{
                 if s := tryJSON(content); s != "" </span><span class="cov2" title="2">{
                         action, replacement = "summary", s
-                }</span> else<span class="cov6" title="6"> if s := tryGoTest(content); s != "" </span><span class="cov2" title="2">{
+                }</span> else<span class="cov6" title="7"> if s := tryGoTest(content); s != "" </span><span class="cov2" title="2">{
                         action, replacement = "summary", s
-                }</span> else<span class="cov4" title="4"> if s := tryGitLog(content); s != "" </span><span class="cov0" title="0">{
+                }</span> else<span class="cov5" title="5"> if s := tryGitLog(content); s != "" </span><span class="cov0" title="0">{
                         action, replacement = "summary", s
-                }</span> else<span class="cov4" title="4"> if s := tryBench(content); s != "" </span><span class="cov0" title="0">{
+                }</span> else<span class="cov5" title="5"> if s := tryBench(content); s != "" </span><span class="cov0" title="0">{
                         action, replacement = "summary", s
-                }</span> else<span class="cov4" title="4"> if tok, ok := dedupWithStore(store, content, 256); ok </span><span class="cov1" title="1">{
+                }</span> else<span class="cov5" title="5"> if tok, ok := dedupWithStore(store, content, 256); ok </span><span class="cov1" title="1">{
                         action, replacement = "ref", tok
-                }</span> else<span class="cov4" title="3"> if d, ok := tryRerunDelta(store, toolName, key, content); ok </span><span class="cov1" title="1">{
+                }</span> else<span class="cov4" title="4"> if d, ok := tryRerunDelta(store, toolName, key, content); ok </span><span class="cov1" title="1">{
                         action, replacement = "rerun-delta", d
-                }</span> else<span class="cov2" title="2"> if sq := detect.SqueezeOutput(content); len(sq) &lt; len(content)*9/10 </span><span class="cov1" title="1">{
+                }</span> else<span class="cov4" title="3"> if sq := detect.SqueezeOutput(detect.FoldRepeatedBlocks(content)); len(sq) &lt; len(content)*9/10 </span><span class="cov2" title="2">{
+                        // Fold non-adjacent duplicate blocks (e.g. an MCP batch that
+                        // re-dumps the same section under several query headers), then
+                        // run-length/ANSI squeeze the result. Both are never-worse.
                         action, replacement = "squeezed", sq
                 }</span> else<span class="cov1" title="1"> {
                         action = "passthrough"
@@ -4492,11 +4620,11 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
         }
 
         // Remember this output for the next run's delta on the unstructured paths.
-        <span class="cov7" title="12">if action == "passthrough" || action == "squeezed" || action == "rerun-delta" </span><span class="cov4" title="3">{
+        <span class="cov8" title="13">if action == "passthrough" || action == "squeezed" || action == "rerun-delta" </span><span class="cov4" title="4">{
                 store.LastPut(key, content)
         }</span>
 
-        <span class="cov7" title="12">if replacement != "" </span><span class="cov7" title="11">{
+        <span class="cov8" title="13">if replacement != "" </span><span class="cov7" title="12">{
                 record(action, len(replacement))
                 return protocol.EncodeOutput(w, protocol.Replace(replacement))
         }</span>
@@ -4506,9 +4634,9 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 
 // tryRerunDelta returns a unified diff of content against the previous run under
 // key, when strictly smaller. Diff inputs are zero-copy views (read-only).
-func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (string, bool) <span class="cov4" title="4">{
+func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (string, bool) <span class="cov5" title="5">{
         prev, ok := store.LastGet(key)
-        if !ok || prev == content </span><span class="cov2" title="2">{
+        if !ok || prev == content </span><span class="cov4" title="3">{
                 return "", false
         }</span>
         // Guard: UnifiedDiff (Myers) is O((N+M)²) in line count — skip it for very
@@ -4536,22 +4664,22 @@ func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (st
 // outputs where a ~60-byte token would not pay off. The token format and hash
 // (cache.RefHashOf, the same sha256[:16] hex cache.Dedup uses) match
 // cache.Dedup exactly for parity.
-func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) <span class="cov4" title="4">{
+func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) <span class="cov5" title="5">{
         if len(content) &lt; minSize </span><span class="cov0" title="0">{
                 return "", false
         }</span>
-        <span class="cov4" title="4">hash := cache.RefHashOf(content)
+        <span class="cov5" title="5">hash := cache.RefHashOf(content)
         if store.RefSeen(hash) </span><span class="cov1" title="1">{
                 store.RefHit(hash) // record usage for eviction
                 return fmt.Sprintf("§ref:%s§ (%d bytes, identical to earlier output — qdf-hook expand %s)",
                         hash, len(content), hash), true
         }</span>
-        <span class="cov4" title="3">store.RefPut(hash, content)
+        <span class="cov4" title="4">store.RefPut(hash, content)
         return "", false</span>
 }
 </pre>
 		
-		<pre class="file" id="file34" style="display: none">package hook
+		<pre class="file" id="file35" style="display: none">package hook
 
 import (
         "fmt"
@@ -4623,7 +4751,7 @@ func topGlobDir(path string) string <span class="cov10" title="131">{
 }
 </pre>
 		
-		<pre class="file" id="file35" style="display: none">package hook
+		<pre class="file" id="file36" style="display: none">package hook
 
 import (
         "fmt"
@@ -4731,7 +4859,7 @@ func buildGrepSummary(content string) (string, string) <span class="cov2" title=
 }
 </pre>
 		
-		<pre class="file" id="file36" style="display: none">package hook
+		<pre class="file" id="file37" style="display: none">package hook
 
 import (
         "encoding/json"
@@ -4848,7 +4976,7 @@ func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.W
 }
 </pre>
 		
-		<pre class="file" id="file37" style="display: none">package hook
+		<pre class="file" id="file38" style="display: none">package hook
 
 import (
         "bytes"
@@ -5029,7 +5157,7 @@ func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *p
 }
 </pre>
 		
-		<pre class="file" id="file38" style="display: none">//go:build linux
+		<pre class="file" id="file39" style="display: none">//go:build linux
 
 package hook
 
@@ -5041,7 +5169,7 @@ func ctimeFromStat(st *syscall.Stat_t) int64 <span class="cov10" title="18">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file39" style="display: none">//go:build !windows
+		<pre class="file" id="file40" style="display: none">//go:build !windows
 
 package hook
 
@@ -5063,7 +5191,7 @@ func statCtimeNS(fi os.FileInfo) int64 <span class="cov10" title="18">{
 }
 </pre>
 		
-		<pre class="file" id="file40" style="display: none">package hook
+		<pre class="file" id="file41" style="display: none">package hook
 
 import (
         "bytes"
@@ -5180,7 +5308,7 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 }
 </pre>
 		
-		<pre class="file" id="file41" style="display: none">package hookcore
+		<pre class="file" id="file42" style="display: none">package hookcore
 
 import (
         "time"
@@ -5223,7 +5351,7 @@ func (diskStore) LastGet(k string) (string, bool) <span class="cov0" title="0">{
 func (diskStore) LastPut(k, c string) <span class="cov0" title="0">{ cache.LastOutputPut(k, c) }</span>
 </pre>
 		
-		<pre class="file" id="file42" style="display: none">package hookcore
+		<pre class="file" id="file43" style="display: none">package hookcore
 
 import (
         "hash/fnv"
@@ -5564,7 +5692,7 @@ func (m *MemStore) FlushDirty() <span class="cov6" title="515">{
 }
 </pre>
 		
-		<pre class="file" id="file43" style="display: none">package protocol
+		<pre class="file" id="file44" style="display: none">package protocol
 
 import (
         "bytes"
@@ -5804,7 +5932,7 @@ func Replace(s string) *HookOutput <span class="cov0" title="0">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file44" style="display: none">package summary
+		<pre class="file" id="file45" style="display: none">package summary
 
 import (
         "fmt"
