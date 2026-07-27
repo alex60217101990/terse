@@ -27,6 +27,11 @@ import (
 	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
+// sunPathMax is the portable unix-socket path budget: darwin's sun_path is
+// 104 bytes (linux 108). Exceeding it makes bind fail with the cryptic
+// "invalid argument", so we detect and say it plainly.
+const sunPathMax = 104
+
 // flushInterval is how often Serve flushes dirty state to disk while running.
 const flushInterval = 5 * time.Second
 
@@ -75,6 +80,9 @@ func SockPath() string {
 	return filepath.Join(home, ".qdf-hook", "d.sock")
 }
 
+// SocketPathTooLong reports whether path exceeds the sun_path limit.
+func SocketPathTooLong(path string) bool { return len(path) > sunPathMax }
+
 // Serve listens on a unix socket at sockPath and answers hook requests until
 // no connection has arrived for idle, then does a final flush and returns
 // nil. Serve blocks the calling goroutine; callers that want it in the
@@ -121,6 +129,12 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 	// but the orphan wastes a goroutine and RAM until it times out. Not worth
 	// a cross-process lock for a rare startup race with a self-healing result.
 	_ = os.Remove(sockPath)
+
+	if SocketPathTooLong(sockPath) {
+		msg := fmt.Sprintf("qdf-hookd: socket path too long (%d bytes > %d): %s", len(sockPath), sunPathMax, sockPath)
+		log.Print(msg)
+		fmt.Fprintln(os.Stderr, msg)
+	}
 
 	ln, err := net.Listen("unix", sockPath)
 	if err != nil {

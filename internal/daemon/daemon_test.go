@@ -222,3 +222,13 @@ func TestDaemon_ContinuousTrafficNeverDropsConn(t *testing.T) {
 		time.Sleep(15 * time.Millisecond) // << idle, so continuous traffic keeps the daemon up
 	}
 }
+
+func TestSocketPathTooLong(t *testing.T) {
+	long := "/tmp/" + strings.Repeat("x", 120) + "/d.sock"
+	if !daemon.SocketPathTooLong(long) {
+		t.Error("120+ byte path must be flagged")
+	}
+	if daemon.SocketPathTooLong("/tmp/short.sock") {
+		t.Error("short path must not be flagged")
+	}
+}
