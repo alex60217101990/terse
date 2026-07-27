@@ -104,7 +104,36 @@ type diffScratch struct {
 	traceHeads [][]int
 }
 
-var diffScratchPool = sync.Pool{New: func() any { return new(diffScratch) }}
+// diffScratchFreeListCap bounds the free list to a small, fixed number of
+// warm scratch buffers. Daemon concurrency is low (diffs are serialized per
+// request, goroutine-per-conn), so 4 is generous headroom without pinning
+// unbounded memory: worst case is 4 * maxTraceInts/4 ints (~128MiB total),
+// though in practice each retained scratch is only as large as the biggest
+// diff recently seen (typically a few MB).
+//
+// A sync.Pool was tried first but proved unsuitable here: under a workload
+// that GCs frequently (e.g. steady JSON decode churn), Pool contents are
+// swept as often as every ~1 GC cycle (the "victim cache" only survives one
+// extra cycle), so the ~MB-sized scratch chains kept dying and being
+// reallocated from scratch — measured at 74.7% of alloc_space under daemon
+// load despite pooling. A package-level buffered channel holds strong
+// references that GC cannot reclaim, so warm buffers survive indefinitely
+// across GC cycles until evicted by actual use (channel full) or dropped
+// for being oversized.
+const diffScratchFreeListCap = 4
+
+var diffScratchFreeList = make(chan *diffScratch, diffScratchFreeListCap)
+
+// getDiffScratch returns a warm scratch buffer from the free list, or a
+// fresh one if none is available (never blocks).
+func getDiffScratch() *diffScratch {
+	select {
+	case s := <-diffScratchFreeList:
+		return s
+	default:
+		return new(diffScratch)
+	}
+}
 
 // myersDiff returns the minimal edit script between a and b.
 // Uses O((N+M)D) Myers algorithm with full trace backtracking.
@@ -120,7 +149,7 @@ func myersDiff(a, b []string) []edit {
 	w := 2*offset + 1
 	maxD := maxTraceInts / w
 
-	s := diffScratchPool.Get().(*diffScratch)
+	s := getDiffScratch()
 
 	if cap(s.v) < w {
 		s.v = make([]int, w)
@@ -193,10 +222,10 @@ func myersDiff(a, b []string) []edit {
 }
 
 // putDiffScratch resets scratch's slices (keeping backing arrays) and
-// returns it to the pool — unless this call grew a buffer past
-// maxTraceInts/4, in which case the oversized buffer is dropped instead
-// of being pinned in the pool indefinitely (a single pathological diff
-// must not keep ~128MB resident forever).
+// returns it to the free list — unless this call grew a buffer past
+// maxTraceInts/4 (drop instead of pinning ~128MB behind a strong ref
+// forever) or the free list is already full (drop and let GC reclaim;
+// the list is a bounded cache, not an unbounded pool).
 func putDiffScratch(s *diffScratch) {
 	if cap(s.snaps) > maxTraceInts/4 {
 		return
@@ -204,7 +233,10 @@ func putDiffScratch(s *diffScratch) {
 	s.v = s.v[:0]
 	s.snaps = s.snaps[:0]
 	s.traceHeads = s.traceHeads[:0]
-	diffScratchPool.Put(s)
+	select {
+	case diffScratchFreeList <- s:
+	default:
+	}
 }
 
 func backtrack(a, b []string, trace [][]int, d, offset int) []edit {
