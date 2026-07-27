@@ -1,6 +1,18 @@
 package detect
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
+
+// seenPool / seenNormPool recycle the two dedup maps across FoldRepeatedBlocks
+// calls (which may run concurrently in the daemon — sync.Pool is safe). Each
+// map is clear()ed before it goes back so no entry (whose keys alias the prior
+// call's content) survives into the next call.
+var (
+	seenPool     = sync.Pool{New: func() any { return make(map[string]struct{}) }}
+	seenNormPool = sync.Pool{New: func() any { return make(map[string]string) }}
+)
 
 // minFoldBlock is the smallest block (in bytes, trailing newlines excluded)
 // worth folding. Below this a back-reference marker would cost more than the
@@ -250,9 +262,19 @@ func FoldRepeatedBlocks(content string) string {
 	var b strings.Builder
 	active := false // builder in use (set on the first fold)
 	written := 0    // bytes of content already committed to b
-	seen := make(map[string]struct{})
-	var seenNorm map[string]string // normalized key → first (base) block; lazy
-	var scratch []byte             // reused normalize buffer; lazy
+	seen := seenPool.Get().(map[string]struct{})
+	defer func() {
+		clear(seen)
+		seenPool.Put(seen)
+	}()
+	var seenNorm map[string]string // normalized key → first (base) block; lazy, pooled
+	defer func() {
+		if seenNorm != nil {
+			clear(seenNorm)
+			seenNormPool.Put(seenNorm)
+		}
+	}()
+	var scratch []byte // reused normalize buffer; lazy
 
 	// emitFuzzy writes a near-duplicate marker for block [bs,be) (verbatim key,
 	// with block==content[bs:be]) referencing base, listing pairs. It reports
@@ -364,7 +386,7 @@ func FoldRepeatedBlocks(content string) string {
 		// First occurrence of this normalized shape: keep verbatim, register it
 		// as the base for future near-duplicates and for exact-copy folding.
 		if seenNorm == nil {
-			seenNorm = make(map[string]string)
+			seenNorm = seenNormPool.Get().(map[string]string)
 		}
 		seenNorm[string(scratch)] = key
 		seen[key] = struct{}{}

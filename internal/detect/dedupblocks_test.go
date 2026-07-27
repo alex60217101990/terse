@@ -3,6 +3,7 @@ package detect_test
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alex60217101990/terse/internal/detect"
@@ -204,4 +205,38 @@ func TestFoldRepeatedBlocks_ExactStillWins(t *testing.T) {
 	if !strings.Contains(out, "⟦↑ repeat: ") {
 		t.Fatalf("exact dup must use the exact marker:\n%s", out)
 	}
+}
+
+// The dedup maps are recycled via sync.Pool. Run distinct payloads through
+// FoldRepeatedBlocks concurrently and require each to equal its own serial
+// result — a pooled map that leaked entries across calls, or was shared
+// between goroutines, would corrupt a fold and diverge (and trip -race).
+func TestFoldRepeatedBlocks_ConcurrentPoolIsolation(t *testing.T) {
+	inputs := make([]string, 8)
+	want := make([]string, 8)
+	for i := range inputs {
+		// Each payload folds differently (distinct headers, exact + fuzzy
+		// blocks with per-i volatile tokens) so a cross-call key leak shows up.
+		block := fmt.Sprintf("# section-%d-header-line-that-is-long-enough\n", i) +
+			strings.Repeat(fmt.Sprintf("payload line for section %d content here\n", i), 6)
+		fuzzy := fmt.Sprintf("id=%d aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa req=%d\n", i, i)
+		fuzzy2 := fmt.Sprintf("id=%d aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa req=%d\n", i+100, i+100)
+		in := block + "\n\n" + fuzzy + "\n\n" + block + "\n\n" + fuzzy2 + "\n"
+		inputs[i] = in
+		want[i] = detect.FoldRepeatedBlocks(in)
+	}
+
+	var wg sync.WaitGroup
+	for iter := 0; iter < 200; iter++ {
+		for i := range inputs {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				if got := detect.FoldRepeatedBlocks(inputs[i]); got != want[i] {
+					t.Errorf("payload %d diverged under concurrency:\nwant %q\ngot  %q", i, want[i], got)
+				}
+			}(i)
+		}
+	}
+	wg.Wait()
 }
