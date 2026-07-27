@@ -37,8 +37,10 @@ type sessionShard struct {
 // map), never the live pointer, so callers are always free to mutate the
 // returned state in place. SaveSession is the only way a stored session
 // changes: it atomically swaps in the given pointer under the shard's write
-// lock, so a stored session is never mutated after being stored — safe for
-// FlushDirty to read/marshal it outside the lock. There is no enforced
+// lock, so a stored session is never mutated in place after being stored —
+// safe for FlushDirty to read/marshal it (whether inside or outside the
+// shard lock; see FlushDirty's doc comment for the fast/slow path split).
+// There is no enforced
 // single-writer-per-session invariant: two concurrent LoadSession/SaveSession
 // round trips for the *same* id race at the application level and the later
 // SaveSession simply overwrites the earlier one (last-writer-wins); neither
@@ -293,11 +295,34 @@ func (m *MemStore) LastPut(key, content string) {
 	m.lastMu.Unlock()
 }
 
-// FlushDirty persists every dirty session to disk via cache.Save (qdf
-// OptSpeed), then flushes the in-RAM usage indices (ref/last dedup-hit and
-// access stats) to their sidecars. Ref/last-output *blobs* are never dirty
-// here — RefPut/LastPut already wrote them straight to disk — so there is
-// nothing to flush for them beyond usage.
+// flushBufPool holds the []byte scratch buffers FlushDirty encodes sessions
+// into. Pooling (rather than qdf.Marshal's per-call allocation) means the
+// buffer's backing array only grows on the first few flushes and is reused
+// for every session/flush after that, instead of being allocated fresh per
+// session per flush.
+var flushBufPool = sync.Pool{New: func() any { b := make([]byte, 0, 4096); return &b }}
+
+// FlushDirty persists every dirty session to disk, then flushes the in-RAM
+// usage indices (ref/last dedup-hit and access stats) to their sidecars.
+// Ref/last-output *blobs* are never dirty here — RefPut/LastPut already wrote
+// them straight to disk — so there is nothing to flush for them beyond usage.
+//
+// Session persistence has two paths:
+//
+//   - Fast path (the common case): the session has at most
+//     cache.MaxSessionFiles entries, so cache.Save's automatic eviction would
+//     be a no-op. It is therefore safe to qdf-encode the LIVE stored
+//     *SessionState directly inside the shard's read lock — encoding only
+//     reads st, it never mutates it — into a pooled buffer, and perform the
+//     (potentially slow) disk write after releasing the lock. This skips the
+//     struct-and-Files-map copy entirely.
+//   - Slow path (rare: a session actually over the cap): cache.Save's Evict
+//     step deletes entries from the passed state's Files map. Doing that to
+//     the stored pointer under only RLock would race a concurrent
+//     LoadSession's read of the same map — a fatal "concurrent map read and
+//     map write" that recover cannot catch (this exact crash is what
+//     copySession was introduced to fix; see TestMemStore_FlushEvictConcurrentLoad).
+//     So this path still copies the session before handing it to cache.Save.
 //
 // The dirty session set is swapped out under dirtyMu and iterated afterwards
 // without holding it, so writes that arrive concurrently with a flush land in
@@ -311,24 +336,39 @@ func (m *MemStore) FlushDirty() {
 	m.dirtySessions = make(map[string]struct{})
 	m.dirtyMu.Unlock()
 
+	bufPtr := flushBufPool.Get().(*[]byte)
+	buf := *bufPtr
+
 	for id := range sessions {
 		sh := m.shardFor(id)
 		sh.mu.RLock()
 		st, ok := sh.sessions[id]
-		var cp *cache.SessionState
-		if ok {
-			// Copy under the lock: cache.Save calls Evict, which deletes from
-			// Files. Mutating the stored map here (even though we only hold
-			// RLock) would race a concurrent LoadSession's read of the same
-			// map — a fatal "concurrent map read and map write" that recover
-			// cannot catch. Save the copy instead.
-			cp = copySession(st)
+		if !ok {
+			sh.mu.RUnlock()
+			continue
 		}
-		sh.mu.RUnlock()
-		if ok {
+		if len(st.Files) > cache.MaxSessionFiles {
+			// Slow path: eviction will actually delete entries, so it must
+			// not run against the live stored map under only RLock. Copy
+			// first, exactly as before this change.
+			cp := copySession(st)
+			sh.mu.RUnlock()
 			_ = cache.Save(id, cp)
+			continue
+		}
+		// Fast path: encode the stored pointer directly inside the read
+		// lock — read-only, so no lock upgrade or copy needed — then write
+		// to disk after releasing the lock.
+		var err error
+		buf, err = cache.AppendEncodeState(buf[:0], st)
+		sh.mu.RUnlock()
+		if err == nil {
+			_ = cache.WriteState(id, buf)
 		}
 	}
+
+	*bufPtr = buf
+	flushBufPool.Put(bufPtr)
 
 	m.usageMu.Lock()
 	ur := maps.Clone(m.usageRefs)

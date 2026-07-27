@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hookcore"
@@ -263,5 +264,165 @@ func TestMemStore_RefSeenSelfHealsAfterBlobEvicted(t *testing.T) {
 	s.RefPut(hash, "some cached content that is long enough")
 	if !s.RefSeen(hash) {
 		t.Fatal("RefSeen should be true again after re-caching")
+	}
+}
+
+// TestMemStore_FlushDirty_NoDeadlockUnderLoadSaveStorm exercises the safety
+// case FlushDirty's zero-copy fast path depends on: encoding the LIVE stored
+// *SessionState directly under the shard's *read* lock (see FlushDirty's doc
+// comment) is only safe because nothing mutates that pointer's Files map
+// in place while the encode runs. 16 goroutines hammer LoadSession/SaveSession
+// against one session id (well under cache.MaxSessionFiles, so every flush
+// takes the fast path) concurrently with a tight FlushDirty loop. This must
+// neither deadlock nor pathologically serialize, and every on-disk snapshot
+// FlushDirty produces along the way must qdf-decode cleanly — a torn Files
+// map (a partial/interleaved encode) would show up as a decode error or a
+// corrupt entry.
+func TestMemStore_FlushDirty_NoDeadlockUnderLoadSaveStorm(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	const sessionID = "storm-session"
+
+	const goroutines = 16
+	const filesPerSession = 40 // well under cache.MaxSessionFiles: fast path
+
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := range goroutines {
+		go func(g int) {
+			defer wg.Done()
+			for {
+				select {
+				case <-done:
+					return
+				default:
+				}
+				st := s.LoadSession(sessionID)
+				st.Turn++
+				path := fmt.Sprintf("/storm/%d/%d.go", g, st.Turn%filesPerSession)
+				st.Files[path] = cache.FileEntry{
+					Content: []byte("payload"),
+					Turn:    st.Turn,
+				}
+				s.SaveSession(sessionID, st)
+			}
+		}(g)
+	}
+
+	flushDone := make(chan struct{})
+	go func() {
+		defer close(flushDone)
+		for range 2000 {
+			m.FlushDirty()
+			// Every snapshot FlushDirty just wrote must decode cleanly: a
+			// torn/interleaved encode of the live map would surface here as
+			// a decode error or a corrupt entry (negative Turn can only come
+			// from decoding garbage bytes as a length-prefixed field).
+			st, err := cache.Load(sessionID)
+			if err != nil {
+				panic(fmt.Sprintf("flushed snapshot failed to decode: %v", err))
+			}
+			for path, fe := range st.Files {
+				if fe.Turn < 0 {
+					panic(fmt.Sprintf("corrupt entry %q after flush: %+v", path, fe))
+				}
+			}
+		}
+	}()
+
+	select {
+	case <-flushDone:
+	case <-time.After(20 * time.Second):
+		t.Fatal("FlushDirty storm deadlocked or stalled")
+	}
+	close(done)
+	wg.Wait()
+
+	// Final flush + decode after the storm settles.
+	m.FlushDirty()
+	st, err := cache.Load(sessionID)
+	if err != nil {
+		t.Fatalf("decode final flushed snapshot: %v", err)
+	}
+	if len(st.Files) == 0 {
+		t.Fatal("expected a non-empty session after the storm")
+	}
+}
+
+// newFlushBenchState builds a SessionState with n FileEntries of ~2KB
+// Content each, matching the daemon's alloc-profile scenario (many
+// moderately-sized files read during a long session).
+func newFlushBenchState(base, n int) *cache.SessionState {
+	content := []byte(strings.Repeat("x", 2048))
+	st := cache.NewSessionState()
+	for i := range n {
+		st.Files[fmt.Sprintf("/bench/%d/file-%d.go", base, i)] = cache.FileEntry{
+			Content: content,
+			Turn:    i,
+			Hash:    [32]byte{byte(i)},
+		}
+	}
+	return st
+}
+
+// BenchmarkFlushDirty is Task 2's baseline/gate benchmark: 50 sessions x 40
+// FileEntries (~2KB Content each), half re-marked dirty every iteration so
+// each FlushDirty call has real work to do. Compare B/op before/after the
+// zero-copy fast path with benchstat; target is a 50%+ reduction.
+func BenchmarkFlushDirty(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+
+	const numSessions = 50
+	const filesPerSession = 40
+	ids := make([]string, numSessions)
+	states := make([]*cache.SessionState, numSessions)
+	for i := range numSessions {
+		ids[i] = fmt.Sprintf("bench-session-%d", i)
+		states[i] = newFlushBenchState(i, filesPerSession)
+		s.SaveSession(ids[i], states[i])
+	}
+
+	for b.Loop() {
+		// Re-mark half the sessions dirty each iteration so FlushDirty has a
+		// realistic mixed dirty/clean set to work through. SaveSession's own
+		// cost (a pointer swap under the shard lock) is unchanged by this
+		// task and identical across before/after runs, so it doesn't affect
+		// the relative B/op comparison FlushDirty is gated on.
+		for i := range numSessions / 2 {
+			s.SaveSession(ids[i], states[i])
+		}
+		m.FlushDirty()
+	}
+}
+
+// BenchmarkLoadSession is the no-regression gate for LoadSession: copySession
+// is untouched by this task (still used on every LoadSession call), so this
+// should be flat before/after.
+func BenchmarkLoadSession(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	s.SaveSession("bench-load", newFlushBenchState(0, 40))
+
+	for b.Loop() {
+		_ = s.LoadSession("bench-load")
+	}
+}
+
+// BenchmarkSaveSession is the no-regression gate for SaveSession: it is
+// untouched by this task (still a pointer swap + dirty-set insert under
+// lock), so this should be flat before/after.
+func BenchmarkSaveSession(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	st := newFlushBenchState(0, 40)
+
+	for b.Loop() {
+		s.SaveSession("bench-save", st)
 	}
 }

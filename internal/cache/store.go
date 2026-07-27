@@ -52,6 +52,13 @@ func Load(sessionID string) (*SessionState, error) {
 	return &s, nil
 }
 
+// MaxSessionFiles is the per-session file cap enforced by Save's automatic
+// eviction: once len(Files) exceeds this, Evict trims down to 80% of it.
+// Callers that skip Save (e.g. hookcore's zero-copy flush fast path) use this
+// to decide, without calling Evict, whether eviction would be a no-op for a
+// given session.
+const MaxSessionFiles = 200
+
 // Save persists state with a single plain write (no tmp+rename). The state
 // file is a rebuildable cache: a torn write — from a crash or a concurrent
 // same-session hook — simply fails to qdf-decode on the next Load, which then
@@ -73,11 +80,37 @@ func Load(sessionID string) (*SessionState, error) {
 // it is the lowest-allocation qdf mode; the spec budget was likely set
 // against a smaller state (< 5 files). Document this if the benchmark
 // target is revisited.
+//
+// Save mutates s in place (Evict deletes entries from s.Files when over the
+// cap): callers must own s exclusively for the duration of the call — never
+// pass a pointer another goroutine might be reading concurrently. Callers
+// that only hold a read lock on the session (hookcore's FlushDirty) must
+// either pass a private copy, or use AppendEncodeState/WriteState directly
+// once they've confirmed len(Files) <= MaxSessionFiles (so Evict would be a
+// no-op and mutation is moot).
 func Save(sessionID string, s *SessionState) error {
-	Evict(s, 200) // auto-evict when over 200 files
-	data, err := qdf.Marshal(s, qdf.OptSpeed)
+	Evict(s, MaxSessionFiles) // auto-evict when over the cap
+	data, err := AppendEncodeState(nil, s)
 	if err != nil {
 		return err
 	}
+	return WriteState(sessionID, data)
+}
+
+// AppendEncodeState qdf-encodes s (OptSpeed, the same mode Save uses) and
+// appends the result to dst, returning the extended slice. Reuse the
+// returned slice as dst on the next call to avoid a fresh allocation per
+// encode. Unlike Save, this performs no eviction and never mutates s — it
+// only reads s, so it is safe to call while holding no more than a read lock
+// on s, provided nothing else concurrently mutates s (see Save's doc comment
+// on the MaxSessionFiles no-op eviction case).
+func AppendEncodeState(dst []byte, s *SessionState) ([]byte, error) {
+	return qdf.AppendMarshal(dst, s, qdf.OptSpeed)
+}
+
+// WriteState persists already-encoded session bytes as sessionID's state
+// file. Pairs with AppendEncodeState so a caller can encode while holding a
+// lock and perform the (potentially slow) disk write after releasing it.
+func WriteState(sessionID string, data []byte) error {
 	return writeFileLazy(StatePath(sessionID), data)
 }
