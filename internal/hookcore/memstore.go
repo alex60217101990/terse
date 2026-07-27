@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"weak"
 
 	"github.com/alex60217101990/terse/internal/cache"
 )
@@ -18,8 +19,15 @@ const shardCount = 16
 
 // sessionShard is one shard of the session map, independently locked so
 // operations on sessions in different shards never contend.
+// The session map holds weak pointers, not strong ones: a cold session (one
+// that no dirty strong ref and no in-flight caller keeps alive) becomes
+// GC-reclaimable, so the daemon's RSS no longer grows without bound with the
+// number of sessions it has ever seen. Disk is the source of truth; a
+// weak-collected clean session is transparently reloaded from disk on the
+// next LoadSession. Dead (collected) entries are pruned lazily on access and
+// swept in FlushDirty so the map itself stays bounded.
 type sessionShard struct {
-	sessions map[string]*cache.SessionState
+	sessions map[string]weak.Pointer[cache.SessionState]
 	mu       sync.RWMutex
 }
 
@@ -61,7 +69,14 @@ type MemStore struct {
 
 	usageLast cache.UsageIndex
 
-	dirtySessions map[string]struct{}
+	// dirtySessions holds a STRONG reference to every session that has been
+	// saved but not yet persisted by FlushDirty. This is load-bearing: the
+	// shard map only holds weak pointers, so without this strong ref a dirty
+	// session could be GC-collected before its (only) copy reaches disk —
+	// silent data loss, since disk is the source of truth and would have
+	// nothing to reload. FlushDirty drops the strong ref only after a
+	// successful persist (an encode/write failure keeps it, to retry).
+	dirtySessions map[string]*cache.SessionState
 
 	refsMu sync.RWMutex
 
@@ -72,26 +87,26 @@ type MemStore struct {
 	dirtyMu sync.Mutex
 }
 
-// NewMemStore builds a MemStore and loads any existing on-disk state
-// (sessions under cache.StateDir, refs under cache.RefsDir, last-output blobs
-// under cache.LastOutDir) into RAM. Loading is best-effort: missing
-// directories fail open (nothing is loaded for that store), and construction
-// never fails because of them. Session files are handled differently: a
-// corrupt session file is not skipped — cache.Load returns err == nil for a
-// decode failure and hands back a fresh, empty SessionState, so a corrupt
-// on-disk session is loaded into RAM as that empty state (matching
-// cache.Load's own "corrupt file -> fresh state" behavior) rather than being
-// left out of the map entirely.
+// NewMemStore builds a MemStore and scans existing on-disk state (refs under
+// cache.RefsDir, last-output blobs under cache.LastOutDir) into the in-RAM
+// seen-sets. Loading is best-effort: missing directories fail open (nothing
+// is loaded for that store), and construction never fails because of them.
+//
+// Sessions are deliberately NOT preloaded: the whole point of the weak
+// session cache is that cold sessions do not occupy RAM, so eagerly decoding
+// every session file at startup would defeat it (and spike RSS proportional
+// to the number of sessions ever seen). Instead sessions are loaded lazily
+// from disk on the first LoadSession that needs one, and cached weakly.
 func NewMemStore() *MemStore {
 	m := &MemStore{
 		refs:          make(map[string]struct{}),
 		last:          make(map[string]struct{}),
 		usageRefs:     cache.LoadUsage(cache.UsageRefsPath()),
 		usageLast:     cache.LoadUsage(cache.UsageLastPath()),
-		dirtySessions: make(map[string]struct{}),
+		dirtySessions: make(map[string]*cache.SessionState),
 	}
 	for i := range m.shards {
-		m.shards[i] = &sessionShard{sessions: make(map[string]*cache.SessionState)}
+		m.shards[i] = &sessionShard{sessions: make(map[string]weak.Pointer[cache.SessionState])}
 	}
 	m.loadFromDisk()
 	return m
@@ -112,32 +127,12 @@ func (m *MemStore) shardFor(id string) *sessionShard {
 	return m.shards[shardIndex(id)]
 }
 
-// loadFromDisk walks the three on-disk stores. Sessions are decoded fully
-// into RAM (they're the one thing MemStore actually caches); refs/last are
-// only scanned for their *names* — each on-disk blob's hash/key is added to
-// the seen-set, never its content, so a daemon with a large on-disk cache
-// does not balloon its RAM footprint at startup.
+// loadFromDisk scans the ref and last-output stores for their *names* — each
+// on-disk blob's hash/key is added to the seen-set, never its content, so a
+// daemon with a large on-disk cache does not balloon its RAM footprint at
+// startup. Sessions are not scanned here at all: they are loaded lazily and
+// cached weakly by LoadSession (see NewMemStore's doc comment).
 func (m *MemStore) loadFromDisk() {
-	if entries, err := os.ReadDir(cache.StateDir()); err == nil {
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
-			}
-			id, ok := strings.CutSuffix(e.Name(), ".qdf")
-			if !ok {
-				continue
-			}
-			st, err := cache.Load(id)
-			if err != nil {
-				continue
-			}
-			sh := m.shardFor(id)
-			sh.mu.Lock()
-			sh.sessions[id] = st
-			sh.mu.Unlock()
-		}
-	}
-
 	if entries, err := os.ReadDir(cache.RefsDir()); err == nil {
 		for _, e := range entries {
 			if e.IsDir() {
@@ -169,11 +164,22 @@ func (m *MemStore) loadFromDisk() {
 	}
 }
 
-// LoadSession returns a copy of the session state for id, or a fresh empty
-// state if none is in RAM yet. The copy has its own Files map, populated
-// under the shard lock, so the caller can freely mutate the returned state
-// (including its Files map) without racing a concurrent FlushDirty or another
-// LoadSession/SaveSession round trip on the same id.
+// LoadSession returns a copy of the session state for id. The copy has its
+// own Files map, populated under the shard lock, so the caller can freely
+// mutate the returned state (including its Files map) without racing a
+// concurrent FlushDirty or another LoadSession/SaveSession round trip on the
+// same id.
+//
+// The shard map holds only weak pointers. There are three outcomes:
+//
+//   - Live hit: the weak pointer still resolves (the session is dirty, or
+//     another caller holds it) — copy and return it.
+//   - Collected / absent: the session was never cached, or it was clean and
+//     the GC reclaimed its weak-only reference. Disk is the source of truth,
+//     so reload it with cache.Load (which itself returns a fresh empty state
+//     when no file exists), re-cache it weakly, and return a copy. This is
+//     transparent to callers — a reclaimed clean session is indistinguishable
+//     from a resident one except for the disk read.
 //
 // This is last-writer-wins, not single-writer: if two goroutines both load
 // the same session, mutate their copies, and save, the second SaveSession
@@ -184,13 +190,42 @@ func (m *MemStore) loadFromDisk() {
 func (m *MemStore) LoadSession(id string) *cache.SessionState {
 	sh := m.shardFor(id)
 	sh.mu.RLock()
-	st, ok := sh.sessions[id]
-	if !ok {
-		sh.mu.RUnlock()
+	if wp, ok := sh.sessions[id]; ok {
+		if st := wp.Value(); st != nil {
+			cp := copySession(st)
+			sh.mu.RUnlock()
+			return cp
+		}
+	}
+	sh.mu.RUnlock()
+
+	// Miss: never cached, or the weak pointer was collected. Reload from disk
+	// (the source of truth) without holding the shard lock — the read can be
+	// slow and must not block concurrent shards' work.
+	st, err := cache.Load(id)
+	if err != nil || st == nil {
+		// I/O error reading an existing file: preserve the non-nil contract
+		// and don't cache a guess. cache.Load already maps "no file" and
+		// "corrupt file" to a fresh empty state (err == nil), so reaching
+		// here means a real read failure.
 		return cache.NewSessionState()
 	}
+
+	sh.mu.Lock()
+	// Re-check under the write lock: a concurrent LoadSession/SaveSession may
+	// have installed a live pointer while we were reading disk. Prefer it so
+	// concurrent callers converge on one cached instance and a just-saved
+	// (possibly dirty) state is never clobbered by our disk snapshot.
+	if wp, ok := sh.sessions[id]; ok {
+		if cur := wp.Value(); cur != nil {
+			cp := copySession(cur)
+			sh.mu.Unlock()
+			return cp
+		}
+	}
+	sh.sessions[id] = weak.Make(st)
 	cp := copySession(st)
-	sh.mu.RUnlock()
+	sh.mu.Unlock()
 	return cp
 }
 
@@ -212,15 +247,20 @@ func copySession(st *cache.SessionState) *cache.SessionState {
 	return cp
 }
 
-// SaveSession stores s as the current state for id and marks it dirty.
+// SaveSession stores s as the current state for id and marks it dirty. The
+// shard map gets a weak pointer (so the session becomes GC-reclaimable once
+// clean and otherwise unreferenced), while dirtySessions keeps a strong
+// pointer to the same s until FlushDirty persists it — the strong ref is what
+// prevents a not-yet-flushed session from being collected out from under the
+// weak pointer (see the dirtySessions field comment).
 func (m *MemStore) SaveSession(id string, s *cache.SessionState) {
 	sh := m.shardFor(id)
 	sh.mu.Lock()
-	sh.sessions[id] = s
+	sh.sessions[id] = weak.Make(s)
 	sh.mu.Unlock()
 
 	m.dirtyMu.Lock()
-	m.dirtySessions[id] = struct{}{}
+	m.dirtySessions[id] = s
 	m.dirtyMu.Unlock()
 }
 
@@ -307,22 +347,34 @@ var flushBufPool = sync.Pool{New: func() any { b := make([]byte, 0, 4096); retur
 // Ref/last-output *blobs* are never dirty here — RefPut/LastPut already wrote
 // them straight to disk — so there is nothing to flush for them beyond usage.
 //
-// Session persistence has two paths:
+// Each dirty session is flushed from the STRONG pointer held in
+// dirtySessions, not by looking it back up in the (weak) shard map. That
+// strong ref both guarantees the session is still alive to flush and pins the
+// exact bytes that were saved. No shard lock is needed to read it: a saved
+// *SessionState is never mutated in place (LoadSession hands callers a copy,
+// so every mutation lands on a fresh pointer that a later SaveSession swaps
+// in), so the only concurrent access to this pointer's Files map is other
+// read-only reads — a concurrent LoadSession's copySession — and concurrent
+// map reads are safe. Persistence has two paths:
 //
 //   - Fast path (the common case): the session has at most
 //     cache.MaxSessionFiles entries, so cache.Save's automatic eviction would
-//     be a no-op. It is therefore safe to qdf-encode the LIVE stored
-//     *SessionState directly inside the shard's read lock — encoding only
-//     reads st, it never mutates it — into a pooled buffer, and perform the
-//     (potentially slow) disk write after releasing the lock. This skips the
-//     struct-and-Files-map copy entirely.
+//     be a no-op. qdf-encode the strong-ref *SessionState directly (read-only)
+//     into a pooled buffer, then write to disk. This skips the copy entirely.
 //   - Slow path (rare: a session actually over the cap): cache.Save's Evict
-//     step deletes entries from the passed state's Files map. Doing that to
-//     the stored pointer under only RLock would race a concurrent
-//     LoadSession's read of the same map — a fatal "concurrent map read and
-//     map write" that recover cannot catch (this exact crash is what
+//     step deletes entries from the passed state's Files map. Mutating the
+//     shared pointer's map would race a concurrent LoadSession's read of it —
+//     a fatal "concurrent map read and map write" (this crash is what
 //     copySession was introduced to fix; see TestMemStore_FlushEvictConcurrentLoad).
-//     So this path still copies the session before handing it to cache.Save.
+//     So this path copies the session before handing it to cache.Save.
+//
+// A session whose encode OR disk write fails keeps its strong ref (it is
+// re-added to dirtySessions unless a newer save already superseded it), so a
+// transient failure never drops the only copy of unpersisted state to the GC.
+// After a successful persist the strong ref is dropped, which is exactly what
+// makes the now-clean session GC-reclaimable via its remaining weak pointer.
+// Finally the shards are swept of dead (collected) weak pointers so the maps
+// stay bounded regardless of how many sessions have come and gone.
 //
 // The dirty session set is swapped out under dirtyMu and iterated afterwards
 // without holding it, so writes that arrive concurrently with a flush land in
@@ -333,42 +385,65 @@ var flushBufPool = sync.Pool{New: func() any { b := make([]byte, 0, 4096); retur
 func (m *MemStore) FlushDirty() {
 	m.dirtyMu.Lock()
 	sessions := m.dirtySessions
-	m.dirtySessions = make(map[string]struct{})
+	m.dirtySessions = make(map[string]*cache.SessionState)
 	m.dirtyMu.Unlock()
 
 	bufPtr := flushBufPool.Get().(*[]byte)
 	buf := *bufPtr
 
-	for id := range sessions {
-		sh := m.shardFor(id)
-		sh.mu.RLock()
-		st, ok := sh.sessions[id]
-		if !ok {
-			sh.mu.RUnlock()
-			continue
-		}
+	var failed map[string]*cache.SessionState
+	for id, st := range sessions {
+		var err error
 		if len(st.Files) > cache.MaxSessionFiles {
 			// Slow path: eviction will actually delete entries, so it must
-			// not run against the live stored map under only RLock. Copy
-			// first, exactly as before this change.
+			// not run against the shared pointer's map (a concurrent
+			// LoadSession may be reading it). Copy first.
 			cp := copySession(st)
-			sh.mu.RUnlock()
-			_ = cache.Save(id, cp)
-			continue
+			err = cache.Save(id, cp)
+		} else {
+			// Fast path: encode the strong-ref pointer directly (read-only,
+			// no copy) into the pooled buffer, then write to disk.
+			buf, err = cache.AppendEncodeState(buf[:0], st)
+			if err == nil {
+				err = cache.WriteState(id, buf)
+			}
 		}
-		// Fast path: encode the stored pointer directly inside the read
-		// lock — read-only, so no lock upgrade or copy needed — then write
-		// to disk after releasing the lock.
-		var err error
-		buf, err = cache.AppendEncodeState(buf[:0], st)
-		sh.mu.RUnlock()
-		if err == nil {
-			_ = cache.WriteState(id, buf)
+		if err != nil {
+			// Persist failed: keep the strong ref so this unpersisted state
+			// is neither lost nor weak-collected before a later retry.
+			if failed == nil {
+				failed = make(map[string]*cache.SessionState)
+			}
+			failed[id] = st
 		}
 	}
 
 	*bufPtr = buf
 	flushBufPool.Put(bufPtr)
+
+	// Re-arm strong refs for sessions that failed to persist, unless a newer
+	// SaveSession already re-marked the id dirty (its pointer supersedes ours).
+	if failed != nil {
+		m.dirtyMu.Lock()
+		for id, st := range failed {
+			if _, superseded := m.dirtySessions[id]; !superseded {
+				m.dirtySessions[id] = st
+			}
+		}
+		m.dirtyMu.Unlock()
+	}
+
+	// Sweep collected weak pointers so the shard maps do not accumulate dead
+	// entries for every session that has ever been seen and since reclaimed.
+	for _, sh := range m.shards {
+		sh.mu.Lock()
+		for id, wp := range sh.sessions {
+			if wp.Value() == nil {
+				delete(sh.sessions, id)
+			}
+		}
+		sh.mu.Unlock()
+	}
 
 	m.usageMu.Lock()
 	ur := maps.Clone(m.usageRefs)
