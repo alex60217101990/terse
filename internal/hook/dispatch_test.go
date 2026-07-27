@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hook"
 	"github.com/alex60217101990/terse/internal/hookcore"
@@ -177,5 +178,33 @@ func TestDispatch_GenericRefDedup(t *testing.T) {
 	_ = json.Unmarshal([]byte(o2.String()), &resp)
 	if resp.HookSpecificOutput == nil || !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, "§ref:") {
 		t.Errorf("2nd identical MCP output should be a §ref, got: %v", o2.String())
+	}
+}
+
+// Skip-listed tools must still record an analytics event (action="skip") so
+// `stats` reflects their invocations instead of being blind to them.
+func TestDispatch_SkipList_RecordsAnalytics(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	big := strings.Repeat("todo item content line\n", 40)
+	var out strings.Builder
+	if err := hook.Dispatch(hookcore.NewDiskStore(), strings.NewReader(dispatchInput(t, "TodoWrite", big)), &out); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	evs, err := analytics.LoadEvents(0)
+	if err != nil {
+		t.Fatalf("LoadEvents: %v", err)
+	}
+	found := false
+	for _, e := range evs {
+		if e.Hook == "TodoWrite" && e.Action == "skip" {
+			found = true
+			if e.BytesIn != len(big) || e.BytesOut != len(big) {
+				t.Errorf("skip event must record neutral bytes in=%d out=%d", e.BytesIn, e.BytesOut)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no skip analytics event recorded")
 	}
 }

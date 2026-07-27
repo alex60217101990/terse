@@ -84,7 +84,17 @@ func skipTool(tool string) bool {
 // smaller).
 func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.HookInput, w io.Writer) error {
 	start := time.Now()
-	if inp.ToolResponse == nil || skipTool(toolName) {
+	if inp.ToolResponse == nil {
+		return protocol.EncodeOutput(w, protocol.Passthrough())
+	}
+	if skipTool(toolName) {
+		// Passthrough by policy — still record it so stats see the invocation.
+		raw := inp.ToolResponse.Text()
+		_ = analytics.Record(analytics.Event{
+			TS: time.Now().UnixNano(), SID: inp.SessionID, Hook: toolName,
+			Action: "skip", BytesIn: len(raw), BytesOut: len(raw),
+			DurNS: time.Since(start).Nanoseconds(),
+		})
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
