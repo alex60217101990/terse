@@ -24,6 +24,15 @@ const (
 // of path-bearing lines purely as sub-slices of content. Pass 2 (the only
 // allocating step) runs only once folding is already known to help.
 func FoldPathPrefix(content string) string {
+	// Bail out up front if content already contains our own token prefix
+	// ("§P§" or the "§P=...§" declaration). Folding on top of an existing
+	// occurrence would make original text indistinguishable from our own
+	// substitution, corrupting lossless reconstruction. strings.Contains is
+	// a single cheap scan (no allocation), so this preserves the zero-alloc
+	// non-match invariant and costs the common case exactly one extra pass.
+	if strings.Contains(content, "§P") {
+		return content
+	}
 	prefix, count := scanPathPrefix(content)
 	if count < pathPrefixMinLines || len(prefix) < pathPrefixMinLen {
 		return content

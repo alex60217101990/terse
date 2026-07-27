@@ -52,6 +52,42 @@ func TestFoldPathPrefix_MixedLinesPreserved(t *testing.T) {
 	}
 }
 
+// If the input already contains our own token literally (e.g. it's quoting
+// earlier compressed output, or someone's log message happens to include
+// it), folding must bail out entirely — otherwise the folded "§P§" line and
+// content that already read "§P§" verbatim become indistinguishable, and
+// mechanical reconstruction (strip decl line, replace §P§→prefix) would
+// corrupt the line that was never touched.
+func TestFoldPathPrefix_AlreadyContainsToken_Unchanged(t *testing.T) {
+	var b strings.Builder
+	for i := range 8 {
+		b.WriteString("/very/long/shared/directory/prefix/of/paths/entry")
+		b.WriteByte(byte('0' + i))
+		b.WriteString(".txt: 12 matches\n")
+	}
+	b.WriteString("note: token §P§ appears verbatim here\n")
+	in := b.String()
+	if out := detect.FoldPathPrefix(in); out != in {
+		t.Fatalf("input already contains §P§ — must be byte-identical, unchanged:\ngot:\n%s\nwant:\n%s", out, in)
+	}
+}
+
+// Same guard, but the literal occurrence is the declaration-line form
+// ("§P=") rather than the substitution token ("§P§").
+func TestFoldPathPrefix_AlreadyContainsDeclToken_Unchanged(t *testing.T) {
+	var b strings.Builder
+	for i := range 8 {
+		b.WriteString("/very/long/shared/directory/prefix/of/paths/entry")
+		b.WriteByte(byte('0' + i))
+		b.WriteString(".txt: 12 matches\n")
+	}
+	b.WriteString("note: mentions §P=something here\n")
+	in := b.String()
+	if out := detect.FoldPathPrefix(in); out != in {
+		t.Fatalf("input already contains §P= — must be byte-identical, unchanged:\ngot:\n%s\nwant:\n%s", out, in)
+	}
+}
+
 func TestFoldPathPrefix_NonMatchZeroAlloc(t *testing.T) {
 	in := strings.Repeat("prose without slashes here\n", 30)
 	if n := testing.AllocsPerRun(20, func() { detect.FoldPathPrefix(in) }); n != 0 {
