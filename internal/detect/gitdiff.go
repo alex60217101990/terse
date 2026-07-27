@@ -53,7 +53,7 @@ func SummarizeGitDiff(content string) string {
 			}
 			// find start of last 2 lines by scanning back from end
 			q := end
-			for back := 0; back < 2; back++ {
+			for range 2 {
 				if q <= ctxStart {
 					q = ctxStart
 					break
