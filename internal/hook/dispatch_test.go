@@ -175,6 +175,23 @@ func TestDispatch_BashGitDiff_FoldedAndRecoverable(t *testing.T) {
 	}
 }
 
+func TestDispatch_BashDockerPs_TableSummarized(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	b.WriteString("CONTAINER ID   IMAGE          COMMAND     STATUS        PORTS\n")
+	for i := range 30 {
+		fmt.Fprintf(&b, "%012x   web-%02d:latest  \"/run.sh\"   Up %d hours    80/tcp\n", i, i, i%24)
+	}
+	resp := runDispatch(t, "Bash", b.String())
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("30-row table should compress")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "[TABLE 30 rows") || !strings.Contains(got, "qdf-hook expand ") {
+		t.Errorf("expected table summary + recovery:\n%s", got)
+	}
+}
+
 // A skip-listed tool is always passed through verbatim.
 func TestDispatch_SkipList_Passthrough(t *testing.T) {
 	big := strings.Repeat("todo item content line\n", 40)

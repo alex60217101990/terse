@@ -148,6 +148,8 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			action, replacement = "summary", s
 		} else if s := tryBench(content); s != "" {
 			action, replacement = "summary", s
+		} else if s := tryTable(content); s != "" {
+			action, replacement = "table", withRecovery(store, s, content)
 		} else if tok, ok := dedupWithStore(store, content, 256); ok {
 			action, replacement = "ref", tok
 		} else if d, ok := tryRerunDelta(store, toolName, key, content); ok {

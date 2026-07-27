@@ -109,3 +109,13 @@ func tryGitDiff(content string) string {
 	}
 	return s
 }
+
+// tryTable compresses tabular output (docker/kubectl/ls/CSV/TSV) to header +
+// head/tail rows. Strict gate: it drops rows, so demand a 2x win.
+func tryTable(content string) string {
+	s := detect.SummarizeTable(content)
+	if !worth(s, content, minSummaryRatio) {
+		return ""
+	}
+	return s
+}
