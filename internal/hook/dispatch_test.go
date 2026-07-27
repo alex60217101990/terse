@@ -153,6 +153,52 @@ func TestDispatch_ColumnarRecoverable(t *testing.T) {
 	}
 }
 
+// TestDispatch_BashJSONObject_SummarizedAndRecoverable exercises the
+// tryJSONObject branch wired in right after tryJSON in dispatch.go: a large
+// single JSON object (config/API dump, not an array) must be reduced to a key
+// schema and made recoverable via the standard withRecovery footer.
+func TestDispatch_BashJSONObject_SummarizedAndRecoverable(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	b.WriteString(`{"service":"widget-api","version":"2.3.1","replicas":4,"debug":false,`)
+	b.WriteString(`"description":"` + strings.Repeat("long descriptive text ", 40) + `",`)
+	b.WriteString(`"items":[`)
+	for i := range 30 {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, `{"id":%d,"state":"ready","zone":"eu-%d"}`, i, i%3)
+	}
+	b.WriteString(`],"limits":{"cpu":"2","mem":"4Gi"}}`)
+	content := b.String()
+
+	store := hookcore.NewDiskStore()
+	var o strings.Builder
+	if err := hook.Dispatch(store, strings.NewReader(dispatchInput(t, "Bash", content)), &o); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	var resp protocol.HookOutput
+	_ = json.Unmarshal([]byte(o.String()), &resp)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("large JSON object should be summarized")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "[JSON OBJECT") {
+		t.Errorf("expected JSON object summary, got:\n%s", got)
+	}
+	marker := "qdf-hook expand "
+	idx := strings.Index(got, marker)
+	if idx < 0 {
+		t.Fatalf("expected a recovery pointer, got:\n%s", got)
+	}
+	hash := strings.FieldsFunc(got[idx+len(marker):], func(r rune) bool {
+		return !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f'))
+	})[0]
+	if recovered, ok := cache.RefGet(hash); !ok || recovered != content {
+		t.Fatalf("raw object not recoverable via expand %s (ok=%v)", hash, ok)
+	}
+}
+
 func TestDispatch_BashGitDiff_FoldedAndRecoverable(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	var b strings.Builder

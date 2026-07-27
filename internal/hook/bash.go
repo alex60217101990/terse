@@ -51,6 +51,16 @@ func tryJSON(content string) string {
 	return s
 }
 
+// tryJSONObject summarizes one large JSON object (config/API dump) to a key
+// schema with scalar values. Strict gate + recovery footer (rows are elided).
+func tryJSONObject(content string) string {
+	s := detect.SummarizeJSONObject(content)
+	if !worth(s, content, minSummaryRatio) {
+		return ""
+	}
+	return s
+}
+
 func tryGoTest(content string) string {
 	if !detect.IsGoTestOutput(content) {
 		return ""

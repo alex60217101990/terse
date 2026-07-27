@@ -138,6 +138,8 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			// the raw array so the model can recover it, and point at it — the
 			// summary alone is otherwise unrecoverable off the Read path.
 			action, replacement = "columnar", withRecovery(store, s, content)
+		} else if s := tryJSONObject(content); s != "" {
+			action, replacement = "jsonobject", withRecovery(store, s, content)
 		} else if s := tryGoTest(content); s != "" {
 			action, replacement = "summary", s
 		} else if s := tryGrep(content); s != "" {
