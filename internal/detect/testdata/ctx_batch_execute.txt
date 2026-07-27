@@ -1,0 +1,75 @@
+Executed 5 commands (66 lines, 5.5KB). Indexed 5 sections. Searched 2 queries.
+
+## Commands
+
+- widget-last-routes: `grep -rn routes handler.go`
+- any-admin-internal-routes: `find repo -type d -name admin`
+- widget-delete-global-search: `grep -rn Widget repo --include=*.go`
+- widget-client-interface-methods: `grep -n func client.gen.go`
+- cleanup-in-tests: `grep -rn purge tests --include=*.go`
+
+## widget delete client interface
+
+### widget-client-interface-methods
+# widget-client-interface-methods
+
+$ grep -n func client.gen.go
+
+364:// PostAPIWidgetV1ItemsJSONRequestBody defines body for PostAPIWidgetV1Items
+365:type PostAPIWidgetV1ItemsJSONRequestBody = CreateWidgetRequest
+644:	// PostAPIWidgetV1ItemsByIDParts sends the request with a typed body.
+646:	PostAPIWidgetV1ItemsByIDParts(ctx context.Context, id UUID, body Body) (*Wrapper, error)
+649:func (c *client) PostAPIWidgetV1ItemsWithBodyRaw(ctx context.Context, contentType string, body io.Reader) (*Raw, error) {
+650:	req, err := NewPostAPIWidgetV1ItemsRequestWithBody(c.Server, contentType, body)
+664:	return ParsePostAPIWidgetV1ItemsRawResponse(rsp)
+
+### widget-delete-global-search
+# widget-delete-global-search
+
+$ grep -rn Widget repo --include=*.go
+
+internal/flow/order/workflow/interfaces.go:15:// DeleteWorkflow tears an order down: it revokes the widget's credit parts,
+internal/flow/order/workflow/provision.go:46:// the DeleteOrder workflow (which revokes the granted parts and deletes the
+internal/flow/order/workflow/provision.go:73:	// rollback (the delete workflow) revokes everything the widget allocated.
+internal/flow/order/workflow/delete_test.go:58:func TestDelete_WidgetOrder_RevokesActivationsThenOrder(t *testing.T) {
+internal/service/order/service.go:26:	// Delete runs the teardown workflow for the order: it revokes the widget's
+
+### cleanup-in-tests
+# cleanup-in-tests
+
+$ grep -rn purge tests --include=*.go
+
+(no output)
+
+## widget cleanup test
+
+### cleanup-in-tests
+# cleanup-in-tests
+
+$ grep -rn purge tests --include=*.go
+
+(no output)
+
+### widget-delete-global-search
+# widget-delete-global-search
+
+$ grep -rn Widget repo --include=*.go
+
+internal/flow/order/workflow/interfaces.go:15:// DeleteWorkflow tears an order down: it revokes the widget's credit parts,
+internal/flow/order/workflow/provision.go:46:// the DeleteOrder workflow (which revokes the granted parts and deletes the
+internal/flow/order/workflow/provision.go:73:	// rollback (the delete workflow) revokes everything the widget allocated.
+internal/flow/order/workflow/delete_test.go:58:func TestDelete_WidgetOrder_RevokesActivationsThenOrder(t *testing.T) {
+internal/service/order/service.go:26:	// Delete runs the teardown workflow for the order: it revokes the widget's
+
+### widget-client-interface-methods
+# widget-client-interface-methods
+
+$ grep -n func client.gen.go
+
+364:// PostAPIWidgetV1ItemsJSONRequestBody defines body for PostAPIWidgetV1Items
+365:type PostAPIWidgetV1ItemsJSONRequestBody = CreateWidgetRequest
+644:	// PostAPIWidgetV1ItemsByIDParts sends the request with a typed body.
+646:	PostAPIWidgetV1ItemsByIDParts(ctx context.Context, id UUID, body Body) (*Wrapper, error)
+649:func (c *client) PostAPIWidgetV1ItemsWithBodyRaw(ctx context.Context, contentType string, body io.Reader) (*Raw, error) {
+650:	req, err := NewPostAPIWidgetV1ItemsRequestWithBody(c.Server, contentType, body)
+664:	return ParsePostAPIWidgetV1ItemsRawResponse(rsp)
