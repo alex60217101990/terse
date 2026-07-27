@@ -223,7 +223,7 @@ func TestUnifiedDiff_DeterministicRepeated(t *testing.T) {
 	if want == "" {
 		t.Fatal("expected non-empty reference diff")
 	}
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		got := cache.UnifiedDiff(v1, v2, 3)
 		if got != want {
 			t.Fatalf("iteration %d: diff output diverged from reference\nwant:\n%s\ngot:\n%s", i, want, got)
@@ -243,7 +243,7 @@ func TestUnifiedDiff_ParallelDistinctInputs(t *testing.T) {
 	inputs := make([]input, goroutines)
 	wants := make([]string, goroutines)
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		var old, newer strings.Builder
 		for i := range 300 {
 			fmt.Fprintf(&old, "g%d-line-%d\n", g, i)
@@ -260,11 +260,10 @@ func TestUnifiedDiff_ParallelDistinctInputs(t *testing.T) {
 		}
 	}
 
-	for g := 0; g < goroutines; g++ {
-		g := g
+	for g := range goroutines {
 		t.Run(fmt.Sprintf("g%d", g), func(t *testing.T) {
 			t.Parallel()
-			for i := 0; i < 20; i++ {
+			for i := range 20 {
 				got := cache.UnifiedDiff(inputs[g].old, inputs[g].newer, 3)
 				if got != wants[g] {
 					t.Fatalf("goroutine %d iteration %d: diff diverged from serial reference\nwant:\n%s\ngot:\n%s", g, i, wants[g], got)
