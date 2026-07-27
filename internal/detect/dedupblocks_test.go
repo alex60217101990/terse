@@ -1,6 +1,7 @@
 package detect_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -87,5 +88,120 @@ func BenchmarkFoldRepeatedBlocks(b *testing.B) {
 	b.SetBytes(int64(len(in)))
 	for b.Loop() {
 		_ = detect.FoldRepeatedBlocks(in)
+	}
+}
+
+// Two near-duplicate blocks that differ only in volatile tokens: exercises the
+// normalize + diff + fuzzy-marker path.
+func BenchmarkFoldRepeatedBlocks_Fuzzy(b *testing.B) {
+	mk := func(id int, ts string) string {
+		return "### request-log\n" +
+			"handler widget-service latency=42ms\n" +
+			"request id=" + fmt.Sprint(id) + " completed at " + ts + "\n" +
+			"payload bytes=2048 checksum=deadbeefcafe1234\n" +
+			"status=ok worker=w1 retries=0\n"
+	}
+	in := mk(7, "2026-07-27T10:00:01Z") + "\n\n" + mk(9, "2026-07-27T10:00:02Z") + "\n"
+	b.ReportAllocs()
+	b.SetBytes(int64(len(in)))
+	for b.Loop() {
+		_ = detect.FoldRepeatedBlocks(in)
+	}
+}
+
+// Blocks identical except volatile tokens (ids, hex, timestamps) fold into a
+// marker that SHOWS the differing tokens — zero information loss.
+func TestFoldRepeatedBlocks_FuzzyFoldsWithDiff(t *testing.T) {
+	mk := func(id int, ts string) string {
+		return "### request-log\n" +
+			"handler widget-service latency=42ms\n" +
+			"request id=" + fmt.Sprint(id) + " completed at " + ts + "\n" +
+			"payload bytes=2048 checksum=deadbeefcafe1234\n" +
+			"status=ok worker=w1 retries=0\n"
+	}
+	a := mk(7, "2026-07-27T10:00:01Z")
+	b := mk(9, "2026-07-27T10:00:02Z")
+	other := "### separator\ncompletely different content here\n"
+	in := a + "\n\n" + other + "\n\n" + b + "\n"
+
+	out := detect.FoldRepeatedBlocks(in)
+	if len(out) >= len(in) {
+		t.Fatalf("expected shrink, got %d vs %d", len(out), len(in))
+	}
+	// the differing tokens must BOTH be visible in the fold marker
+	for _, must := range []string{"7→9", "10:00:01", "10:00:02"} {
+		if !strings.Contains(out, must) {
+			t.Errorf("marker must show difference %q:\n%s", must, out)
+		}
+	}
+	if !strings.Contains(out, a) {
+		t.Errorf("first occurrence must stay verbatim")
+	}
+}
+
+// If the blocks differ in too many places, folding must NOT happen.
+func TestFoldRepeatedBlocks_TooDifferentStaysVerbatim(t *testing.T) {
+	a := "### sec\naaa bbb ccc ddd\neee fff ggg hhh\niii jjj kkk lll\nmmm nnn ooo ppp\n"
+	b := "### sec\n111 222 333 444\n555 666 777 888\n999 000 111 222\n333 444 555 666\n"
+	in := a + "\n\n" + b + "\n"
+	if out := detect.FoldRepeatedBlocks(in); out != in {
+		t.Fatalf("wholly different blocks must not fuzzy-fold:\n%s", out)
+	}
+}
+
+// Blocks with the SAME normalized shape but more than the allowed number of
+// differing volatile tokens must NOT fold — otherwise the marker would either
+// omit a difference or be no smaller than the block.
+func TestFoldRepeatedBlocks_ManyDiffsStayVerbatim(t *testing.T) {
+	mk := func(a, b, c, d, e int) string {
+		return fmt.Sprintf("### metrics-row\n"+
+			"cpu=%d mem=%d disk=%d net=%d fd=%d handles fixed text tail here\n"+
+			"second unchanging line of content to clear the size floor here\n", a, b, c, d, e)
+	}
+	x := mk(1, 2, 3, 4, 5)
+	y := mk(6, 7, 8, 9, 10) // five differing tokens > maxFuzzyDiffs(4)
+	in := x + "\n\n" + y + "\n"
+	if out := detect.FoldRepeatedBlocks(in); out != in {
+		t.Fatalf("blocks differing in >4 tokens must stay verbatim:\n%s", out)
+	}
+}
+
+// An exact copy of a near-duplicate folds against the verbatim base (single
+// hop), and every differing token is still shown — no information is lost and
+// no reference dangles at a folded (non-verbatim) block.
+func TestFoldRepeatedBlocks_ExactCopyOfNearDupFoldsToBase(t *testing.T) {
+	mk := func(id int) string {
+		return "### job-record\n" +
+			"worker started job id=" + fmt.Sprint(id) + " on host node-alpha here\n" +
+			"stage=complete elapsed unchanging descriptive tail to pass floor\n"
+	}
+	a := mk(1)
+	b := mk(2)
+	in := a + "\n\n" + b + "\n\n" + b + "\n" // base, near-dup, exact copy of near-dup
+	out := detect.FoldRepeatedBlocks(in)
+	if len(out) >= len(in) {
+		t.Fatalf("expected shrink, got %d vs %d", len(out), len(in))
+	}
+	if !strings.Contains(out, a) {
+		t.Fatalf("verbatim base must be preserved:\n%s", out)
+	}
+	// The base (id=1) must appear verbatim exactly once; both later occurrences
+	// fold. Neither "id=2" copy may survive as raw block text.
+	if got := strings.Count(out, "worker started job id=2 on host"); got != 0 {
+		t.Fatalf("near-dup and its exact copy must both fold, found %d raw:\n%s", got, out)
+	}
+	// Both folded occurrences must show the 1→2 difference.
+	if got := strings.Count(out, "1→2"); got != 2 {
+		t.Fatalf("expected both folds to show 1→2, got %d:\n%s", got, out)
+	}
+}
+
+// Exact-dup behavior is unchanged (regression).
+func TestFoldRepeatedBlocks_ExactStillWins(t *testing.T) {
+	block := "# hdr\n" + strings.Repeat("same line of content here\n", 6)
+	in := block + "\n\n" + block + "\n"
+	out := detect.FoldRepeatedBlocks(in)
+	if !strings.Contains(out, "⟦↑ repeat: ") {
+		t.Fatalf("exact dup must use the exact marker:\n%s", out)
 	}
 }
