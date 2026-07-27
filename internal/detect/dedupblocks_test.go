@@ -227,7 +227,7 @@ func TestFoldRepeatedBlocks_ConcurrentPoolIsolation(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	for iter := 0; iter < 200; iter++ {
+	for range 200 {
 		for i := range inputs {
 			wg.Add(1)
 			go func(i int) {

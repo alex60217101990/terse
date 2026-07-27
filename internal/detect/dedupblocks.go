@@ -128,7 +128,8 @@ func isTSByte(c byte) bool {
 func volatileRun(block string, i int) int {
 	c := block[i]
 	isDigit := isDigitByte(c)
-	if !isDigit && !(c >= 'a' && c <= 'f') {
+	isHexLetter := c >= 'a' && c <= 'f'
+	if !isDigit && !isHexLetter {
 		return i // literal
 	}
 	n := len(block)

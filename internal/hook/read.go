@@ -245,7 +245,7 @@ func sliceLines(s string, start, n int) (string, bool) {
 		pos += nl + 1
 	}
 	end := pos
-	for taken := 0; taken < n; taken++ {
+	for taken := range n {
 		nl := strings.IndexByte(s[end:], '\n')
 		if nl < 0 {
 			if taken == n-1 && end < len(s) { // last line without a trailing '\n'

@@ -9,7 +9,7 @@ import (
 
 func TestFoldPathPrefix_Folds(t *testing.T) {
 	var b strings.Builder
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		b.WriteString("/Users/dev/work/src/github.com/acme/widget-service/internal/pkg/file")
 		b.WriteByte(byte('a' + i))
 		b.WriteString(".go\n")
@@ -37,7 +37,7 @@ func TestFoldPathPrefix_NoCommonPrefixUnchanged(t *testing.T) {
 func TestFoldPathPrefix_MixedLinesPreserved(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("header: results below\n")
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		b.WriteString("  /very/long/shared/directory/prefix/of/paths/entry")
 		b.WriteByte(byte('0' + i))
 		b.WriteString(".txt: 12 matches\n")

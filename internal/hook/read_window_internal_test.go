@@ -40,13 +40,13 @@ func TestSliceLines(t *testing.T) {
 // returns a subslice of the input, never materializing a []string).
 func BenchmarkSliceLines(b *testing.B) {
 	var sb strings.Builder
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		sb.WriteString("some line of moderately sized content here\n")
 	}
 	s := sb.String()
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, ok := sliceLines(s, 400, 200); !ok {
 			b.Fatal("unexpected miss")
 		}
