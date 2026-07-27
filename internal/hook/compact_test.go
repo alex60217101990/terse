@@ -2,6 +2,7 @@ package hook_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -79,6 +80,41 @@ func TestPostCompact_InjectsManifest(t *testing.T) {
 	}
 	if !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, "encoder.go") {
 		t.Errorf("manifest should reference encoder.go: %s", resp.HookSpecificOutput.UpdatedToolOutput)
+	}
+}
+
+// The PostCompact manifest itself is path-dense (one absolute path per
+// tracked file) — buildManifest wraps its assembled string in
+// detect.FoldPathPrefix, so a session with several files under one long
+// shared directory gets that directory folded to a §P§ token.
+func TestPostCompact_ManifestPrefixFolded(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	const sid = "sess-compact-prefix"
+	s := cache.NewSessionState()
+	s.Turn = 7
+	s.CompactedAt = 7
+	for i := range 8 {
+		path := fmt.Sprintf("/Users/dev/work/src/github.com/acme/widget-service/internal/pkg/file%02d.go", i)
+		s.Files[path] = cache.FileEntry{Hash: [32]byte{byte(i)}, Turn: 1, Content: []byte("package pkg\n")}
+	}
+	_ = cache.Save(sid, s)
+
+	var out strings.Builder
+	inp := map[string]any{"session_id": sid, "tool_name": "", "trigger": "auto"}
+	b, _ := json.Marshal(inp)
+	if err := hook.HandlePostCompact(strings.NewReader(string(b)), &out); err != nil {
+		t.Fatalf("HandlePostCompact: %v", err)
+	}
+
+	var resp protocol.HookOutput
+	_ = json.Unmarshal([]byte(out.String()), &resp)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("PostCompact should inject a manifest")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "§P=") {
+		t.Errorf("expected manifest prefix fold:\n%s", got)
 	}
 }
 

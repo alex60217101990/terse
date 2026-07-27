@@ -168,6 +168,13 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 		}
 	}
 
+	// Path-dense outputs: fold the shared directory prefix (lossless).
+	if action == "tree" || action == "grep" || action == "grouped" {
+		if folded := detect.FoldPathPrefix(replacement); len(folded) < len(replacement) {
+			replacement = folded
+		}
+	}
+
 	// Remember this output for the next run's delta on the unstructured paths.
 	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" {
 		store.LastPut(key, content)

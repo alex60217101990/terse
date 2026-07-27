@@ -11,6 +11,7 @@ import (
 
 	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/detect"
 	"github.com/alex60217101990/terse/internal/protocol"
 )
 
@@ -123,5 +124,5 @@ func buildManifest(state *cache.SessionState) string {
 			cache.ShortHex(entry.Hash[:8]), path, entry.Turn, len(entry.Content))
 	}
 	sb.WriteString("\n[Subsequent reads of these files will show delta or §unchanged§]\n")
-	return sb.String()
+	return detect.FoldPathPrefix(sb.String())
 }

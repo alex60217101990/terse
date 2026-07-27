@@ -310,3 +310,28 @@ func TestDispatch_SkipList_RecordsAnalytics(t *testing.T) {
 		t.Fatal("no skip analytics event recorded")
 	}
 }
+
+// Path-dense output from a path-heavy action gets its shared directory
+// folded via detect.FoldPathPrefix. buildGlobTree already collapses Glob
+// output into per-directory counts (no repeated per-line paths survive to
+// fold), so this exercises the grep "grouped" path instead: 6 files under
+// one long shared directory, 3 matches each, produces 6 group-header lines
+// that repeat the long prefix — exactly what FoldPathPrefix targets.
+func TestDispatch_GrepLongPaths_PrefixFolded(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	for i := range 6 {
+		file := fmt.Sprintf("/Users/dev/work/src/github.com/acme/widget-service/internal/detect/file%02d.go", i)
+		for j := 1; j <= 3; j++ {
+			fmt.Fprintf(&b, "%s:%d:some match text %d\n", file, j, j)
+		}
+	}
+	resp := runDispatch(t, "Grep", b.String())
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("grep should compress")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "§P=") {
+		t.Errorf("expected prefix fold:\n%s", got)
+	}
+}
