@@ -13,7 +13,9 @@ import (
 func makeBigObject() string {
 	var b strings.Builder
 	b.WriteString(`{"service":"widget-api","version":"2.3.1","replicas":4,"debug":false,`)
-	b.WriteString(`"description":"` + strings.Repeat("long descriptive text ", 40) + `",`)
+	b.WriteString(`"description":"`)
+	b.WriteString(strings.Repeat("long descriptive text ", 40))
+	b.WriteString(`",`)
 	b.WriteString(`"items":[`)
 	for i := range 30 {
 		if i > 0 {
@@ -226,7 +228,7 @@ func TestSummarizeJSONObject_TruncatedString_NoForgedKey(t *testing.T) {
 	if out == "" {
 		t.Fatalf("expected a summary, got no match/no win for:\n%s", content)
 	}
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(line, "admin:") {
 			t.Fatalf("forged key line found in output:\n%q", out)
 		}
