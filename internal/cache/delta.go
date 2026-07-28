@@ -265,7 +265,14 @@ func putDiffScratch(s *diffScratch) {
 	s.v = s.v[:0]
 	s.snaps = s.snaps[:0]
 	s.traceHeads = s.traceHeads[:0]
+	// Zero the tails before shrinking to length 0: the string headers past
+	// len (still live in [len:cap]) alias the old/new input byte slices via
+	// unsafe.String (see splitLinesInto), so leaving them set pins the whole
+	// backing buffer of a prior diff's input on the free list until this
+	// scratch's slice is fully overwritten by a later call.
+	clear(s.aLines[:cap(s.aLines)])
 	s.aLines = s.aLines[:0]
+	clear(s.bLines[:cap(s.bLines)])
 	s.bLines = s.bLines[:0]
 	select {
 	case diffScratchFreeList <- s:
