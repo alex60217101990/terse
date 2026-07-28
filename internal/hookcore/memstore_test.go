@@ -495,7 +495,7 @@ func TestMemStore_ColdSessionsAreGCReclaimable(t *testing.T) {
 
 	// Drop the last strong references. The shard maps hold only weak pointers,
 	// so every session is now GC-reclaimable.
-	states = nil
+	states = nil //nolint:ineffassign // deliberately drops the strong refs so the GC test can reclaim the sessions
 	runtime.GC()
 	runtime.GC()
 	var after runtime.MemStats
