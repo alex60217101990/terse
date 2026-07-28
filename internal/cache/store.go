@@ -96,10 +96,17 @@ const MaxSessionFiles = 200
 // array only grows on the first few calls and is reused after that.
 var savePool = sync.Pool{New: func() any { b := make([]byte, 0, 4096); return &b }}
 
-// maxPooledSaveBuf caps the buffer size Save will return to savePool. A
-// session state that encodes larger than this is a one-off; pinning that much
-// memory in the pool would penalize every small-session Save that follows.
-const maxPooledSaveBuf = 4 << 20 // 4MB
+// MaxPooledBufSize caps the buffer size a scratch-buffer sync.Pool will
+// accept back. A one-off encode that grows a buffer past this is exceptional;
+// pinning that much memory in the pool would penalize every small-session
+// encode that follows, so callers drop the oversized buffer instead of
+// returning it (the pool's New allocates a fresh small one on the next Get).
+// Shared by savePool here and hookcore's flushBufPool, which encodes the same
+// kind of payload (a qdf-marshaled SessionState) via the same pattern.
+const MaxPooledBufSize = 4 << 20 // 4MB
+
+// maxPooledSaveBuf is savePool's local name for MaxPooledBufSize.
+const maxPooledSaveBuf = MaxPooledBufSize
 
 func Save(sessionID string, s *SessionState) error {
 	Evict(s, MaxSessionFiles) // auto-evict when over the cap

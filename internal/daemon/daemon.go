@@ -14,13 +14,16 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
+	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/bytesconv"
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hook"
@@ -51,7 +54,7 @@ const ensureReadyTimeout = 2 * time.Second
 // nanoseconds. The daemon must never hang a Claude Code hook: without this, an
 // unbounded buf.ReadFrom(c) would block forever if a client connected but
 // never half-closed (a wedged handler, or an nc variant that accepts but
-// no-ops -N), leaking the handler goroutine and — via Serve's defer wg.Wait()
+// no-ops -N), leaking the handler goroutine and — via Serve's wg.Wait()
 // — blocking clean shutdown. A deadline turns every such case into a closed
 // connection within a bounded time, so nc unblocks and the CLI fallback (or
 // passthrough) runs. Set generously above any real in-memory dispatch cost.
@@ -151,6 +154,21 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 	defer func() { _ = ln.Close() }()
 	ul := ln.(*net.UnixListener)
 
+	// Open one long-lived analytics appender fd for the whole daemon
+	// lifetime and route every hook handler's analytics.Record through it
+	// (see analytics.SetWriter), instead of each request paying its own
+	// open+stat+write+close under analytics' package mutex. A failure here
+	// is non-fatal — analytics is best-effort diagnostics — so on error we
+	// log and fall back to the package-level Record's per-call path, same
+	// as the CLI.
+	var analyticsWriter *analytics.Writer
+	if w, aerr := analytics.OpenWriter(); aerr != nil {
+		log.Printf("daemon: analytics.OpenWriter: %v (falling back to per-call analytics writes)", aerr)
+	} else {
+		analyticsWriter = w
+		analytics.SetWriter(w)
+	}
+
 	store := hookcore.NewMemStore()
 
 	// shutdownRequested distinguishes a QUIT-triggered listener close (clean
@@ -165,13 +183,38 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 		_ = ul.Close()
 	}
 
+	// Graceful shutdown on SIGTERM/SIGINT (docker stop's PID-1 signal,
+	// systemd, a bare kill, Ctrl-C). The signal path reuses the QUIT machinery
+	// exactly: requestShutdown closes the listener, which unblocks Accept so
+	// the loop exits, drains in-flight handlers, and does the final flush —
+	// instead of the process being torn down mid-request with up to
+	// flushInterval of un-persisted state lost. The watcher goroutine exits
+	// when Serve returns (the deferred close(done) fires), so it never
+	// outlives a single Serve call, and signal.Stop unregisters the handler.
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(sigCh)
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-sigCh:
+			requestShutdown()
+		case <-done:
+		}
+	}()
+
 	var wg sync.WaitGroup
-	defer wg.Wait()
 
 	start := time.Now()
 	lastActivity := start
 	lastFlush := start
 	lastSweep := start
+
+	// serveErr carries a real Accept failure out of the loop; a clean exit
+	// (idle timeout, or a QUIT/signal-triggered listener close) leaves it nil.
+	// Every loop-exit path funnels through the single drain-then-flush below.
+	var serveErr error
 
 	for {
 		now := time.Now()
@@ -181,11 +224,15 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 		}
 		if now.Sub(lastSweep) >= sweepInterval {
 			sweepCache(now.Unix())
+			// Prune the in-RAM usage maps on the same tick, using the same
+			// TTL cache.SweepBlobs/PruneDir applies to the on-disk sidecars —
+			// otherwise FlushDirty's next tick would rewrite the sidecars
+			// with entries PruneDir just dropped (see MemStore.PruneUsage).
+			store.PruneUsage(cache.CacheTTL())
 			lastSweep = now
 		}
 		if now.Sub(lastActivity) >= idle {
-			store.FlushDirty()
-			return nil
+			break
 		}
 
 		// Wake no later than whichever comes first: the next flush or the
@@ -207,19 +254,43 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 				// flush and idle checks at the top.
 				continue
 			}
-			store.FlushDirty()
-			if shutdownRequested.Load() {
-				// QUIT closed the listener out from under us — a clean,
-				// intentional shutdown, not an error.
-				return nil
+			// A non-timeout Accept error is either our own QUIT/signal close
+			// (shutdownRequested — clean, intentional) or a genuine listener
+			// failure. Either way, fall out to the drain-then-flush; only a
+			// genuine failure is reported.
+			if !shutdownRequested.Load() {
+				serveErr = aerr
 			}
-			return aerr
+			break
 		}
 		lastActivity = time.Now()
 		wg.Go(func() {
 			handleConn(c, store, version, requestShutdown)
 		})
 	}
+
+	// Drain first, flush second. wg.Wait blocks until every in-flight handler
+	// has returned — including any that committed a SaveSession while the
+	// accept loop was tearing down — and only THEN does the final FlushDirty
+	// run, so a completed-but-unflushed session can't be left on the floor.
+	// (The old code flushed at each loop-exit site and only afterwards ran a
+	// deferred wg.Wait, so a handler finishing during the drain was never
+	// flushed.) FlushDirty also persists the usage indices, so ref/last
+	// analytics survive shutdown too.
+	wg.Wait()
+	store.FlushDirty()
+
+	// Unhook the writer before closing it: SetWriter(nil) is what makes any
+	// analytics.Record call still in flight for a small window fall back to
+	// the per-call path rather than write through an fd we're about to
+	// close. It must come after wg.Wait so no handler goroutine is running
+	// concurrently by this point anyway — belt and suspenders.
+	if analyticsWriter != nil {
+		analytics.SetWriter(nil)
+		_ = analyticsWriter.Close()
+	}
+
+	return serveErr
 }
 
 // sweepCache prunes the refs/ and last/ blob stores down to their combined

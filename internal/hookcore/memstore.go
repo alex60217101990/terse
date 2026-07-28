@@ -335,6 +335,35 @@ func (m *MemStore) LastPut(key, content string) {
 	m.lastMu.Unlock()
 }
 
+// PruneUsage drops entries from the in-RAM usageRefs/usageLast indices whose
+// LastUsed is older than maxAge — the same TTL floor cache.PruneDir applies
+// to the on-disk usage sidecars (nowSec-used > ttl ⇒ drop; see evict.go).
+// Without this, Bump only ever grows usageRefs/usageLast (nothing in RefHit
+// or LastPut ever deletes from them), so FlushDirty's periodic SaveUsage
+// would keep rewriting every entry back into the sidecar — silently
+// resurrecting whatever PruneDir had just pruned on disk, and growing the
+// RAM maps without bound over the life of a long-running daemon.
+//
+// Call this from the same tick that invokes cache.SweepBlobs (the daemon's
+// sweep ticker) so the RAM map's retention exactly tracks the sidecar's TTL
+// policy: after a sweep+flush cycle, both sidecar and RAM agree on what
+// survived. Safe to call with an empty or nil-backed index.
+func (m *MemStore) PruneUsage(maxAge time.Duration) {
+	cutoff := time.Now().Unix() - int64(maxAge/time.Second)
+	m.usageMu.Lock()
+	for k, v := range m.usageRefs {
+		if v.LastUsed < cutoff {
+			delete(m.usageRefs, k)
+		}
+	}
+	for k, v := range m.usageLast {
+		if v.LastUsed < cutoff {
+			delete(m.usageLast, k)
+		}
+	}
+	m.usageMu.Unlock()
+}
+
 // flushBufPool holds the []byte scratch buffers FlushDirty encodes sessions
 // into. Pooling (rather than qdf.Marshal's per-call allocation) means the
 // buffer's backing array only grows on the first few flushes and is reused
@@ -418,8 +447,15 @@ func (m *MemStore) FlushDirty() {
 		}
 	}
 
-	*bufPtr = buf
-	flushBufPool.Put(bufPtr)
+	// Cap what goes back to the pool: an outsized encode (a one-off session
+	// with unusually large file content) would otherwise pin that much memory
+	// in flushBufPool for every later small-session flush. Mirrors
+	// cache.Save's savePool/cache.MaxPooledBufSize pattern exactly, since both
+	// pools encode the same kind of payload (a qdf-marshaled SessionState).
+	if cap(buf) <= cache.MaxPooledBufSize {
+		*bufPtr = buf
+		flushBufPool.Put(bufPtr)
+	}
 
 	// Re-arm strong refs for sessions that failed to persist, unless a newer
 	// SaveSession already re-marked the id dirty (its pointer supersedes ours).

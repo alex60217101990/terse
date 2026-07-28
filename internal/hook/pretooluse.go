@@ -2,9 +2,10 @@ package hook
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alex60217101990/terse/internal/analytics"
@@ -80,10 +81,16 @@ func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.W
 	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() && sizeMatch && ctimeMatch {
 		// mtime+size+ctime unchanged — safe to deny without reading.
 		hashHex := cache.ShortHex(entry.Hash[:8])
-		reason = fmt.Sprintf(
-			"§unchanged:%s§ %s — mtime+size+ctime unchanged, cached at turn %d. No re-read needed.",
-			hashHex, ti.FilePath, entry.Turn,
-		)
+		var b strings.Builder
+		b.Grow(len(hashHex) + len(ti.FilePath) + 80)
+		b.WriteString("§unchanged:")
+		b.WriteString(hashHex)
+		b.WriteString("§ ")
+		b.WriteString(ti.FilePath)
+		b.WriteString(" — mtime+size+ctime unchanged, cached at turn ")
+		b.WriteString(strconv.Itoa(entry.Turn))
+		b.WriteString(". No re-read needed.")
+		reason = b.String()
 		decision = "deny"
 		action = "pretool-unchanged"
 		// Credit the saving: the whole cached file would have been re-read and

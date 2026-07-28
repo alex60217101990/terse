@@ -3,7 +3,6 @@ package cache
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -46,8 +45,7 @@ func refHash(content string) string {
 
 // RefHashOf is the exported form of refHash: the content-address used to key
 // RefPut/RefGet/RefSeen. Exposed so callers building their own dedup logic
-// against a StateStore (rather than calling Dedup directly) hash content
-// identically to this package.
+// against a StateStore hash content identically to this package.
 func RefHashOf(content string) string { return refHash(content) }
 
 // RefPath is the blob file path for a hash.
@@ -63,11 +61,7 @@ func RefSeen(hash string) bool {
 // is a rebuildable cache, so a torn write just fails to decode on read.
 func RefPut(hash, content string) {
 	e := refEntry{Content: content, TS: time.Now().Unix()}
-	data, err := qdf.Marshal(&e, qdf.OptBalanced)
-	if err != nil {
-		return
-	}
-	_ = writeFileLazy(RefPath(hash), data)
+	_ = marshalBlobPooled(RefPath(hash), &e)
 }
 
 // RefGet returns the content stored under hash. Decodes zero-copy (the returned
@@ -82,21 +76,4 @@ func RefGet(hash string) (string, bool) {
 		return "", false
 	}
 	return e.Content, true
-}
-
-// Dedup replaces content that was already emitted (this or an earlier session,
-// byte-identical) with a compact §ref token; otherwise it registers the content
-// and returns ("", false) so the caller emits it in full this first time.
-// minSize gates tiny outputs where a ~60-byte token would not pay off.
-func Dedup(content string, minSize int) (token string, deduped bool) {
-	if len(content) < minSize {
-		return "", false
-	}
-	hash := refHash(content)
-	if RefSeen(hash) {
-		return fmt.Sprintf("§ref:%s§ (%d bytes, identical to earlier output — qdf-hook expand %s)",
-			hash, len(content), hash), true
-	}
-	RefPut(hash, content)
-	return "", false
 }

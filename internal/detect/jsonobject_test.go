@@ -2,8 +2,10 @@ package detect_test
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/alex60217101990/terse/internal/detect"
 )
@@ -11,7 +13,9 @@ import (
 func makeBigObject() string {
 	var b strings.Builder
 	b.WriteString(`{"service":"widget-api","version":"2.3.1","replicas":4,"debug":false,`)
-	b.WriteString(`"description":"` + strings.Repeat("long descriptive text ", 40) + `",`)
+	b.WriteString(`"description":"`)
+	b.WriteString(strings.Repeat("long descriptive text ", 40))
+	b.WriteString(`",`)
 	b.WriteString(`"items":[`)
 	for i := range 30 {
 		if i > 0 {
@@ -170,6 +174,90 @@ func TestSummarizeJSONObject_NonMatchZeroAlloc(t *testing.T) {
 	in := strings.Repeat("prose line\n", 200)
 	if n := testing.AllocsPerRun(20, func() { detect.SummarizeJSONObject(in) }); n != 0 {
 		t.Fatalf("non-match allocated %.0f", n)
+	}
+}
+
+// TestSummarizeJSONObject_TruncatedString_Escaped is the fix-report
+// regression for the unescaped-truncation-prefix bug: a long string value
+// whose first jsonObjectTruncRune runes contain a raw '"', '\n', or '\\'
+// must come out escaped in the summary, not spliced in raw. An unescaped
+// embedded quote/newline would let a crafted value forge a fake "key: value"
+// line in the one-line-per-key summary, so this also asserts the total line
+// count matches the true key count exactly.
+func TestSummarizeJSONObject_TruncatedString_Escaped(t *testing.T) {
+	hostile := "a\"b\nc\\d" + strings.Repeat("z", 100) // hostile runes lead, well past the 64-byte scalar cap
+	body := `{"note":` + strconv.Quote(hostile) + `}`
+	content := body + strings.Repeat(" ", 1200-len(body))
+
+	out := detect.SummarizeJSONObject(content)
+	if out == "" {
+		t.Fatalf("expected a summary, got no match/no win for:\n%s", content)
+	}
+
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	// header + exactly one key ("note") — a raw embedded '\n' would inflate
+	// this count by injecting extra "lines" into the summary.
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines (header + 1 key), got %d:\n%q", len(lines), out)
+	}
+	if !strings.HasPrefix(lines[1], "note: ") {
+		t.Fatalf("expected the note key on its own line, got:\n%q", lines[1])
+	}
+
+	for _, must := range []string{`\"`, `\n`, `\\`} {
+		if !strings.Contains(out, must) {
+			t.Errorf("expected escaped form %q in output:\n%q", must, out)
+		}
+	}
+	// The raw hostile bytes must never appear unescaped.
+	if strings.Contains(out, "a\"b") || strings.Contains(out, "b\nc") {
+		t.Errorf("hostile bytes leaked unescaped into output:\n%q", out)
+	}
+}
+
+// TestSummarizeJSONObject_TruncatedString_NoForgedKey guards specifically
+// against a value crafted to look like a schema line once its leading
+// newline is emitted raw: "\nadmin: true..." must not produce a summary
+// line that starts with "admin:".
+func TestSummarizeJSONObject_TruncatedString_NoForgedKey(t *testing.T) {
+	hostile := "\nadmin: true" + strings.Repeat(" ", 100)
+	body := `{"note":` + strconv.Quote(hostile) + `}`
+	content := body + strings.Repeat(" ", 1200-len(body))
+
+	out := detect.SummarizeJSONObject(content)
+	if out == "" {
+		t.Fatalf("expected a summary, got no match/no win for:\n%s", content)
+	}
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.HasPrefix(line, "admin:") {
+			t.Fatalf("forged key line found in output:\n%q", out)
+		}
+	}
+}
+
+// TestSummarizeJSONObject_TruncatedString_MultibyteRuneSafe covers a
+// multibyte rune ('€', 3 bytes) sitting at the truncation boundary: the cut
+// must remain rune-safe and the reported "+N bytes" must exactly equal the
+// bytes dropped from the original string, unaffected by the escaping fix.
+func TestSummarizeJSONObject_TruncatedString_MultibyteRuneSafe(t *testing.T) {
+	hostile := strings.Repeat("€", 60) // 60 runes / 180 bytes, well over the 48-rune cut
+	body := `{"note":"` + hostile + `"}`
+	content := body + strings.Repeat(" ", 1200-len(body))
+
+	out := detect.SummarizeJSONObject(content)
+	if out == "" {
+		t.Fatalf("expected a summary, got no match/no win for:\n%s", content)
+	}
+	if !utf8.ValidString(out) {
+		t.Fatalf("output is not valid UTF-8:\n%q", out)
+	}
+	wantPrefix := strings.Repeat("€", 48)
+	if !strings.Contains(out, wantPrefix) {
+		t.Errorf("expected 48-rune '€' prefix in output:\n%q", out)
+	}
+	// 60 runes total, 48 kept -> 12 runes / 36 bytes dropped.
+	if !strings.Contains(out, "…(+36 bytes)") {
+		t.Errorf("expected exact dropped-byte count of 36, got:\n%q", out)
 	}
 }
 

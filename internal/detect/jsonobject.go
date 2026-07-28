@@ -82,7 +82,9 @@ func SummarizeJSONObject(content string) string {
 func renderJSONObjectSummary(m map[string]any) string {
 	keys := slices.Sorted(maps.Keys(m))
 	var b strings.Builder
-	fmt.Fprintf(&b, "[JSON OBJECT — %d top-level keys]\n", len(keys))
+	b.WriteString("[JSON OBJECT — ")
+	b.WriteString(strconv.Itoa(len(keys)))
+	b.WriteString(" top-level keys]\n")
 
 	shown, extra := keys, 0
 	if len(keys) > jsonObjectMaxKeys {
@@ -96,7 +98,9 @@ func renderJSONObjectSummary(m map[string]any) string {
 		b.WriteByte('\n')
 	}
 	if extra > 0 {
-		fmt.Fprintf(&b, "… +%d more keys\n", extra)
+		b.WriteString("… +")
+		b.WriteString(strconv.Itoa(extra))
+		b.WriteString(" more keys\n")
 	}
 	return b.String()
 }
@@ -151,7 +155,8 @@ func truncateScalar(s string, quoted bool) string {
 	}
 	suffix := "…(+" + strconv.Itoa(removed) + " bytes)"
 	if quoted {
-		return `"` + prefix + suffix + `"`
+		q := strconv.Quote(prefix)
+		return q[:len(q)-1] + suffix + `"`
 	}
 	return prefix + suffix
 }
@@ -161,7 +166,7 @@ func truncateScalar(s string, quoted bool) string {
 // config doesn't blow the summary back up to original size.
 func formatNestedObject(m map[string]any) string {
 	if len(m) > jsonObjectInlineMax {
-		return fmt.Sprintf("object{%d keys}", len(m))
+		return "object{" + strconv.Itoa(len(m)) + " keys}"
 	}
 	keys := slices.Sorted(maps.Keys(m))
 	var b strings.Builder
@@ -188,7 +193,9 @@ func formatArray(arr []any) string {
 		if first, ok := arr[0].(map[string]any); ok && len(first) > 0 {
 			keys := slices.Sorted(maps.Keys(first))
 			var b strings.Builder
-			fmt.Fprintf(&b, "array[%d] — {", n)
+			b.WriteString("array[")
+			b.WriteString(strconv.Itoa(n))
+			b.WriteString("] — {")
 			for i, k := range keys {
 				if i > 0 {
 					b.WriteString(", ")
@@ -201,7 +208,7 @@ func formatArray(arr []any) string {
 			return b.String()
 		}
 	}
-	return fmt.Sprintf("array[%d]", n)
+	return "array[" + strconv.Itoa(n) + "]"
 }
 
 // kindOf names a decoded JSON value's type for the array-schema line.

@@ -128,6 +128,13 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 		}
 	case "Grep":
 		if g, a := buildGrepSummary(content); g != "" && len(g) < len(content) {
+			// "grouped" content-mode summaries elide per-file lines past
+			// grepFileCap — same lossy shape as the generic tryGrep branch, so
+			// make them recoverable too. "tree" (files_with_matches) drops
+			// nothing and needs no footer.
+			if a == "grouped" {
+				g = withRecovery(store, g, content)
+			}
 			action, replacement = a, g
 		}
 	}
@@ -143,7 +150,12 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 		} else if s := tryGoTest(content); s != "" {
 			action, replacement = "summary", s
 		} else if s := tryGrep(content); s != "" {
-			action, replacement = "grep", s
+			// buildGrepSummary elides per-file lines past grepFileCap, so the
+			// summary is lossy: register the raw output and point at it. This
+			// is the safety net for colon-delimited config lines that pass the
+			// path-char test (e.g. "db.host:5432:desc") — nothing is
+			// unrecoverably dropped.
+			action, replacement = "grep", withRecovery(store, s, content)
 		} else if s := tryGitDiff(content); s != "" {
 			action, replacement = "gitdiff", withRecovery(store, s, content)
 		} else if s := tryGitLog(content); s != "" {
@@ -213,13 +225,12 @@ func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (st
 	return out, true
 }
 
-// dedupWithStore is the store-backed equivalent of cache.Dedup: it replaces
-// content that was already emitted (this or an earlier session, byte-
-// identical) with a compact §ref token, or registers it and returns ("",
-// false) so the caller emits it in full this first time. minSize gates tiny
-// outputs where a ~60-byte token would not pay off. The token format and hash
-// (cache.RefHashOf, the same sha256[:16] hex cache.Dedup uses) match
-// cache.Dedup exactly for parity.
+// dedupWithStore is the store-backed dedup: it replaces content that was
+// already emitted (this or an earlier session, byte-identical) with a compact
+// §ref token, or registers it and returns ("", false) so the caller emits it in
+// full this first time. minSize gates tiny outputs where a ~60-byte token would
+// not pay off. Blobs are keyed by cache.RefHashOf (sha256[:16] hex), the same
+// content-address the ref store uses everywhere.
 // refTokenFor registers content in the ref store (idempotently) and returns its
 // hash, so a lossy summary can point the model at the recoverable original via
 // `qdf-hook expand <hash>`. Unlike dedupWithStore it always stores and returns a
@@ -236,7 +247,14 @@ func refTokenFor(store hookcore.StateStore, content string) string {
 // withRecovery appends the standard lossy-summary recovery footer: the raw
 // output is registered in the ref store and the summary points at it.
 func withRecovery(store hookcore.StateStore, summary, raw string) string {
-	return summary + fmt.Sprintf("[full output: qdf-hook expand %s]\n", refTokenFor(store, raw))
+	hash := refTokenFor(store, raw)
+	var sb strings.Builder
+	sb.Grow(len(summary) + len(hash) + 32) // + "[full output: qdf-hook expand " + "]\n"
+	sb.WriteString(summary)
+	sb.WriteString("[full output: qdf-hook expand ")
+	sb.WriteString(hash)
+	sb.WriteString("]\n")
+	return sb.String()
 }
 
 func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) {

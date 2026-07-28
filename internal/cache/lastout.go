@@ -56,9 +56,5 @@ func LastOutputGet(key string) (string, bool) {
 // LastOutputPut stores the current output for a key (plain write).
 func LastOutputPut(key, output string) {
 	e := lastEntry{Output: output, TS: time.Now().Unix()}
-	data, err := qdf.Marshal(&e, qdf.OptBalanced)
-	if err != nil {
-		return
-	}
-	_ = writeFileLazy(lastPath(key), data)
+	_ = marshalBlobPooled(lastPath(key), &e)
 }

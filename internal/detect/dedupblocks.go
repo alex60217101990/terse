@@ -14,6 +14,43 @@ var (
 	seenNormPool = sync.Pool{New: func() any { return make(map[string]string) }}
 )
 
+// maxPooledDedupMapLen caps how large a map FoldRepeatedBlocks will return to
+// seenPool/seenNormPool. clear() empties a map's entries but Go's runtime
+// never shrinks its bucket array back down, so a map that grew huge for one
+// exceptional (e.g. deliberately adversarial or pathologically repetitive)
+// payload would otherwise pin that bucket memory in the pool for every
+// smaller call that follows. Past this many entries the map is dropped
+// instead of pooled, and the pool's New allocates a fresh small one on the
+// next Get.
+const maxPooledDedupMapLen = 4096
+
+// shouldPoolDedupMap reports whether a dedup map with n entries (measured
+// BEFORE clear()) is small enough to return to its sync.Pool. The boundary is
+// the whole of maxPooledDedupMapLen's rationale, isolated into a pure
+// function so it can be tested without relying on sync.Pool's unspecified
+// same-P Get/Put timing.
+func shouldPoolDedupMap(n int) bool { return n <= maxPooledDedupMapLen }
+
+// putSeen returns seen to seenPool unless it grew past maxPooledDedupMapLen
+// entries, in which case it is dropped instead (see that constant's doc
+// comment). n must be the map's length captured BEFORE this call clears it —
+// clear() empties the map in place, so measuring len(seen) after clearing
+// would always read 0 and defeat the cap check.
+func putSeen(seen map[string]struct{}, n int) {
+	clear(seen)
+	if shouldPoolDedupMap(n) {
+		seenPool.Put(seen)
+	}
+}
+
+// putSeenNorm is putSeen's counterpart for seenNormPool.
+func putSeenNorm(seenNorm map[string]string, n int) {
+	clear(seenNorm)
+	if shouldPoolDedupMap(n) {
+		seenNormPool.Put(seenNorm)
+	}
+}
+
 // minFoldBlock is the smallest block (in bytes, trailing newlines excluded)
 // worth folding. Below this a back-reference marker would cost more than the
 // duplicate it removes.
@@ -186,8 +223,14 @@ func normalizeBlock(block string, buf []byte) []byte {
 // diffTokens walks two blocks in lockstep over the SAME volatile boundaries and
 // collects the ordered differing token pairs. ok is false unless the blocks are
 // byte-identical outside their volatile tokens, tokenize to the same structure,
-// and differ in at least one but no more than maxFuzzyDiffs tokens. When ok, the
-// returned pairs cover EVERY difference, so a marker listing them loses nothing.
+// differ in at least one but no more than maxFuzzyDiffs tokens, AND every pair's
+// old value is unique among the collected pairs. That uniqueness requirement is
+// load-bearing for zero-loss: the fuzzy marker lists old→new pairs with no
+// positional information, so if two pairs shared the same old value a reader
+// could not tell which occurrence of old maps to which new — reconstruction
+// would be ambiguous. When ok, the returned pairs cover EVERY difference AND
+// unambiguously identify which new value replaces which old value, so a marker
+// listing them loses nothing.
 func diffTokens(a, b string) (pairs []tokenPair, ok bool) {
 	ia, ib := 0, 0
 	for ia < len(a) && ib < len(b) {
@@ -223,6 +266,18 @@ func diffTokens(a, b string) (pairs []tokenPair, ok bool) {
 	if len(pairs) == 0 {
 		return nil, false // identical — the exact-dup path owns this case
 	}
+	// Refuse when two pairs share the same old value: the marker has no
+	// positional information, so which occurrence of old maps to which new
+	// could not be reconstructed — ambiguous, so keep the block verbatim
+	// instead of losing information. pairs is capped at maxFuzzyDiffs (4), so
+	// this O(n²) scan is free.
+	for i := range pairs {
+		for j := i + 1; j < len(pairs); j++ {
+			if pairs[i].old == pairs[j].old {
+				return nil, false
+			}
+		}
+	}
 	return pairs, true
 }
 
@@ -242,7 +297,10 @@ func diffTokens(a, b string) (pairs []tokenPair, ok bool) {
 //   - near-duplicate (identical apart from volatile tokens — ids, hex digests,
 //     timestamps) → ⟦↑ repeat of "<first line>" except <old>→<new>, …⟧, which
 //     lists every differing token so the reader can reconstruct the block with
-//     ZERO information loss.
+//     ZERO information loss. This fold is refused (block kept verbatim) if any
+//     two differing tokens share the same old value: with no positional
+//     information in the marker, which occurrence maps to which new value
+//     would be ambiguous (see diffTokens).
 //
 // No expansion step is needed — the referent is above in the same text, exactly
 // like the "⨯N" run-length markers.
@@ -264,15 +322,11 @@ func FoldRepeatedBlocks(content string) string {
 	active := false // builder in use (set on the first fold)
 	written := 0    // bytes of content already committed to b
 	seen := seenPool.Get().(map[string]struct{})
-	defer func() {
-		clear(seen)
-		seenPool.Put(seen)
-	}()
-	var seenNorm map[string]string // normalized key → first (base) block; lazy, pooled
+	defer func() { putSeen(seen, len(seen)) }() // len() captured before putSeen's clear()
+	var seenNorm map[string]string              // normalized key → first (base) block; lazy, pooled
 	defer func() {
 		if seenNorm != nil {
-			clear(seenNorm)
-			seenNormPool.Put(seenNorm)
+			putSeenNorm(seenNorm, len(seenNorm)) // len() captured before putSeenNorm's clear()
 		}
 	}()
 	var scratch []byte // reused normalize buffer; lazy
