@@ -14,6 +14,43 @@ var (
 	seenNormPool = sync.Pool{New: func() any { return make(map[string]string) }}
 )
 
+// maxPooledDedupMapLen caps how large a map FoldRepeatedBlocks will return to
+// seenPool/seenNormPool. clear() empties a map's entries but Go's runtime
+// never shrinks its bucket array back down, so a map that grew huge for one
+// exceptional (e.g. deliberately adversarial or pathologically repetitive)
+// payload would otherwise pin that bucket memory in the pool for every
+// smaller call that follows. Past this many entries the map is dropped
+// instead of pooled, and the pool's New allocates a fresh small one on the
+// next Get.
+const maxPooledDedupMapLen = 4096
+
+// shouldPoolDedupMap reports whether a dedup map with n entries (measured
+// BEFORE clear()) is small enough to return to its sync.Pool. The boundary is
+// the whole of maxPooledDedupMapLen's rationale, isolated into a pure
+// function so it can be tested without relying on sync.Pool's unspecified
+// same-P Get/Put timing.
+func shouldPoolDedupMap(n int) bool { return n <= maxPooledDedupMapLen }
+
+// putSeen returns seen to seenPool unless it grew past maxPooledDedupMapLen
+// entries, in which case it is dropped instead (see that constant's doc
+// comment). n must be the map's length captured BEFORE this call clears it —
+// clear() empties the map in place, so measuring len(seen) after clearing
+// would always read 0 and defeat the cap check.
+func putSeen(seen map[string]struct{}, n int) {
+	clear(seen)
+	if shouldPoolDedupMap(n) {
+		seenPool.Put(seen)
+	}
+}
+
+// putSeenNorm is putSeen's counterpart for seenNormPool.
+func putSeenNorm(seenNorm map[string]string, n int) {
+	clear(seenNorm)
+	if shouldPoolDedupMap(n) {
+		seenNormPool.Put(seenNorm)
+	}
+}
+
 // minFoldBlock is the smallest block (in bytes, trailing newlines excluded)
 // worth folding. Below this a back-reference marker would cost more than the
 // duplicate it removes.
@@ -285,15 +322,11 @@ func FoldRepeatedBlocks(content string) string {
 	active := false // builder in use (set on the first fold)
 	written := 0    // bytes of content already committed to b
 	seen := seenPool.Get().(map[string]struct{})
-	defer func() {
-		clear(seen)
-		seenPool.Put(seen)
-	}()
-	var seenNorm map[string]string // normalized key → first (base) block; lazy, pooled
+	defer func() { putSeen(seen, len(seen)) }() // len() captured before putSeen's clear()
+	var seenNorm map[string]string              // normalized key → first (base) block; lazy, pooled
 	defer func() {
 		if seenNorm != nil {
-			clear(seenNorm)
-			seenNormPool.Put(seenNorm)
+			putSeenNorm(seenNorm, len(seenNorm)) // len() captured before putSeenNorm's clear()
 		}
 	}()
 	var scratch []byte // reused normalize buffer; lazy
