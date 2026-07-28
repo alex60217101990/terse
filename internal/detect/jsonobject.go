@@ -151,7 +151,8 @@ func truncateScalar(s string, quoted bool) string {
 	}
 	suffix := "…(+" + strconv.Itoa(removed) + " bytes)"
 	if quoted {
-		return `"` + prefix + suffix + `"`
+		q := strconv.Quote(prefix)
+		return q[:len(q)-1] + suffix + `"`
 	}
 	return prefix + suffix
 }
