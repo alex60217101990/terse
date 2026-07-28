@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 
 	qdf "github.com/alex60217101990/qdf"
 )
@@ -88,13 +89,37 @@ const MaxSessionFiles = 200
 // either pass a private copy, or use AppendEncodeState/WriteState directly
 // once they've confirmed len(Files) <= MaxSessionFiles (so Evict would be a
 // no-op and mutation is moot).
+// savePool holds the []byte scratch buffers plain Save encodes into. Without
+// this, Save (unlike hookcore's FlushDirty, which pools its own buffer) fed
+// AppendEncodeState a nil dst on every call, forcing qdf's geometric
+// grow-chain to reallocate from scratch each time. Pooling means the backing
+// array only grows on the first few calls and is reused after that.
+var savePool = sync.Pool{New: func() any { b := make([]byte, 0, 4096); return &b }}
+
+// maxPooledSaveBuf caps the buffer size Save will return to savePool. A
+// session state that encodes larger than this is a one-off; pinning that much
+// memory in the pool would penalize every small-session Save that follows.
+const maxPooledSaveBuf = 4 << 20 // 4MB
+
 func Save(sessionID string, s *SessionState) error {
 	Evict(s, MaxSessionFiles) // auto-evict when over the cap
-	data, err := AppendEncodeState(nil, s)
+
+	bufPtr := savePool.Get().(*[]byte)
+	buf, err := AppendEncodeState((*bufPtr)[:0], s)
 	if err != nil {
+		*bufPtr = buf
+		savePool.Put(bufPtr)
 		return err
 	}
-	return WriteState(sessionID, data)
+
+	err = WriteState(sessionID, buf)
+	// os.WriteFile (via writeFileLazy) copies buf's bytes synchronously
+	// before returning, so it's safe to return buf to the pool here.
+	if cap(buf) <= maxPooledSaveBuf {
+		*bufPtr = buf
+		savePool.Put(bufPtr)
+	}
+	return err
 }
 
 // AppendEncodeState qdf-encodes s (OptSpeed, the same mode Save uses) and
