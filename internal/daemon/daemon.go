@@ -208,6 +208,11 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 		}
 		if now.Sub(lastSweep) >= sweepInterval {
 			sweepCache(now.Unix())
+			// Prune the in-RAM usage maps on the same tick, using the same
+			// TTL cache.SweepBlobs/PruneDir applies to the on-disk sidecars —
+			// otherwise FlushDirty's next tick would rewrite the sidecars
+			// with entries PruneDir just dropped (see MemStore.PruneUsage).
+			store.PruneUsage(cache.CacheTTL())
 			lastSweep = now
 		}
 		if now.Sub(lastActivity) >= idle {
