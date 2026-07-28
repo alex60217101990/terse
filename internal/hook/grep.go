@@ -6,12 +6,23 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/alex60217101990/terse/internal/hookcore"
 )
 
 // grepFileCap is the max matching lines shown per file before eliding.
 const grepFileCap = 8
+
+// grepGroupsPool recycles the file→matches map buildGrepSummary builds on every
+// call. Its []grepMatch values alias per-call substrings of content, so the map
+// is clear()ed before going back (no stale content pinned) and dropped when it
+// grew past maxPooledGrepGroups — clear() empties entries but does not shrink
+// the bucket array, so a one-off huge-file grep must not pin an oversized map
+// in the pool. Mirrors detect's seenPool/shouldPoolDedupMap pattern.
+var grepGroupsPool = sync.Pool{New: func() any { return make(map[string][]grepMatch) }}
+
+const maxPooledGrepGroups = 4096
 
 // HandleGrep is retained for backward compatibility; Grep is handled by the
 // generic pipeline via Dispatch (buildGrepSummary is its tool-specific step).
@@ -90,7 +101,17 @@ func plausibleGrepFile(seg string) bool {
 // mode, "tree" when delegated to the file-tree compressor, or "" (empty
 // summary) when the input doesn't look like grep output.
 func buildGrepSummary(content string) (string, string) {
-	groups := make(map[string][]grepMatch)
+	groups := grepGroupsPool.Get().(map[string][]grepMatch)
+	// Cleared and returned to the pool on every exit path (len captured before
+	// clear() so the size guard sees the true entry count). The result string
+	// has already copied out any needed substrings via the Builder below.
+	defer func() {
+		n := len(groups)
+		clear(groups)
+		if n <= maxPooledGrepGroups {
+			grepGroupsPool.Put(groups)
+		}
+	}()
 	// SplitSeq: single forward pass, no []string materialized. lineCount
 	// replaces len(lines) for the bare-list ratio below.
 	parsed, lineCount := 0, 0
