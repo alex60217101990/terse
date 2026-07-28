@@ -72,6 +72,69 @@ type edit struct {
 	kind   byte // '=' equal, '-' delete, '+' insert
 }
 
+// Bound trace memory. Full-trace Myers keeps one v-snapshot (2*offset+1
+// ints) per edit-distance step d, so cost is O((n+m)·D) ints — gigabytes
+// when two large inputs differ heavily (D≈n+m). Cap d to a fixed int budget;
+// beyond it myersDiff bails and both callers serve the full content
+// (never-worse). This also bails a re-read once its changed-line count is
+// large relative to the file: with this budget, roughly >2M/L lines changed
+// in an L-line file (~200 for a 10k-line file, ~2000 for 1k) — well above a
+// normal edit, and full content is the correct fallback there anyway.
+const maxTraceInts = 16 << 20 // ~128 MiB of int snapshots (8 bytes each)
+
+// diffScratch holds reusable scratch buffers for one myersDiff call.
+//
+// All trace snapshots taken during a call have identical width
+// (2*offset+1), so they are carved out of one backing slice (snaps)
+// instead of being individually allocated. snaps grows geometrically
+// (append-style doubling) on demand as D-rounds proceed — sizing it
+// upfront to the theoretical worst case (bounded by maxD) would badly
+// over-allocate for the common case of a large file with a small diff,
+// where the actual D needed is tiny relative to n+m. Growth reallocates
+// the backing array, which would ordinarily orphan already-taken
+// snapshot subslices (traceHeads entries) pointing at the old array;
+// myersDiff avoids that by re-pointing every existing traceHeads entry
+// at the corresponding region of the new array whenever a grow occurs.
+// traceHeads itself (the outer [][]int) reuses its own backing array
+// across calls via [:0]; growing IT is always safe since its elements
+// are slice headers copied by value, not aliased data.
+type diffScratch struct {
+	v          []int
+	snaps      []int
+	traceHeads [][]int
+}
+
+// diffScratchFreeListCap bounds the free list to a small, fixed number of
+// warm scratch buffers. Daemon concurrency is low (diffs are serialized per
+// request, goroutine-per-conn), so 4 is generous headroom without pinning
+// unbounded memory: worst case is 4 * maxTraceInts/4 ints (~128MiB total),
+// though in practice each retained scratch is only as large as the biggest
+// diff recently seen (typically a few MB).
+//
+// A sync.Pool was tried first but proved unsuitable here: under a workload
+// that GCs frequently (e.g. steady JSON decode churn), Pool contents are
+// swept as often as every ~1 GC cycle (the "victim cache" only survives one
+// extra cycle), so the ~MB-sized scratch chains kept dying and being
+// reallocated from scratch — measured at 74.7% of alloc_space under daemon
+// load despite pooling. A package-level buffered channel holds strong
+// references that GC cannot reclaim, so warm buffers survive indefinitely
+// across GC cycles until evicted by actual use (channel full) or dropped
+// for being oversized.
+const diffScratchFreeListCap = 4
+
+var diffScratchFreeList = make(chan *diffScratch, diffScratchFreeListCap)
+
+// getDiffScratch returns a warm scratch buffer from the free list, or a
+// fresh one if none is available (never blocks).
+func getDiffScratch() *diffScratch {
+	select {
+	case s := <-diffScratchFreeList:
+		return s
+	default:
+		return new(diffScratch)
+	}
+}
+
 // myersDiff returns the minimal edit script between a and b.
 // Uses O((N+M)D) Myers algorithm with full trace backtracking.
 func myersDiff(a, b []string) []edit {
@@ -83,27 +146,56 @@ func myersDiff(a, b []string) []edit {
 	// v holds the furthest-reaching x for diagonal k=x-y,
 	// stored at index k+offset to avoid negative indexing.
 	offset := n + m + 1
-	v := make([]int, 2*offset+1)
+	w := 2*offset + 1
+	maxD := maxTraceInts / w
 
-	// trace stores the v array at each step d for backtracking.
-	trace := make([][]int, 0, n+m)
+	s := getDiffScratch()
 
-	// Bound trace memory. Full-trace Myers keeps one v-snapshot (2*offset+1
-	// ints) per edit-distance step d, so cost is O((n+m)·D) ints — gigabytes
-	// when two large inputs differ heavily (D≈n+m). Cap d to a fixed int budget;
-	// beyond it myersDiff bails and both callers serve the full content
-	// (never-worse). This also bails a re-read once its changed-line count is
-	// large relative to the file: with this budget, roughly >2M/L lines changed
-	// in an L-line file (~200 for a 10k-line file, ~2000 for 1k) — well above a
-	// normal edit, and full content is the correct fallback there anyway.
-	const maxTraceInts = 16 << 20 // ~128 MiB of int snapshots (8 bytes each)
-	maxD := maxTraceInts / (2*offset + 1)
+	if cap(s.v) < w {
+		s.v = make([]int, w)
+	} else {
+		s.v = s.v[:w]
+		clear(s.v)
+	}
+	v := s.v
+
+	if s.traceHeads == nil {
+		s.traceHeads = make([][]int, 0, 64)
+	} else {
+		s.traceHeads = s.traceHeads[:0]
+	}
+	trace := s.traceHeads
+
+	// Ensure s.traceHeads/s.snaps reflect this call's final backing arrays
+	// before returning the scratch to the pool, on every return path.
+	defer func() {
+		s.traceHeads = trace
+		putDiffScratch(s)
+	}()
 
 	for d := range n + m + 1 {
 		if d > maxD {
 			return nil // edit script too large to bound memory → signal "no diff"
 		}
-		snap := make([]int, 2*offset+1)
+
+		// Grow snaps to fit round d, doubling capacity when the current
+		// backing array is exhausted. On reallocation, re-slice every
+		// already-taken snapshot (rounds 0..d-1) from the new array so
+		// trace stays valid — the data itself is copied forward too.
+		needed := (d + 1) * w
+		if cap(s.snaps) < needed {
+			newCap := max(needed, cap(s.snaps)*2)
+			newSnaps := make([]int, needed, newCap)
+			copy(newSnaps, s.snaps)
+			for i := range trace {
+				trace[i] = newSnaps[i*w : (i+1)*w : (i+1)*w]
+			}
+			s.snaps = newSnaps
+		} else if len(s.snaps) < needed {
+			s.snaps = s.snaps[:needed]
+		}
+
+		snap := s.snaps[d*w : (d+1)*w : (d+1)*w]
 		copy(snap, v)
 		trace = append(trace, snap)
 
@@ -127,6 +219,24 @@ func myersDiff(a, b []string) []edit {
 		}
 	}
 	return nil
+}
+
+// putDiffScratch resets scratch's slices (keeping backing arrays) and
+// returns it to the free list — unless this call grew a buffer past
+// maxTraceInts/4 (drop instead of pinning ~128MB behind a strong ref
+// forever) or the free list is already full (drop and let GC reclaim;
+// the list is a bounded cache, not an unbounded pool).
+func putDiffScratch(s *diffScratch) {
+	if cap(s.snaps) > maxTraceInts/4 {
+		return
+	}
+	s.v = s.v[:0]
+	s.snaps = s.snaps[:0]
+	s.traceHeads = s.traceHeads[:0]
+	select {
+	case diffScratchFreeList <- s:
+	default:
+	}
 }
 
 func backtrack(a, b []string, trace [][]int, d, offset int) []edit {

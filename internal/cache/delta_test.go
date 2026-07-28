@@ -204,3 +204,71 @@ func TestUnifiedDiff_BailsOnPathologicalDissimilar(t *testing.T) {
 		t.Fatal("large similar input (1 change) must still diff, got empty")
 	}
 }
+
+// TestUnifiedDiff_DeterministicRepeated pins byte-identical output across
+// repeated calls on the same large input. This guards against pooled-buffer
+// reuse bugs (e.g. a stale trace snapshot or scratch slice leaking data from
+// a previous call into the next one).
+func TestUnifiedDiff_DeterministicRepeated(t *testing.T) {
+	v1, err := os.ReadFile("testdata/encoder_go_v1.txt")
+	if err != nil {
+		t.Fatalf("read v1: %v", err)
+	}
+	v2, err := os.ReadFile("testdata/encoder_go_v2.txt")
+	if err != nil {
+		t.Fatalf("read v2: %v", err)
+	}
+
+	want := cache.UnifiedDiff(v1, v2, 3)
+	if want == "" {
+		t.Fatal("expected non-empty reference diff")
+	}
+	for i := range 50 {
+		got := cache.UnifiedDiff(v1, v2, 3)
+		if got != want {
+			t.Fatalf("iteration %d: diff output diverged from reference\nwant:\n%s\ngot:\n%s", i, want, got)
+		}
+	}
+}
+
+// TestUnifiedDiff_ParallelDistinctInputs guards against cross-goroutine
+// scratch sharing: 8 goroutines diff distinct inputs concurrently, each
+// asserting its result equals its own serial (single-goroutine) reference.
+// If pooled scratch buffers ever leaked between goroutines, this would
+// surface as one goroutine's diff contaminated by another's data.
+func TestUnifiedDiff_ParallelDistinctInputs(t *testing.T) {
+	const goroutines = 8
+
+	type input struct{ old, newer []byte }
+	inputs := make([]input, goroutines)
+	wants := make([]string, goroutines)
+
+	for g := range goroutines {
+		var old, newer strings.Builder
+		for i := range 300 {
+			fmt.Fprintf(&old, "g%d-line-%d\n", g, i)
+			if i%17 == g%17 {
+				fmt.Fprintf(&newer, "g%d-CHANGED-%d\n", g, i)
+			} else {
+				fmt.Fprintf(&newer, "g%d-line-%d\n", g, i)
+			}
+		}
+		inputs[g] = input{old: []byte(old.String()), newer: []byte(newer.String())}
+		wants[g] = cache.UnifiedDiff(inputs[g].old, inputs[g].newer, 3)
+		if wants[g] == "" {
+			t.Fatalf("goroutine %d: expected non-empty reference diff", g)
+		}
+	}
+
+	for g := range goroutines {
+		t.Run(fmt.Sprintf("g%d", g), func(t *testing.T) {
+			t.Parallel()
+			for i := range 20 {
+				got := cache.UnifiedDiff(inputs[g].old, inputs[g].newer, 3)
+				if got != wants[g] {
+					t.Fatalf("goroutine %d iteration %d: diff diverged from serial reference\nwant:\n%s\ngot:\n%s", g, i, wants[g], got)
+				}
+			}
+		})
+	}
+}
