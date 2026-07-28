@@ -186,8 +186,14 @@ func normalizeBlock(block string, buf []byte) []byte {
 // diffTokens walks two blocks in lockstep over the SAME volatile boundaries and
 // collects the ordered differing token pairs. ok is false unless the blocks are
 // byte-identical outside their volatile tokens, tokenize to the same structure,
-// and differ in at least one but no more than maxFuzzyDiffs tokens. When ok, the
-// returned pairs cover EVERY difference, so a marker listing them loses nothing.
+// differ in at least one but no more than maxFuzzyDiffs tokens, AND every pair's
+// old value is unique among the collected pairs. That uniqueness requirement is
+// load-bearing for zero-loss: the fuzzy marker lists old→new pairs with no
+// positional information, so if two pairs shared the same old value a reader
+// could not tell which occurrence of old maps to which new — reconstruction
+// would be ambiguous. When ok, the returned pairs cover EVERY difference AND
+// unambiguously identify which new value replaces which old value, so a marker
+// listing them loses nothing.
 func diffTokens(a, b string) (pairs []tokenPair, ok bool) {
 	ia, ib := 0, 0
 	for ia < len(a) && ib < len(b) {
@@ -223,6 +229,18 @@ func diffTokens(a, b string) (pairs []tokenPair, ok bool) {
 	if len(pairs) == 0 {
 		return nil, false // identical — the exact-dup path owns this case
 	}
+	// Refuse when two pairs share the same old value: the marker has no
+	// positional information, so which occurrence of old maps to which new
+	// could not be reconstructed — ambiguous, so keep the block verbatim
+	// instead of losing information. pairs is capped at maxFuzzyDiffs (4), so
+	// this O(n²) scan is free.
+	for i := range pairs {
+		for j := i + 1; j < len(pairs); j++ {
+			if pairs[i].old == pairs[j].old {
+				return nil, false
+			}
+		}
+	}
 	return pairs, true
 }
 
@@ -242,7 +260,10 @@ func diffTokens(a, b string) (pairs []tokenPair, ok bool) {
 //   - near-duplicate (identical apart from volatile tokens — ids, hex digests,
 //     timestamps) → ⟦↑ repeat of "<first line>" except <old>→<new>, …⟧, which
 //     lists every differing token so the reader can reconstruct the block with
-//     ZERO information loss.
+//     ZERO information loss. This fold is refused (block kept verbatim) if any
+//     two differing tokens share the same old value: with no positional
+//     information in the marker, which occurrence maps to which new value
+//     would be ambiguous (see diffTokens).
 //
 // No expansion step is needed — the referent is above in the same text, exactly
 // like the "⨯N" run-length markers.

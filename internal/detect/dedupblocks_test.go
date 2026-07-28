@@ -197,6 +197,54 @@ func TestFoldRepeatedBlocks_ExactCopyOfNearDupFoldsToBase(t *testing.T) {
 	}
 }
 
+// Zero-loss guard: if two differing tokens in the SAME block both have old
+// value "111" but diverge to different new values ("222" vs "333"), a marker
+// listing "111→222, 111→333" could not tell a reader which occurrence of
+// "111" becomes which — ambiguous reconstruction. The fold must be refused,
+// leaving BOTH blocks verbatim (output byte-identical to input).
+func TestFoldRepeatedBlocks_AmbiguousDuplicateOldStaysVerbatim(t *testing.T) {
+	a := "### dup-old-values\n" +
+		"left=111 right=111 padding text to clear the block size floor nicely here\n" +
+		"second line of unchanging content that keeps this block comfortably sized\n"
+	b := "### dup-old-values\n" +
+		"left=222 right=333 padding text to clear the block size floor nicely here\n" +
+		"second line of unchanging content that keeps this block comfortably sized\n"
+	in := a + "\n\n" + b + "\n"
+
+	out := detect.FoldRepeatedBlocks(in)
+	if out != in {
+		t.Fatalf("ambiguous duplicate-old fold must be refused (verbatim):\n in: %q\nout: %q", in, out)
+	}
+}
+
+// Duplicate old values that do NOT diverge (both instances stay "111" in both
+// blocks) are not diff pairs at all — only the genuinely differing token
+// ("extra") becomes a pair, so no ambiguity exists and the fold must proceed
+// normally.
+func TestFoldRepeatedBlocks_DuplicateUnchangedTokensStillFold(t *testing.T) {
+	a := "### dup-nochange\n" +
+		"left=111 right=111 extra=1 padding text so this line clears the floor nicely\n" +
+		"second unchanging line of content that keeps the block comfortably sized well\n"
+	b := "### dup-nochange\n" +
+		"left=111 right=111 extra=2 padding text so this line clears the floor nicely\n" +
+		"second unchanging line of content that keeps the block comfortably sized well\n"
+	in := a + "\n\n" + b + "\n"
+
+	out := detect.FoldRepeatedBlocks(in)
+	if len(out) >= len(in) {
+		t.Fatalf("expected shrink (non-ambiguous fold), got %d vs %d:\n%s", len(out), len(in), out)
+	}
+	if !strings.Contains(out, "1→2") {
+		t.Fatalf("marker must show the 1→2 difference:\n%s", out)
+	}
+	if !strings.Contains(out, a) {
+		t.Fatalf("first occurrence must stay verbatim:\n%s", out)
+	}
+	if strings.Count(out, "extra=2") != 0 {
+		t.Fatalf("second occurrence must fold, not stay raw:\n%s", out)
+	}
+}
+
 // Exact-dup behavior is unchanged (regression).
 func TestFoldRepeatedBlocks_ExactStillWins(t *testing.T) {
 	block := "# hdr\n" + strings.Repeat("same line of content here\n", 6)
