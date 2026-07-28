@@ -48,17 +48,17 @@ func SummarizeGoTest(s string) string {
 			skipCount++
 			currentIndented = nil
 		case strings.HasPrefix(line, "ok  \t") || strings.HasPrefix(line, "ok\t"):
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				pkg = parts[1]
-				duration = parts[2]
+			var f [3]string
+			if fieldsInto(line, f[:]) >= 3 {
+				pkg = f[1]
+				duration = f[2]
 				pkgCount++
 			}
 		case strings.HasPrefix(line, "FAIL\t"):
 			pkgFailed = true
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				pkg = parts[1]
+			var f [2]string
+			if fieldsInto(line, f[:]) >= 2 {
+				pkg = f[1]
 				pkgCount++
 			}
 		case line == "FAIL":
@@ -143,6 +143,29 @@ func SummarizeGoTest(s string) string {
 		}
 	}
 	return sb.String()
+}
+
+// fieldsInto fills dst with up to len(dst) whitespace-delimited fields of s
+// (each aliasing s, no allocation) and returns how many it wrote — a bounded,
+// zero-alloc strings.Fields for callers that need only the first few fields of
+// a result line and can supply a stack array.
+func fieldsInto(s string, dst []string) int {
+	n := 0
+	for i := 0; i < len(s) && n < len(dst); {
+		for i < len(s) && isASCIISpace(s[i]) {
+			i++
+		}
+		if i >= len(s) {
+			break
+		}
+		start := i
+		for i < len(s) && !isASCIISpace(s[i]) {
+			i++
+		}
+		dst[n] = s[start:i]
+		n++
+	}
+	return n
 }
 
 func itoa(n int) string {

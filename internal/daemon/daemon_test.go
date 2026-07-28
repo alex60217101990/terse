@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/daemon"
 	"github.com/alex60217101990/terse/internal/protocol"
 )
@@ -32,14 +33,22 @@ func tempSock(t *testing.T) string {
 // waitForSock polls for sockPath to exist, up to ~1s.
 func waitForSock(t *testing.T, sockPath string) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
+	// Readiness must mean "the listener accepts", not merely "the socket file
+	// exists": on a slow/loaded runner (observed on ubuntu-24.04-arm CI) there
+	// is a window where the file is present but Accept isn't serving yet, so a
+	// stat-only poll races ahead and the first real dial gets ECONNREFUSED.
+	// Probe with an actual dial; a successful connect proves the accept loop is
+	// live. The empty connection we open here is closed immediately (the daemon
+	// logs one benign "unexpected end of JSON input" for it — harmless).
+	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if _, err := os.Stat(sockPath); err == nil {
+		if c, err := net.Dial("unix", sockPath); err == nil {
+			_ = c.Close()
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("socket %s never appeared", sockPath)
+	t.Fatalf("socket %s never became dialable", sockPath)
 }
 
 // roundtrip dials sockPath, writes payload, half-closes the write side, and
@@ -220,5 +229,44 @@ func TestDaemon_ContinuousTrafficNeverDropsConn(t *testing.T) {
 			t.Fatalf("request %d got invalid reply (daemon dropped conn / exited?): %v (body: %s)", i, err, out)
 		}
 		time.Sleep(15 * time.Millisecond) // << idle, so continuous traffic keeps the daemon up
+	}
+}
+
+// TestDaemon_AnalyticsRoutedThroughSharedWriter proves Serve wires up
+// Task 7's shared analytics.Writer end to end: hook handlers' internal
+// analytics.Record calls (triggered by ordinary PostToolUse traffic) land
+// in the same analytics.jsonl file the CLI-path Record would have written,
+// even though the daemon never opens/closes a fd per call.
+func TestDaemon_AnalyticsRoutedThroughSharedWriter(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	sock := tempSock(t)
+	go func() { _ = daemon.Serve(sock, time.Minute, "test") }()
+	waitForSock(t, sock)
+
+	const requests = 5
+	for range requests {
+		out := roundtrip(t, sock, bashPayload(strings.Repeat("log line here\n", 40)))
+		var resp protocol.HookOutput
+		if err := json.Unmarshal([]byte(out), &resp); err != nil {
+			t.Fatalf("invalid HookOutput JSON: %v (body: %s)", err, out)
+		}
+	}
+
+	events, err := analytics.LoadEvents(0)
+	if err != nil {
+		t.Fatalf("LoadEvents: %v", err)
+	}
+	if len(events) < requests {
+		t.Fatalf("expected at least %d analytics events recorded via the daemon's shared writer, got %d", requests, len(events))
+	}
+}
+
+func TestSocketPathTooLong(t *testing.T) {
+	long := "/tmp/" + strings.Repeat("x", 120) + "/d.sock"
+	if !daemon.SocketPathTooLong(long) {
+		t.Error("120+ byte path must be flagged")
+	}
+	if daemon.SocketPathTooLong("/tmp/short.sock") {
+		t.Error("short path must not be flagged")
 	}
 }

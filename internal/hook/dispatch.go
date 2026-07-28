@@ -84,7 +84,17 @@ func skipTool(tool string) bool {
 // smaller).
 func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.HookInput, w io.Writer) error {
 	start := time.Now()
-	if inp.ToolResponse == nil || skipTool(toolName) {
+	if inp.ToolResponse == nil {
+		return protocol.EncodeOutput(w, protocol.Passthrough())
+	}
+	if skipTool(toolName) {
+		// Passthrough by policy — still record it so stats see the invocation.
+		raw := inp.ToolResponse.Text()
+		_ = analytics.Record(analytics.Event{
+			TS: time.Now().UnixNano(), SID: inp.SessionID, Hook: toolName,
+			Action: "skip", BytesIn: len(raw), BytesOut: len(raw),
+			DurNS: time.Since(start).Nanoseconds(),
+		})
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -118,19 +128,44 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 		}
 	case "Grep":
 		if g, a := buildGrepSummary(content); g != "" && len(g) < len(content) {
+			// "grouped" content-mode summaries elide per-file lines past
+			// grepFileCap — same lossy shape as the generic tryGrep branch, so
+			// make them recoverable too. "tree" (files_with_matches) drops
+			// nothing and needs no footer.
+			if a == "grouped" {
+				g = withRecovery(store, g, content)
+			}
 			action, replacement = a, g
 		}
 	}
 
 	if replacement == "" {
 		if s := tryJSON(content); s != "" {
-			action, replacement = "summary", s
+			// Columnar is the most lossy transform (all rows dropped). Register
+			// the raw array so the model can recover it, and point at it — the
+			// summary alone is otherwise unrecoverable off the Read path.
+			action, replacement = "columnar", withRecovery(store, s, content)
+		} else if s := tryJSONObject(content); s != "" {
+			action, replacement = "jsonobject", withRecovery(store, s, content)
 		} else if s := tryGoTest(content); s != "" {
 			action, replacement = "summary", s
+		} else if s := tryGrep(content); s != "" {
+			// buildGrepSummary elides per-file lines past grepFileCap, so the
+			// summary is lossy: register the raw output and point at it. This
+			// is the safety net for colon-delimited config lines that pass the
+			// path-char test (e.g. "db.host:5432:desc") — nothing is
+			// unrecoverably dropped.
+			action, replacement = "grep", withRecovery(store, s, content)
+		} else if s := tryGitDiff(content); s != "" {
+			action, replacement = "gitdiff", withRecovery(store, s, content)
 		} else if s := tryGitLog(content); s != "" {
 			action, replacement = "summary", s
 		} else if s := tryBench(content); s != "" {
 			action, replacement = "summary", s
+		} else if s := tryStackTrace(content); s != "" {
+			action, replacement = "stacktrace", withRecovery(store, s, content)
+		} else if s := tryTable(content); s != "" {
+			action, replacement = "table", withRecovery(store, s, content)
 		} else if tok, ok := dedupWithStore(store, content, 256); ok {
 			action, replacement = "ref", tok
 		} else if d, ok := tryRerunDelta(store, toolName, key, content); ok {
@@ -142,6 +177,13 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			action, replacement = "squeezed", sq
 		} else {
 			action = "passthrough"
+		}
+	}
+
+	// Path-dense outputs: fold the shared directory prefix (lossless).
+	if action == "tree" || action == "grep" || action == "grouped" {
+		if folded := detect.FoldPathPrefix(replacement); len(folded) < len(replacement) {
+			replacement = folded
 		}
 	}
 
@@ -183,13 +225,38 @@ func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (st
 	return out, true
 }
 
-// dedupWithStore is the store-backed equivalent of cache.Dedup: it replaces
-// content that was already emitted (this or an earlier session, byte-
-// identical) with a compact §ref token, or registers it and returns ("",
-// false) so the caller emits it in full this first time. minSize gates tiny
-// outputs where a ~60-byte token would not pay off. The token format and hash
-// (cache.RefHashOf, the same sha256[:16] hex cache.Dedup uses) match
-// cache.Dedup exactly for parity.
+// dedupWithStore is the store-backed dedup: it replaces content that was
+// already emitted (this or an earlier session, byte-identical) with a compact
+// §ref token, or registers it and returns ("", false) so the caller emits it in
+// full this first time. minSize gates tiny outputs where a ~60-byte token would
+// not pay off. Blobs are keyed by cache.RefHashOf (sha256[:16] hex), the same
+// content-address the ref store uses everywhere.
+// refTokenFor registers content in the ref store (idempotently) and returns its
+// hash, so a lossy summary can point the model at the recoverable original via
+// `qdf-hook expand <hash>`. Unlike dedupWithStore it always stores and returns a
+// hash — it is for making a summary recoverable, not for skipping duplicate
+// output.
+func refTokenFor(store hookcore.StateStore, content string) string {
+	hash := cache.RefHashOf(content)
+	if !store.RefSeen(hash) {
+		store.RefPut(hash, content)
+	}
+	return hash
+}
+
+// withRecovery appends the standard lossy-summary recovery footer: the raw
+// output is registered in the ref store and the summary points at it.
+func withRecovery(store hookcore.StateStore, summary, raw string) string {
+	hash := refTokenFor(store, raw)
+	var sb strings.Builder
+	sb.Grow(len(summary) + len(hash) + 32) // + "[full output: qdf-hook expand " + "]\n"
+	sb.WriteString(summary)
+	sb.WriteString("[full output: qdf-hook expand ")
+	sb.WriteString(hash)
+	sb.WriteString("]\n")
+	return sb.String()
+}
+
 func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) {
 	if len(content) < minSize {
 		return "", false

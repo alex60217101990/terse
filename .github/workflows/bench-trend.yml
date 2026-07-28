@@ -53,7 +53,12 @@ jobs:
       - name: run benchmarks
         run: |
           set -euo pipefail
-          go test -bench=. -benchmem -run='^$' -benchtime=2s -count=1 -timeout=20m ./... | tee output.txt
+          # -count=6 so github-action-benchmark averages six samples per
+          # benchmark instead of trusting a single shot: shared GitHub runners
+          # vary CPU/thermal wildly between jobs, and a lone sample produces
+          # 2-9x ns/op swings on identical code. Averaging tightens the ns/op
+          # series; B/op and allocs/op are deterministic regardless.
+          go test -bench=. -benchmem -run='^$' -benchtime=1s -count=6 -timeout=20m ./... | tee output.txt
 
       # github-action-benchmark fetches gh-pages before writing and hard-fails
       # (git exit 128) if the branch is absent — it does not bootstrap it.
@@ -123,7 +128,12 @@ jobs:
           auto-push: false
           save-data-file: false
           # Tighter on PRs so real regressions get flagged; still comment-only.
-          alert-threshold: "150%"
+          # 200% (not 150%): the ns/op series is inherently noisy on shared
+          # runners (see the -count=6 note above); a tighter gate cries wolf on
+          # runner slowness, not code. The deterministic B/op & allocs/op series
+          # still flag real allocation regressions well under this ratio.
+          # Advisory only — fail-on-alert:false never blocks a merge.
+          alert-threshold: "200%"
           comment-on-alert: true
           fail-on-alert: false
           summary-always: true

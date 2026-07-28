@@ -3,9 +3,11 @@ package hookcore_test
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hookcore"
@@ -263,5 +265,302 @@ func TestMemStore_RefSeenSelfHealsAfterBlobEvicted(t *testing.T) {
 	s.RefPut(hash, "some cached content that is long enough")
 	if !s.RefSeen(hash) {
 		t.Fatal("RefSeen should be true again after re-caching")
+	}
+}
+
+// TestMemStore_FlushDirty_NoDeadlockUnderLoadSaveStorm exercises the safety
+// case FlushDirty's zero-copy fast path depends on: encoding the LIVE stored
+// *SessionState directly under the shard's *read* lock (see FlushDirty's doc
+// comment) is only safe because nothing mutates that pointer's Files map
+// in place while the encode runs. 16 goroutines hammer LoadSession/SaveSession
+// against one session id (well under cache.MaxSessionFiles, so every flush
+// takes the fast path) concurrently with a tight FlushDirty loop. This must
+// neither deadlock nor pathologically serialize, and every on-disk snapshot
+// FlushDirty produces along the way must qdf-decode cleanly — a torn Files
+// map (a partial/interleaved encode) would show up as a decode error or a
+// corrupt entry.
+func TestMemStore_FlushDirty_NoDeadlockUnderLoadSaveStorm(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	const sessionID = "storm-session"
+
+	const goroutines = 16
+	const filesPerSession = 40 // well under cache.MaxSessionFiles: fast path
+
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := range goroutines {
+		go func(g int) {
+			defer wg.Done()
+			for {
+				select {
+				case <-done:
+					return
+				default:
+				}
+				st := s.LoadSession(sessionID)
+				st.Turn++
+				path := fmt.Sprintf("/storm/%d/%d.go", g, st.Turn%filesPerSession)
+				st.Files[path] = cache.FileEntry{
+					Content: []byte("payload"),
+					Turn:    st.Turn,
+				}
+				s.SaveSession(sessionID, st)
+			}
+		}(g)
+	}
+
+	flushDone := make(chan struct{})
+	go func() {
+		defer close(flushDone)
+		for range 2000 {
+			m.FlushDirty()
+			// Every snapshot FlushDirty just wrote must decode cleanly: a
+			// torn/interleaved encode of the live map would surface here as
+			// a decode error or a corrupt entry (negative Turn can only come
+			// from decoding garbage bytes as a length-prefixed field).
+			st, err := cache.Load(sessionID)
+			if err != nil {
+				panic(fmt.Sprintf("flushed snapshot failed to decode: %v", err))
+			}
+			for path, fe := range st.Files {
+				if fe.Turn < 0 {
+					panic(fmt.Sprintf("corrupt entry %q after flush: %+v", path, fe))
+				}
+			}
+		}
+	}()
+
+	select {
+	case <-flushDone:
+	case <-time.After(20 * time.Second):
+		t.Fatal("FlushDirty storm deadlocked or stalled")
+	}
+	close(done)
+	wg.Wait()
+
+	// Final flush + decode after the storm settles.
+	m.FlushDirty()
+	st, err := cache.Load(sessionID)
+	if err != nil {
+		t.Fatalf("decode final flushed snapshot: %v", err)
+	}
+	if len(st.Files) == 0 {
+		t.Fatal("expected a non-empty session after the storm")
+	}
+}
+
+// newFlushBenchState builds a SessionState with n FileEntries of ~2KB
+// Content each, matching the daemon's alloc-profile scenario (many
+// moderately-sized files read during a long session).
+func newFlushBenchState(base, n int) *cache.SessionState {
+	content := []byte(strings.Repeat("x", 2048))
+	st := cache.NewSessionState()
+	for i := range n {
+		st.Files[fmt.Sprintf("/bench/%d/file-%d.go", base, i)] = cache.FileEntry{
+			Content: content,
+			Turn:    i,
+			Hash:    [32]byte{byte(i)},
+		}
+	}
+	return st
+}
+
+// BenchmarkFlushDirty is Task 2's baseline/gate benchmark: 50 sessions x 40
+// FileEntries (~2KB Content each), half re-marked dirty every iteration so
+// each FlushDirty call has real work to do. Compare B/op before/after the
+// zero-copy fast path with benchstat; target is a 50%+ reduction.
+func BenchmarkFlushDirty(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+
+	const numSessions = 50
+	const filesPerSession = 40
+	ids := make([]string, numSessions)
+	states := make([]*cache.SessionState, numSessions)
+	for i := range numSessions {
+		ids[i] = fmt.Sprintf("bench-session-%d", i)
+		states[i] = newFlushBenchState(i, filesPerSession)
+		s.SaveSession(ids[i], states[i])
+	}
+
+	for b.Loop() {
+		// Re-mark half the sessions dirty each iteration so FlushDirty has a
+		// realistic mixed dirty/clean set to work through. SaveSession's own
+		// cost (a pointer swap under the shard lock) is unchanged by this
+		// task and identical across before/after runs, so it doesn't affect
+		// the relative B/op comparison FlushDirty is gated on.
+		for i := range numSessions / 2 {
+			s.SaveSession(ids[i], states[i])
+		}
+		m.FlushDirty()
+	}
+}
+
+// BenchmarkLoadSession is the no-regression gate for LoadSession: copySession
+// is untouched by this task (still used on every LoadSession call), so this
+// should be flat before/after.
+func BenchmarkLoadSession(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	s.SaveSession("bench-load", newFlushBenchState(0, 40))
+
+	for b.Loop() {
+		_ = s.LoadSession("bench-load")
+	}
+}
+
+// BenchmarkSaveSession is the no-regression gate for SaveSession: it is
+// untouched by this task (still a pointer swap + dirty-set insert under
+// lock), so this should be flat before/after.
+func BenchmarkSaveSession(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	st := newFlushBenchState(0, 40)
+
+	for b.Loop() {
+		s.SaveSession("bench-save", st)
+	}
+}
+
+// BenchmarkLoadSessionReloadMiss documents the cost of the weak-cache MISS
+// path: the session exists on disk but its weak pointer has been collected,
+// so LoadSession must reload it via cache.Load (os.ReadFile + qdf decode).
+// A runtime.GC() before each timed LoadSession forces the weak-only cached
+// copy to be reclaimed; the GC itself is excluded from the timer. Compare
+// against BenchmarkLoadSession (the hit path) to see the reload penalty.
+func BenchmarkLoadSessionReloadMiss(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+	s.SaveSession("miss", newFlushBenchState(0, 40))
+	m.FlushDirty() // persist to disk and drop the dirty strong ref
+
+	for b.Loop() {
+		b.StopTimer()
+		runtime.GC() // reclaim the weak-only cached session -> next Load misses
+		b.StartTimer()
+		_ = s.LoadSession("miss") // reloads from disk
+	}
+}
+
+// TestMemStore_ColdSessionsAreGCReclaimable is the core memory-behavior test
+// for the weak session cache. It creates 500 clean (flushed) sessions of
+// ~200KB each while holding strong references, measures HeapInuse, then drops
+// those references and forces GC. Because the shard maps hold only weak
+// pointers, the ~100MB of clean session content must become reclaimable and
+// HeapInuse must drop sharply. (Before this change the shard map held strong
+// *SessionState pointers, so the heap would have stayed pinned and this test
+// would fail — that is the behavior it pins.) It then verifies LoadSession
+// still returns correct data, transparently reloaded from disk.
+//
+// GC/heap tests are inherently noisy on CI, so the assertion is a generous
+// RELATIVE drop (after < half of before) against a ~100MB working set, not an
+// absolute byte target.
+func TestMemStore_ColdSessionsAreGCReclaimable(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+
+	const n = 500
+	const contentSize = 200 * 1024 // ~200KB per session -> ~100MB total
+
+	states := make([]*cache.SessionState, n)
+	for i := range n {
+		st := cache.NewSessionState()
+		st.Turn = i
+		buf := make([]byte, contentSize)
+		buf[0] = byte(i) // defeat any all-zero page dedup
+		st.Files["/big.dat"] = cache.FileEntry{Content: buf, Turn: i}
+		states[i] = st
+		s.SaveSession(fmt.Sprintf("sess-%d", i), st)
+	}
+	// Persist to disk and drop the dirty strong refs; now only the `states`
+	// slice (strong) and the shard maps (weak) reference the sessions.
+	m.FlushDirty()
+
+	runtime.GC()
+	var before runtime.MemStats
+	runtime.ReadMemStats(&before)
+	// Pin `states` across the measurement: without this, Go's liveness
+	// analysis treats the backing array as dead after the save loop (its
+	// elements are never read again) and GC reclaims it before `before` is
+	// even read, defeating the test.
+	runtime.KeepAlive(states)
+
+	// Drop the last strong references. The shard maps hold only weak pointers,
+	// so every session is now GC-reclaimable.
+	states = nil //nolint:ineffassign // deliberately drops the strong refs so the GC test can reclaim the sessions
+	runtime.GC()
+	runtime.GC()
+	var after runtime.MemStats
+	runtime.ReadMemStats(&after)
+
+	if before.HeapInuse < 80*1024*1024 {
+		t.Fatalf("sanity: expected a large working set before GC, got HeapInuse=%d", before.HeapInuse)
+	}
+	if after.HeapInuse >= before.HeapInuse/2 {
+		t.Fatalf("cold sessions were not GC-reclaimable: HeapInuse before=%d after=%d "+
+			"(expected after < before/2)", before.HeapInuse, after.HeapInuse)
+	}
+
+	// Data must still be correct — reloaded from disk on the miss.
+	got := s.LoadSession("sess-42")
+	if got.Turn != 42 {
+		t.Fatalf("reloaded session has wrong Turn: got %d want 42", got.Turn)
+	}
+	if fe, ok := got.Files["/big.dat"]; !ok || len(fe.Content) != contentSize || fe.Content[0] != 42 {
+		t.Fatalf("reloaded session content wrong: ok=%v len=%d", ok, len(fe.Content))
+	}
+}
+
+// TestMemStore_DirtySessionSurvivesGC guards the critical data-safety
+// invariant: a session that has been saved but NOT yet flushed must survive
+// garbage collection. The shard map holds only a weak pointer, so survival
+// depends entirely on the strong reference dirtySessions keeps until
+// FlushDirty persists it. If that strong ref were missing, GC would reclaim
+// the session, the (never-written) disk would have nothing, and LoadSession
+// would hand back a fresh empty state — silent data loss.
+func TestMemStore_DirtySessionSurvivesGC(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := hookcore.NewMemStore()
+	s := m.StateStore()
+
+	st := cache.NewSessionState()
+	st.Turn = 99
+	st.Files["/x"] = cache.FileEntry{Content: []byte("dirty-unflushed"), Turn: 99}
+	s.SaveSession("dirty", st)
+	st = nil // drop the caller's strong ref; only the store's dirty ref remains
+
+	// Deliberately do NOT flush. Force GC hard.
+	for range 3 {
+		runtime.GC()
+	}
+
+	// Prove nothing reached disk — survival can only be via the strong ref.
+	if _, err := os.Stat(cache.StatePath("dirty")); !os.IsNotExist(err) {
+		t.Fatalf("expected no on-disk file for an unflushed session, stat err=%v", err)
+	}
+
+	got := s.LoadSession("dirty")
+	if got.Turn != 99 {
+		t.Fatalf("dirty session lost after GC: Turn=%d want 99", got.Turn)
+	}
+	if string(got.Files["/x"].Content) != "dirty-unflushed" {
+		t.Fatalf("dirty session content lost after GC: %q", got.Files["/x"].Content)
+	}
+
+	// And once flushed, it persists and is then reclaimable/reloadable.
+	m.FlushDirty()
+	if _, err := os.Stat(cache.StatePath("dirty")); err != nil {
+		t.Fatalf("expected on-disk file after flush: %v", err)
+	}
+	if got2 := s.LoadSession("dirty"); got2.Turn != 99 {
+		t.Fatalf("session wrong after flush: Turn=%d want 99", got2.Turn)
 	}
 }

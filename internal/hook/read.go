@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +59,9 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 		partial = true
 	}
 	if partial {
+		if out := serveWindowUnchanged(store, inp, &ti); out != nil {
+			return protocol.EncodeOutput(w, out)
+		}
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -154,9 +158,16 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 
 func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.HookOutput {
 	hashHex := cache.ShortHex(hash[:8])
-	msg := fmt.Sprintf("[READ §unchanged:%s§ %s — content identical to read at turn %d. Full content available if needed.]",
-		hashHex, path, cachedAtTurn)
-	return protocol.Replace(msg)
+	var sb strings.Builder
+	sb.Grow(len(hashHex) + len(path) + 96)
+	sb.WriteString("[READ §unchanged:")
+	sb.WriteString(hashHex)
+	sb.WriteString("§ ")
+	sb.WriteString(path)
+	sb.WriteString(" — content identical to read at turn ")
+	sb.WriteString(strconv.Itoa(cachedAtTurn))
+	sb.WriteString(". Full content available if needed.]")
+	return protocol.Replace(sb.String())
 }
 
 func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *protocol.HookOutput {
@@ -168,7 +179,12 @@ func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *p
 	hashHex := cache.ShortHex(newHash[:8])
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "[READ §delta:%s§ %s — showing changes since last read]\n", hashHex, path)
+	sb.Grow(len(diff) + len(path) + 64)
+	sb.WriteString("[READ §delta:")
+	sb.WriteString(hashHex)
+	sb.WriteString("§ ")
+	sb.WriteString(path)
+	sb.WriteString(" — showing changes since last read]\n")
 	if diff == "" {
 		// Shouldn't happen (hashes differ but diff is empty) — serve full.
 		sb.Write(newContent)
@@ -176,4 +192,81 @@ func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *p
 		sb.WriteString(diff)
 	}
 	return protocol.Replace(sb.String())
+}
+
+// serveWindowUnchanged answers a windowed Read from the cached full file when
+// NOTHING changed: same mtime AND ctime as the cache entry AND the window's
+// bytes equal the corresponding slice of the cached content. Any doubt → nil
+// (caller passes through). Never caches, never mutates session state.
+func serveWindowUnchanged(store hookcore.StateStore, inp *protocol.HookInput, ti *protocol.ReadInput) *protocol.HookOutput {
+	f := inp.ToolResponse.File
+	if f == nil || f.StartLine < 1 || f.NumLines <= 0 {
+		return nil
+	}
+	info, err := os.Stat(ti.FilePath)
+	if err != nil {
+		return nil
+	}
+	state := store.LoadSession(inp.SessionID)
+	if state == nil {
+		return nil
+	}
+	entry, ok := state.Files[ti.FilePath]
+	if !ok || len(entry.Content) == 0 ||
+		entry.ModTime != info.ModTime().UnixNano() ||
+		entry.CtimeNS == 0 || entry.CtimeNS != statCtimeNS(info) {
+		return nil
+	}
+	window := inp.ToolResponse.Text()
+	if window == "" {
+		return nil
+	}
+	// Slice cached content to 1-based lines [StartLine, StartLine+NumLines).
+	slice, ok := sliceLines(bytesconv.B2S(entry.Content), f.StartLine, f.NumLines)
+	if !ok || slice != window {
+		return nil
+	}
+	hashHex := cache.ShortHex(entry.Hash[:8])
+	msg := fmt.Sprintf("[READ §unchanged-window:%s§ %s lines %d–%d — identical to cached read at turn %d. Full content available if needed.]",
+		hashHex, ti.FilePath, f.StartLine, f.StartLine+f.NumLines-1, entry.Turn)
+	if len(msg) >= len(window) { // never-worse
+		return nil
+	}
+	// Best-effort analytics; mirrors handleRead's event shape.
+	_ = analytics.Record(analytics.Event{
+		TS:       time.Now().UnixNano(),
+		SID:      inp.SessionID,
+		Hook:     inp.ToolName,
+		Action:   "unchanged-window",
+		BytesIn:  len(window),
+		BytesOut: len(msg),
+	})
+	return protocol.Replace(msg)
+}
+
+// sliceLines returns the byte-slice of s covering 1-based lines [start,
+// start+n). It is a single pass over s that returns a subslice (no allocation,
+// no []string materialization). ok=false when s has fewer lines than required,
+// so a window running past EOF (or a start beyond EOF) passes through.
+func sliceLines(s string, start, n int) (string, bool) {
+	pos := 0
+	for skipped := 1; skipped < start; skipped++ {
+		nl := strings.IndexByte(s[pos:], '\n')
+		if nl < 0 {
+			return "", false
+		}
+		pos += nl + 1
+	}
+	end := pos
+	for taken := range n {
+		nl := strings.IndexByte(s[end:], '\n')
+		if nl < 0 {
+			if taken == n-1 && end < len(s) { // last line without a trailing '\n'
+				return s[pos:], true
+			}
+			return "", false
+		}
+		end += nl + 1
+	}
+	return s[pos:end], true
 }

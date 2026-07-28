@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 
 	qdf "github.com/alex60217101990/qdf"
 )
@@ -52,6 +53,13 @@ func Load(sessionID string) (*SessionState, error) {
 	return &s, nil
 }
 
+// MaxSessionFiles is the per-session file cap enforced by Save's automatic
+// eviction: once len(Files) exceeds this, Evict trims down to 80% of it.
+// Callers that skip Save (e.g. hookcore's zero-copy flush fast path) use this
+// to decide, without calling Evict, whether eviction would be a no-op for a
+// given session.
+const MaxSessionFiles = 200
+
 // Save persists state with a single plain write (no tmp+rename). The state
 // file is a rebuildable cache: a torn write — from a crash or a concurrent
 // same-session hook — simply fails to qdf-decode on the next Load, which then
@@ -73,11 +81,68 @@ func Load(sessionID string) (*SessionState, error) {
 // it is the lowest-allocation qdf mode; the spec budget was likely set
 // against a smaller state (< 5 files). Document this if the benchmark
 // target is revisited.
+//
+// Save mutates s in place (Evict deletes entries from s.Files when over the
+// cap): callers must own s exclusively for the duration of the call — never
+// pass a pointer another goroutine might be reading concurrently. Callers
+// that only hold a read lock on the session (hookcore's FlushDirty) must
+// either pass a private copy, or use AppendEncodeState/WriteState directly
+// once they've confirmed len(Files) <= MaxSessionFiles (so Evict would be a
+// no-op and mutation is moot).
+// savePool holds the []byte scratch buffers plain Save encodes into. Without
+// this, Save (unlike hookcore's FlushDirty, which pools its own buffer) fed
+// AppendEncodeState a nil dst on every call, forcing qdf's geometric
+// grow-chain to reallocate from scratch each time. Pooling means the backing
+// array only grows on the first few calls and is reused after that.
+var savePool = sync.Pool{New: func() any { b := make([]byte, 0, 4096); return &b }}
+
+// MaxPooledBufSize caps the buffer size a scratch-buffer sync.Pool will
+// accept back. A one-off encode that grows a buffer past this is exceptional;
+// pinning that much memory in the pool would penalize every small-session
+// encode that follows, so callers drop the oversized buffer instead of
+// returning it (the pool's New allocates a fresh small one on the next Get).
+// Shared by savePool here and hookcore's flushBufPool, which encodes the same
+// kind of payload (a qdf-marshaled SessionState) via the same pattern.
+const MaxPooledBufSize = 4 << 20 // 4MB
+
+// maxPooledSaveBuf is savePool's local name for MaxPooledBufSize.
+const maxPooledSaveBuf = MaxPooledBufSize
+
 func Save(sessionID string, s *SessionState) error {
-	Evict(s, 200) // auto-evict when over 200 files
-	data, err := qdf.Marshal(s, qdf.OptSpeed)
+	Evict(s, MaxSessionFiles) // auto-evict when over the cap
+
+	bufPtr := savePool.Get().(*[]byte)
+	buf, err := AppendEncodeState((*bufPtr)[:0], s)
 	if err != nil {
+		*bufPtr = buf
+		savePool.Put(bufPtr)
 		return err
 	}
+
+	err = WriteState(sessionID, buf)
+	// os.WriteFile (via writeFileLazy) copies buf's bytes synchronously
+	// before returning, so it's safe to return buf to the pool here.
+	if cap(buf) <= maxPooledSaveBuf {
+		*bufPtr = buf
+		savePool.Put(bufPtr)
+	}
+	return err
+}
+
+// AppendEncodeState qdf-encodes s (OptSpeed, the same mode Save uses) and
+// appends the result to dst, returning the extended slice. Reuse the
+// returned slice as dst on the next call to avoid a fresh allocation per
+// encode. Unlike Save, this performs no eviction and never mutates s — it
+// only reads s, so it is safe to call while holding no more than a read lock
+// on s, provided nothing else concurrently mutates s (see Save's doc comment
+// on the MaxSessionFiles no-op eviction case).
+func AppendEncodeState(dst []byte, s *SessionState) ([]byte, error) {
+	return qdf.AppendMarshal(dst, s, qdf.OptSpeed)
+}
+
+// WriteState persists already-encoded session bytes as sessionID's state
+// file. Pairs with AppendEncodeState so a caller can encode while holding a
+// lock and perform the (potentially slow) disk write after releasing it.
+func WriteState(sessionID string, data []byte) error {
 	return writeFileLazy(StatePath(sessionID), data)
 }

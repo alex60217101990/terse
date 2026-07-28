@@ -9,10 +9,13 @@ import (
 
 // HookInput is the JSON Claude Code sends to any PostToolUse hook on stdin.
 type HookInput struct {
-	ToolResponse  *ToolResponse   `json:"tool_response,omitempty"`
-	SessionID     string          `json:"session_id"`
-	ToolName      string          `json:"tool_name"`
-	ToolUseID     string          `json:"tool_use_id,omitempty"`
+	ToolResponse *ToolResponse `json:"tool_response,omitempty"`
+	SessionID    string        `json:"session_id"`
+	ToolName     string        `json:"tool_name"`
+	// ToolUseID is never read anywhere in the codebase, so we skip decoding it
+	// (json:"-") to avoid the per-event string alloc + copy. The field is kept
+	// for forward-compat: restoring the tag is all it takes to start reading it.
+	ToolUseID     string          `json:"-"`
 	HookEventName string          `json:"hook_event_name,omitempty"`
 	ToolInput     json.RawMessage `json:"tool_input"`
 }
@@ -54,14 +57,15 @@ func (t *ToolResponse) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	// Object shape. Decode "content" as a raw message so it can be either a
-	// string (the usual case) or a content-block array (completed Agent).
+	// Object shape. Decode "content" via contentField so it can be either a
+	// string (the usual case) or a content-block array (completed Agent)
+	// without routing through an intermediate json.RawMessage copy.
 	var r struct {
-		File    *FileResponse   `json:"file"`
-		Content json.RawMessage `json:"content"`
-		Stdout  string          `json:"stdout"`
-		Stderr  string          `json:"stderr"`
-		Output  string          `json:"output"`
+		File    *FileResponse `json:"file"`
+		Content contentField  `json:"content"`
+		Stdout  string        `json:"stdout"`
+		Stderr  string        `json:"stderr"`
+		Output  string        `json:"output"`
 	}
 	if err := json.Unmarshal(data, &r); err != nil {
 		return err
@@ -70,28 +74,49 @@ func (t *ToolResponse) UnmarshalJSON(data []byte) error {
 	t.Stdout = r.Stdout
 	t.Stderr = r.Stderr
 	t.Output = r.Output
-	t.Content = contentText(r.Content)
+	t.Content = string(r.Content)
 	return nil
 }
 
-// contentText decodes a tool_response "content" value that may be a JSON
-// string (the common case) or a content-block array (completed Agent),
-// returning the plain text either way. Empty for anything else.
-func contentText(raw json.RawMessage) string {
-	head := bytes.TrimLeft(raw, " \t\r\n")
+// contentField decodes a tool_response "content" value in place, matching
+// the former contentText helper's semantics exactly (plain JSON string; MCP
+// / Agent content-block array; null; anything else -> ""), but operating
+// directly on the raw per-field bytes encoding/json hands to UnmarshalJSON.
+// For the dominant plain-string shape this avoids the json.RawMessage copy
+// of the (escaped) content bytes that contentText's json.Unmarshal(raw,
+// &r) previously produced before contentText re-Unmarshaled them.
+type contentField string
+
+// UnmarshalJSON implements json.Unmarshaler for contentField.
+func (f *contentField) UnmarshalJSON(data []byte) error {
+	// Fast path: plain JSON string, the dominant shape on non-Read traffic.
+	// Decode straight into the field — one Unmarshal call, no RawMessage
+	// copy, no intermediate string variable.
+	if len(data) > 0 && data[0] == '"' {
+		if err := json.Unmarshal(data, (*string)(f)); err != nil {
+			*f = ""
+		}
+		return nil
+	}
+	head := bytes.TrimLeft(data, " \t\r\n")
 	if len(head) == 0 {
-		return ""
+		*f = ""
+		return nil
 	}
 	switch head[0] {
 	case '"':
-		var s string
-		if json.Unmarshal(raw, &s) == nil {
-			return s
+		// Leading whitespace before the opening quote (should not occur via
+		// encoding/json's own decoder, but kept for parity with the old
+		// contentText which trimmed before switching on head[0]).
+		if err := json.Unmarshal(head, (*string)(f)); err != nil {
+			*f = ""
 		}
 	case '[':
-		return blocksText(raw)
+		*f = contentField(blocksText(data))
+	default:
+		*f = ""
 	}
-	return ""
+	return nil
 }
 
 // blocksText concatenates the "text" of every block in a content-block array

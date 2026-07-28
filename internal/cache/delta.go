@@ -27,11 +27,19 @@ func UnifiedDiff(old, newer []byte, contextLines int) string {
 	if bytes.Equal(old, newer) {
 		return ""
 	}
-	oldLines := splitLines(old)
-	newLines := splitLines(newer)
+	// One scratch buffer serves both the line-split (aLines/bLines) and the
+	// Myers trace (v/snaps/traceHeads) for this call; UnifiedDiff owns its
+	// get/put so myersDiff no longer manages the scratch lifetime itself.
+	s := getDiffScratch()
+	defer putDiffScratch(s)
+
+	oldLines := splitLinesInto(s.aLines, old)
+	s.aLines = oldLines // retain the (possibly grown) backing array for put-back
+	newLines := splitLinesInto(s.bLines, newer)
+	s.bLines = newLines
 
 	// Compute LCS edit script using Myers' algorithm (O((N+M)D)).
-	edits := myersDiff(oldLines, newLines)
+	edits := myersDiff(s, oldLines, newLines)
 	if len(edits) == 0 {
 		return ""
 	}
@@ -45,24 +53,37 @@ func UnifiedDiff(old, newer []byte, contextLines int) string {
 	return buf.String()
 }
 
-// splitLines splits b into lines preserving content.
-// The last line may or may not end with \n.
-func splitLines(b []byte) []string {
+// splitLinesInto fills dst (reset to length 0, backing array reused) with the
+// lines of b and returns the result. It matches strings.Split(string(b), "\n")
+// with the trailing empty element after a final newline removed — semantically
+// identical to the former splitLines — but avoids the []string allocation by
+// appending into the caller's scratch slice and finds line boundaries with a
+// forward IndexByte scan.
+//
+// Zero-copy view of b: avoids copying the whole file to a string just to split
+// it. The returned line substrings alias b, so they must not outlive b and b
+// must not be mutated while they're in use — both hold here (old/newer come
+// from the cache and the diff output is copied out via buf.String() before the
+// scratch, and thus these aliases, is reused).
+func splitLinesInto(dst []string, b []byte) []string {
+	dst = dst[:0]
 	if len(b) == 0 {
-		return nil
+		return dst
 	}
-	// Zero-copy view of b: avoids copying the whole file to a string just to
-	// split it. The returned line substrings alias b, so they must not outlive
-	// b and b must not be mutated while they're in use — both hold here (old/
-	// newer come from the cache and the diff output is copied out via
-	// buf.String()).
 	s := unsafe.String(unsafe.SliceData(b), len(b))
-	lines := strings.Split(s, "\n")
-	// strings.Split adds an empty string after a trailing newline; remove it.
-	if len(lines) > 0 && lines[len(lines)-1] == "" {
-		lines = lines[:len(lines)-1]
+	for {
+		i := strings.IndexByte(s, '\n')
+		if i < 0 {
+			return append(dst, s)
+		}
+		dst = append(dst, s[:i])
+		s = s[i+1:]
+		if s == "" {
+			// Trailing newline: strings.Split would append a final "" here,
+			// which the old splitLines then trimmed — so stop without appending.
+			return dst
+		}
 	}
-	return lines
 }
 
 // edit represents a single edit operation in the diff.
@@ -72,9 +93,79 @@ type edit struct {
 	kind   byte // '=' equal, '-' delete, '+' insert
 }
 
-// myersDiff returns the minimal edit script between a and b.
+// Bound trace memory. Full-trace Myers keeps one v-snapshot (2*offset+1
+// ints) per edit-distance step d, so cost is O((n+m)·D) ints — gigabytes
+// when two large inputs differ heavily (D≈n+m). Cap d to a fixed int budget;
+// beyond it myersDiff bails and both callers serve the full content
+// (never-worse). This also bails a re-read once its changed-line count is
+// large relative to the file: with this budget, roughly >2M/L lines changed
+// in an L-line file (~200 for a 10k-line file, ~2000 for 1k) — well above a
+// normal edit, and full content is the correct fallback there anyway.
+const maxTraceInts = 16 << 20 // ~128 MiB of int snapshots (8 bytes each)
+
+// diffScratch holds reusable scratch buffers for one myersDiff call.
+//
+// All trace snapshots taken during a call have identical width
+// (2*offset+1), so they are carved out of one backing slice (snaps)
+// instead of being individually allocated. snaps grows geometrically
+// (append-style doubling) on demand as D-rounds proceed — sizing it
+// upfront to the theoretical worst case (bounded by maxD) would badly
+// over-allocate for the common case of a large file with a small diff,
+// where the actual D needed is tiny relative to n+m. Growth reallocates
+// the backing array, which would ordinarily orphan already-taken
+// snapshot subslices (traceHeads entries) pointing at the old array;
+// myersDiff avoids that by re-pointing every existing traceHeads entry
+// at the corresponding region of the new array whenever a grow occurs.
+// traceHeads itself (the outer [][]int) reuses its own backing array
+// across calls via [:0]; growing IT is always safe since its elements
+// are slice headers copied by value, not aliased data.
+type diffScratch struct {
+	v          []int
+	snaps      []int
+	traceHeads [][]int
+	// aLines/bLines are the reusable line-split buffers UnifiedDiff fills from
+	// old/newer via splitLinesInto. Their string elements are zero-copy views
+	// into those byte slices (see splitLinesInto), so they are reset to [:0] on
+	// put-back and dropped if they grew past the line cap (see putDiffScratch).
+	aLines []string
+	bLines []string
+}
+
+// diffScratchFreeListCap bounds the free list to a small, fixed number of
+// warm scratch buffers. Daemon concurrency is low (diffs are serialized per
+// request, goroutine-per-conn), so 4 is generous headroom without pinning
+// unbounded memory: worst case is 4 * maxTraceInts/4 ints (~128MiB total),
+// though in practice each retained scratch is only as large as the biggest
+// diff recently seen (typically a few MB).
+//
+// A sync.Pool was tried first but proved unsuitable here: under a workload
+// that GCs frequently (e.g. steady JSON decode churn), Pool contents are
+// swept as often as every ~1 GC cycle (the "victim cache" only survives one
+// extra cycle), so the ~MB-sized scratch chains kept dying and being
+// reallocated from scratch — measured at 74.7% of alloc_space under daemon
+// load despite pooling. A package-level buffered channel holds strong
+// references that GC cannot reclaim, so warm buffers survive indefinitely
+// across GC cycles until evicted by actual use (channel full) or dropped
+// for being oversized.
+const diffScratchFreeListCap = 4
+
+var diffScratchFreeList = make(chan *diffScratch, diffScratchFreeListCap)
+
+// getDiffScratch returns a warm scratch buffer from the free list, or a
+// fresh one if none is available (never blocks).
+func getDiffScratch() *diffScratch {
+	select {
+	case s := <-diffScratchFreeList:
+		return s
+	default:
+		return new(diffScratch)
+	}
+}
+
+// myersDiff returns the minimal edit script between a and b, using the caller-
+// owned scratch s (UnifiedDiff gets it and puts it back).
 // Uses O((N+M)D) Myers algorithm with full trace backtracking.
-func myersDiff(a, b []string) []edit {
+func myersDiff(s *diffScratch, a, b []string) []edit {
 	n, m := len(a), len(b)
 	if n == 0 && m == 0 {
 		return nil
@@ -83,27 +174,54 @@ func myersDiff(a, b []string) []edit {
 	// v holds the furthest-reaching x for diagonal k=x-y,
 	// stored at index k+offset to avoid negative indexing.
 	offset := n + m + 1
-	v := make([]int, 2*offset+1)
+	w := 2*offset + 1
+	maxD := maxTraceInts / w
 
-	// trace stores the v array at each step d for backtracking.
-	trace := make([][]int, 0, n+m)
+	if cap(s.v) < w {
+		s.v = make([]int, w)
+	} else {
+		s.v = s.v[:w]
+		clear(s.v)
+	}
+	v := s.v
 
-	// Bound trace memory. Full-trace Myers keeps one v-snapshot (2*offset+1
-	// ints) per edit-distance step d, so cost is O((n+m)·D) ints — gigabytes
-	// when two large inputs differ heavily (D≈n+m). Cap d to a fixed int budget;
-	// beyond it myersDiff bails and both callers serve the full content
-	// (never-worse). This also bails a re-read once its changed-line count is
-	// large relative to the file: with this budget, roughly >2M/L lines changed
-	// in an L-line file (~200 for a 10k-line file, ~2000 for 1k) — well above a
-	// normal edit, and full content is the correct fallback there anyway.
-	const maxTraceInts = 16 << 20 // ~128 MiB of int snapshots (8 bytes each)
-	maxD := maxTraceInts / (2*offset + 1)
+	if s.traceHeads == nil {
+		s.traceHeads = make([][]int, 0, 64)
+	} else {
+		s.traceHeads = s.traceHeads[:0]
+	}
+	trace := s.traceHeads
+
+	// Persist this call's final trace backing array back onto the scratch on
+	// every return path, so putDiffScratch (called by UnifiedDiff's defer)
+	// resets/measures the right slice.
+	defer func() {
+		s.traceHeads = trace
+	}()
 
 	for d := range n + m + 1 {
 		if d > maxD {
 			return nil // edit script too large to bound memory → signal "no diff"
 		}
-		snap := make([]int, 2*offset+1)
+
+		// Grow snaps to fit round d, doubling capacity when the current
+		// backing array is exhausted. On reallocation, re-slice every
+		// already-taken snapshot (rounds 0..d-1) from the new array so
+		// trace stays valid — the data itself is copied forward too.
+		needed := (d + 1) * w
+		if cap(s.snaps) < needed {
+			newCap := max(needed, cap(s.snaps)*2)
+			newSnaps := make([]int, needed, newCap)
+			copy(newSnaps, s.snaps)
+			for i := range trace {
+				trace[i] = newSnaps[i*w : (i+1)*w : (i+1)*w]
+			}
+			s.snaps = newSnaps
+		} else if len(s.snaps) < needed {
+			s.snaps = s.snaps[:needed]
+		}
+
+		snap := s.snaps[d*w : (d+1)*w : (d+1)*w]
 		copy(snap, v)
 		trace = append(trace, snap)
 
@@ -127,6 +245,42 @@ func myersDiff(a, b []string) []edit {
 		}
 	}
 	return nil
+}
+
+// putDiffScratch resets scratch's slices (keeping backing arrays) and
+// returns it to the free list — unless this call grew a buffer past
+// maxTraceInts/4 (drop instead of pinning ~128MB behind a strong ref
+// forever) or the free list is already full (drop and let GC reclaim;
+// the list is a bounded cache, not an unbounded pool).
+// resetLineScratch zeroes a pooled line-split slice's FULL backing array and
+// shrinks it to length 0. The string headers past len (still live in
+// [len:cap]) alias the old/new input byte slices via unsafe.String (see
+// splitLinesInto), so leaving them set would pin the whole backing buffer of
+// a prior diff's input on the free list until fully overwritten later.
+func resetLineScratch(lines []string) []string {
+	clear(lines[:cap(lines)])
+	return lines[:0]
+}
+
+func putDiffScratch(s *diffScratch) {
+	// Drop rather than retain when any buffer grew oversized: the int trace
+	// past maxTraceInts/4 (~128MB), or a line-split buffer past maxPooledLines
+	// (a huge-file diff whose []string headers — and the file bytes they alias
+	// — are not worth pinning behind a warm scratch).
+	const maxPooledLines = 64 << 10
+	if cap(s.snaps) > maxTraceInts/4 ||
+		cap(s.aLines) > maxPooledLines || cap(s.bLines) > maxPooledLines {
+		return
+	}
+	s.v = s.v[:0]
+	s.snaps = s.snaps[:0]
+	s.traceHeads = s.traceHeads[:0]
+	s.aLines = resetLineScratch(s.aLines)
+	s.bLines = resetLineScratch(s.bLines)
+	select {
+	case diffScratchFreeList <- s:
+	default:
+	}
 }
 
 func backtrack(a, b []string, trace [][]int, d, offset int) []edit {
