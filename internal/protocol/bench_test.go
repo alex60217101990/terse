@@ -32,7 +32,7 @@ func BenchmarkToolResponseUnmarshalContent10KB(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var tr protocol.ToolResponse
 		if err := tr.UnmarshalJSON(envelope); err != nil {
 			b.Fatalf("UnmarshalJSON: %v", err)

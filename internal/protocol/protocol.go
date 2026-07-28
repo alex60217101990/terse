@@ -9,10 +9,13 @@ import (
 
 // HookInput is the JSON Claude Code sends to any PostToolUse hook on stdin.
 type HookInput struct {
-	ToolResponse  *ToolResponse   `json:"tool_response,omitempty"`
-	SessionID     string          `json:"session_id"`
-	ToolName      string          `json:"tool_name"`
-	ToolUseID     string          `json:"tool_use_id,omitempty"`
+	ToolResponse *ToolResponse `json:"tool_response,omitempty"`
+	SessionID    string        `json:"session_id"`
+	ToolName     string        `json:"tool_name"`
+	// ToolUseID is never read anywhere in the codebase, so we skip decoding it
+	// (json:"-") to avoid the per-event string alloc + copy. The field is kept
+	// for forward-compat: restoring the tag is all it takes to start reading it.
+	ToolUseID     string          `json:"-"`
 	HookEventName string          `json:"hook_event_name,omitempty"`
 	ToolInput     json.RawMessage `json:"tool_input"`
 }
