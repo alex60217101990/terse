@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/bytesconv"
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hook"
@@ -153,6 +154,21 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 	defer func() { _ = ln.Close() }()
 	ul := ln.(*net.UnixListener)
 
+	// Open one long-lived analytics appender fd for the whole daemon
+	// lifetime and route every hook handler's analytics.Record through it
+	// (see analytics.SetWriter), instead of each request paying its own
+	// open+stat+write+close under analytics' package mutex. A failure here
+	// is non-fatal — analytics is best-effort diagnostics — so on error we
+	// log and fall back to the package-level Record's per-call path, same
+	// as the CLI.
+	var analyticsWriter *analytics.Writer
+	if w, aerr := analytics.OpenWriter(); aerr != nil {
+		log.Printf("daemon: analytics.OpenWriter: %v (falling back to per-call analytics writes)", aerr)
+	} else {
+		analyticsWriter = w
+		analytics.SetWriter(w)
+	}
+
 	store := hookcore.NewMemStore()
 
 	// shutdownRequested distinguishes a QUIT-triggered listener close (clean
@@ -263,6 +279,17 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 	// analytics survive shutdown too.
 	wg.Wait()
 	store.FlushDirty()
+
+	// Unhook the writer before closing it: SetWriter(nil) is what makes any
+	// analytics.Record call still in flight for a small window fall back to
+	// the per-call path rather than write through an fd we're about to
+	// close. It must come after wg.Wait so no handler goroutine is running
+	// concurrently by this point anyway — belt and suspenders.
+	if analyticsWriter != nil {
+		analytics.SetWriter(nil)
+		_ = analyticsWriter.Close()
+	}
+
 	return serveErr
 }
 

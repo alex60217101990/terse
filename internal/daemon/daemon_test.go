@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/daemon"
 	"github.com/alex60217101990/terse/internal/protocol"
 )
@@ -220,6 +221,35 @@ func TestDaemon_ContinuousTrafficNeverDropsConn(t *testing.T) {
 			t.Fatalf("request %d got invalid reply (daemon dropped conn / exited?): %v (body: %s)", i, err, out)
 		}
 		time.Sleep(15 * time.Millisecond) // << idle, so continuous traffic keeps the daemon up
+	}
+}
+
+// TestDaemon_AnalyticsRoutedThroughSharedWriter proves Serve wires up
+// Task 7's shared analytics.Writer end to end: hook handlers' internal
+// analytics.Record calls (triggered by ordinary PostToolUse traffic) land
+// in the same analytics.jsonl file the CLI-path Record would have written,
+// even though the daemon never opens/closes a fd per call.
+func TestDaemon_AnalyticsRoutedThroughSharedWriter(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	sock := tempSock(t)
+	go func() { _ = daemon.Serve(sock, time.Minute, "test") }()
+	waitForSock(t, sock)
+
+	const requests = 5
+	for range requests {
+		out := roundtrip(t, sock, bashPayload(strings.Repeat("log line here\n", 40)))
+		var resp protocol.HookOutput
+		if err := json.Unmarshal([]byte(out), &resp); err != nil {
+			t.Fatalf("invalid HookOutput JSON: %v (body: %s)", err, out)
+		}
+	}
+
+	events, err := analytics.LoadEvents(0)
+	if err != nil {
+		t.Fatalf("LoadEvents: %v", err)
+	}
+	if len(events) < requests {
+		t.Fatalf("expected at least %d analytics events recorded via the daemon's shared writer, got %d", requests, len(events))
 	}
 }
 
