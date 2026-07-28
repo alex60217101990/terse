@@ -24,6 +24,12 @@ var grepGroupsPool = sync.Pool{New: func() any { return make(map[string][]grepMa
 
 const maxPooledGrepGroups = 4096
 
+// shouldPoolGrepGroups reports whether a groups map with n entries (measured
+// BEFORE clear()) is small enough to return to grepGroupsPool. Isolated as a
+// pure function so the size-guard boundary can be tested deterministically,
+// mirroring detect's shouldPoolDedupMap.
+func shouldPoolGrepGroups(n int) bool { return n <= maxPooledGrepGroups }
+
 // HandleGrep is retained for backward compatibility; Grep is handled by the
 // generic pipeline via Dispatch (buildGrepSummary is its tool-specific step).
 func HandleGrep(r io.Reader, w io.Writer) error { return Dispatch(hookcore.NewDiskStore(), r, w) }
@@ -106,9 +112,9 @@ func buildGrepSummary(content string) (string, string) {
 	// clear() so the size guard sees the true entry count). The result string
 	// has already copied out any needed substrings via the Builder below.
 	defer func() {
-		n := len(groups)
+		n := len(groups) // captured before clear() so the guard sees the true count
 		clear(groups)
-		if n <= maxPooledGrepGroups {
+		if shouldPoolGrepGroups(n) {
 			grepGroupsPool.Put(groups)
 		}
 	}()
