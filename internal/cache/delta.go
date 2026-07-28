@@ -252,6 +252,16 @@ func myersDiff(s *diffScratch, a, b []string) []edit {
 // maxTraceInts/4 (drop instead of pinning ~128MB behind a strong ref
 // forever) or the free list is already full (drop and let GC reclaim;
 // the list is a bounded cache, not an unbounded pool).
+// resetLineScratch zeroes a pooled line-split slice's FULL backing array and
+// shrinks it to length 0. The string headers past len (still live in
+// [len:cap]) alias the old/new input byte slices via unsafe.String (see
+// splitLinesInto), so leaving them set would pin the whole backing buffer of
+// a prior diff's input on the free list until fully overwritten later.
+func resetLineScratch(lines []string) []string {
+	clear(lines[:cap(lines)])
+	return lines[:0]
+}
+
 func putDiffScratch(s *diffScratch) {
 	// Drop rather than retain when any buffer grew oversized: the int trace
 	// past maxTraceInts/4 (~128MB), or a line-split buffer past maxPooledLines
@@ -265,15 +275,8 @@ func putDiffScratch(s *diffScratch) {
 	s.v = s.v[:0]
 	s.snaps = s.snaps[:0]
 	s.traceHeads = s.traceHeads[:0]
-	// Zero the tails before shrinking to length 0: the string headers past
-	// len (still live in [len:cap]) alias the old/new input byte slices via
-	// unsafe.String (see splitLinesInto), so leaving them set pins the whole
-	// backing buffer of a prior diff's input on the free list until this
-	// scratch's slice is fully overwritten by a later call.
-	clear(s.aLines[:cap(s.aLines)])
-	s.aLines = s.aLines[:0]
-	clear(s.bLines[:cap(s.bLines)])
-	s.bLines = s.bLines[:0]
+	s.aLines = resetLineScratch(s.aLines)
+	s.bLines = resetLineScratch(s.bLines)
 	select {
 	case diffScratchFreeList <- s:
 	default:
