@@ -57,6 +57,11 @@ func parseGrepLine(s string) (file, line, text string, ok bool) {
 // has none of the former. It also rejects a date-shaped lead (4 digits then a
 // '-', e.g. "2024-01-15.log") so an ISO date that happens to carry a '.' can't
 // sneak through the path-char test. Zero-alloc: byte scans only, no allocation.
+//
+// Accepted residual risk: dotted non-path left segments ("db.host:5432:x",
+// "10.0.0.1:8080:x") still pass this test and classify as grep. This is
+// deliberate — the resulting summary is lossy but fully recoverable via the
+// withRecovery footer in dispatch.go, so nothing is unrecoverably dropped.
 func plausibleGrepFile(seg string) bool {
 	if seg == "" {
 		return false

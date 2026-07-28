@@ -188,9 +188,7 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	}
 
 	// Remember this output for the next run's delta on the unstructured paths.
-	// "grep" is included so a rerun of the same grep can delta against the
-	// prior raw output (the summary itself is lossy and can't be diffed).
-	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" || action == "grep" {
+	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" {
 		store.LastPut(key, content)
 	}
 
