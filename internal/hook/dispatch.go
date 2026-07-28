@@ -225,13 +225,12 @@ func tryRerunDelta(store hookcore.StateStore, toolName, key, content string) (st
 	return out, true
 }
 
-// dedupWithStore is the store-backed equivalent of cache.Dedup: it replaces
-// content that was already emitted (this or an earlier session, byte-
-// identical) with a compact §ref token, or registers it and returns ("",
-// false) so the caller emits it in full this first time. minSize gates tiny
-// outputs where a ~60-byte token would not pay off. The token format and hash
-// (cache.RefHashOf, the same sha256[:16] hex cache.Dedup uses) match
-// cache.Dedup exactly for parity.
+// dedupWithStore is the store-backed dedup: it replaces content that was
+// already emitted (this or an earlier session, byte-identical) with a compact
+// §ref token, or registers it and returns ("", false) so the caller emits it in
+// full this first time. minSize gates tiny outputs where a ~60-byte token would
+// not pay off. Blobs are keyed by cache.RefHashOf (sha256[:16] hex), the same
+// content-address the ref store uses everywhere.
 // refTokenFor registers content in the ref store (idempotently) and returns its
 // hash, so a lossy summary can point the model at the recoverable original via
 // `qdf-hook expand <hash>`. Unlike dedupWithStore it always stores and returns a
