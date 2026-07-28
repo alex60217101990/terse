@@ -83,6 +83,18 @@ func BenchmarkDedup_Miss(b *testing.B) {
 	}
 }
 
+func BenchmarkRefPut(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	base := strings.Repeat("fresh output line\n", 100)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; b.Loop(); i++ {
+		// Unique content each iteration => a real encode + blob write.
+		content := base + strconvItoa(i)
+		cache.RefPut(cache.RefHashOf(content), content)
+	}
+}
+
 func BenchmarkRefGet(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
 	content := strings.Repeat("payload line\n", 100)

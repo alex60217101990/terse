@@ -63,11 +63,7 @@ func RefSeen(hash string) bool {
 // is a rebuildable cache, so a torn write just fails to decode on read.
 func RefPut(hash, content string) {
 	e := refEntry{Content: content, TS: time.Now().Unix()}
-	data, err := qdf.Marshal(&e, qdf.OptBalanced)
-	if err != nil {
-		return
-	}
-	_ = writeFileLazy(RefPath(hash), data)
+	_ = marshalBlobPooled(RefPath(hash), &e)
 }
 
 // RefGet returns the content stored under hash. Decodes zero-copy (the returned
