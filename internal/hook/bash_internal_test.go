@@ -56,3 +56,65 @@ func TestWorth_Gates(t *testing.T) {
 		t.Error("empty summary must never be worth it")
 	}
 }
+
+// TestParseGrepLine_RejectsImplausiblePaths is the data-corruption guard: a
+// colon-delimited line only classifies as a grep "file:line:text" content
+// line when its file segment is a believable path. Timestamped logs and
+// colon-delimited config dumps must be rejected outright, while real
+// ripgrep/grep output must still parse.
+func TestParseGrepLine_RejectsImplausiblePaths(t *testing.T) {
+	reject := []string{
+		"2024-01-01T00:00:00 some log message", // ISO timestamp, no path chars
+		"12:30:45 message",                     // clock time, no path chars
+		"service:8000:description text",        // config dump, no path chars
+		"2024-01-15.log:5:something",           // date-shaped file segment (4 digits + '-')
+		"some file.go:1:x",                     // space in file segment
+	}
+	// db.host:5432:desc (no spaces) is acceptable residual risk and is NOT in
+	// the reject set — it legitimately looks like a path (has a '.').
+	for _, s := range reject {
+		if _, _, _, ok := parseGrepLine(s); ok {
+			t.Errorf("parseGrepLine(%q) classified as grep; want rejected", s)
+		}
+	}
+
+	accept := []string{
+		"internal/pkg/file.go:123:\tcode line",
+		"path/with-dash/x_test.go:9:text",
+		"README.md:5:# Title",
+		"a/b.c:1:x",
+	}
+	for _, s := range accept {
+		if _, _, _, ok := parseGrepLine(s); !ok {
+			t.Errorf("parseGrepLine(%q) rejected; want classified as grep", s)
+		}
+	}
+}
+
+// TestLooksLikeGrep_TimestampCorpus is the end-to-end shape probe check: whole
+// blocks of timestamped logs / config dumps must not be mistaken for grep
+// output, while a block of real grep hits must be.
+func TestLooksLikeGrep_TimestampCorpus(t *testing.T) {
+	logs := strings.Repeat("2024-01-01T00:00:00 some log message\n", 10)
+	if looksLikeGrep(logs) {
+		t.Error("timestamped logs must not classify as grep")
+	}
+	clock := strings.Repeat("12:30:45 message\n", 10)
+	if looksLikeGrep(clock) {
+		t.Error("clock-time logs must not classify as grep")
+	}
+	cfg := "service:8000:description text\nworker:9000:another description\n" +
+		strings.Repeat("gateway:7000:more text here\n", 8)
+	if looksLikeGrep(cfg) {
+		t.Error("colon-delimited config dump must not classify as grep")
+	}
+
+	real := "internal/pkg/file.go:123:\tcode line\n" +
+		"path/with-dash/x_test.go:9:text\n" +
+		"README.md:5:# Title\n" +
+		"a/b.c:1:x\n" +
+		strings.Repeat("internal/hook/bash.go:10:package hook\n", 6)
+	if !looksLikeGrep(real) {
+		t.Error("real grep output must classify as grep")
+	}
+}

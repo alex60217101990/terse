@@ -24,7 +24,11 @@ type grepMatch struct {
 
 // parseGrepLine splits a ripgrep/grep content line "file:linenum:text".
 // It reports ok=false unless the segment between the first two colons is all
-// digits (the line-number), which distinguishes content mode from bare paths.
+// digits (the line-number) AND the leading segment is a plausible file path
+// (see plausibleGrepFile). The digit rule alone misreads colon-delimited text
+// — ISO timestamps ("2024-01-01T00:00:00 msg"), clock times ("12:30:45 msg"),
+// and config dumps ("service:8000:desc") — as "file:line:text", fabricating
+// grep structure over plain logs. The path check closes that hole.
 func parseGrepLine(s string) (file, line, text string, ok bool) {
 	i := strings.IndexByte(s, ':')
 	if i <= 0 || i == len(s)-1 {
@@ -41,7 +45,40 @@ func parseGrepLine(s string) (file, line, text string, ok bool) {
 			return "", "", "", false
 		}
 	}
+	if !plausibleGrepFile(s[:i]) {
+		return "", "", "", false
+	}
 	return s[:i], num, rest[j+1:], true
+}
+
+// plausibleGrepFile reports whether seg is believable as a grep path segment.
+// A real grep/ripgrep path virtually always contains a '/' or a '.' and never
+// a space; a colon-delimited log/config field ("service", "12", "2024-01-01T00")
+// has none of the former. It also rejects a date-shaped lead (4 digits then a
+// '-', e.g. "2024-01-15.log") so an ISO date that happens to carry a '.' can't
+// sneak through the path-char test. Zero-alloc: byte scans only, no allocation.
+func plausibleGrepFile(seg string) bool {
+	if seg == "" {
+		return false
+	}
+	// Date-shaped lead: 4 leading digits followed by '-' (e.g. "2024-01-01").
+	if len(seg) >= 5 && seg[4] == '-' &&
+		seg[0] >= '0' && seg[0] <= '9' &&
+		seg[1] >= '0' && seg[1] <= '9' &&
+		seg[2] >= '0' && seg[2] <= '9' &&
+		seg[3] >= '0' && seg[3] <= '9' {
+		return false
+	}
+	hasPathChar := false
+	for k := range len(seg) {
+		switch seg[k] {
+		case ' ', '\t':
+			return false
+		case '/', '.':
+			hasPathChar = true
+		}
+	}
+	return hasPathChar
 }
 
 // buildGrepSummary returns (summary, action). action is "grouped" for content

@@ -106,6 +106,34 @@ func TestDispatch_BashGrep_Compressed(t *testing.T) {
 	}
 }
 
+// A Bash grep summary elides per-file match lines past grepFileCap, so the raw
+// output must be recoverable: the summary carries a `qdf-hook expand <hash>`
+// footer and that hash round-trips through the ref store back to the original.
+func TestDispatch_BashGrep_Recoverable(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	for i := range 120 {
+		fmt.Fprintf(&b, "internal/pkg/file%d.go:%d:\tfound a matching identifier here on this line\n", i%6, i)
+	}
+	content := b.String()
+	resp := runDispatch(t, "Bash", content)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("Bash grep output should be compressed, got passthrough")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	marker := "qdf-hook expand "
+	idx := strings.Index(got, marker)
+	if idx < 0 {
+		t.Fatalf("expected a recovery pointer, got:\n%s", got)
+	}
+	hash := strings.FieldsFunc(got[idx+len(marker):], func(r rune) bool {
+		return !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f'))
+	})[0]
+	if recovered, ok := cache.RefGet(hash); !ok || recovered != content {
+		t.Fatalf("raw grep output not recoverable via expand %s (ok=%v)", hash, ok)
+	}
+}
+
 // Columnar JSON summary off the Read path must (1) not carry the old misleading
 // "Read with offset/limit" / "[READ" wording, and (2) register the raw array so
 // it is recoverable via `qdf-hook expand <hash>`.

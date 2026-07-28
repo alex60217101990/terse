@@ -128,6 +128,13 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 		}
 	case "Grep":
 		if g, a := buildGrepSummary(content); g != "" && len(g) < len(content) {
+			// "grouped" content-mode summaries elide per-file lines past
+			// grepFileCap — same lossy shape as the generic tryGrep branch, so
+			// make them recoverable too. "tree" (files_with_matches) drops
+			// nothing and needs no footer.
+			if a == "grouped" {
+				g = withRecovery(store, g, content)
+			}
 			action, replacement = a, g
 		}
 	}
@@ -143,7 +150,12 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 		} else if s := tryGoTest(content); s != "" {
 			action, replacement = "summary", s
 		} else if s := tryGrep(content); s != "" {
-			action, replacement = "grep", s
+			// buildGrepSummary elides per-file lines past grepFileCap, so the
+			// summary is lossy: register the raw output and point at it. This
+			// is the safety net for colon-delimited config lines that pass the
+			// path-char test (e.g. "db.host:5432:desc") — nothing is
+			// unrecoverably dropped.
+			action, replacement = "grep", withRecovery(store, s, content)
 		} else if s := tryGitDiff(content); s != "" {
 			action, replacement = "gitdiff", withRecovery(store, s, content)
 		} else if s := tryGitLog(content); s != "" {
@@ -176,7 +188,9 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	}
 
 	// Remember this output for the next run's delta on the unstructured paths.
-	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" {
+	// "grep" is included so a rerun of the same grep can delta against the
+	// prior raw output (the summary itself is lossy and can't be diffed).
+	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" || action == "grep" {
 		store.LastPut(key, content)
 	}
 
