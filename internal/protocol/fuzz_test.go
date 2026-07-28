@@ -1,6 +1,7 @@
 package protocol_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/alex60217101990/terse/internal/protocol"
@@ -23,6 +24,18 @@ func FuzzDecodeInputBytes(f *testing.F) {
 		`[]`,
 		`{`,
 		``,
+		// escaped-unicode string content (surrogate pair emoji, quotes, backslash, newline)
+		`{"tool_response":{"content":"café 😀 \"quoted\" \\backslash\\ \nnewline"}}`,
+		// MCP-shaped content-block array nested under an object's "content" field
+		// (as opposed to the seed above where tool_response itself is the array).
+		`{"tool_response":{"content":[{"type":"text","text":"mcp block one"},{"type":"text","text":"mcp block two"}]}}`,
+		// nested content array with a non-text block mixed in
+		`{"tool_response":{"status":"completed","content":[{"type":"image","text":""},{"type":"text","text":"nested report"}]}}`,
+		// null content
+		`{"tool_response":{"content":null}}`,
+		// huge escaped string content, to exercise the contentField fast path
+		// on a large plain-string shape (the case the RawMessage removal targets).
+		`{"tool_response":{"content":"` + strings.Repeat(`escaped \"chunk\" with \\backslash\\ and \ttab `, 500) + `"}}`,
 	}
 	for _, s := range seeds {
 		f.Add([]byte(s))
