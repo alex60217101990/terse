@@ -248,7 +248,14 @@ func refTokenFor(store hookcore.StateStore, content string) string {
 // withRecovery appends the standard lossy-summary recovery footer: the raw
 // output is registered in the ref store and the summary points at it.
 func withRecovery(store hookcore.StateStore, summary, raw string) string {
-	return summary + fmt.Sprintf("[full output: qdf-hook expand %s]\n", refTokenFor(store, raw))
+	hash := refTokenFor(store, raw)
+	var sb strings.Builder
+	sb.Grow(len(summary) + len(hash) + 32) // + "[full output: qdf-hook expand " + "]\n"
+	sb.WriteString(summary)
+	sb.WriteString("[full output: qdf-hook expand ")
+	sb.WriteString(hash)
+	sb.WriteString("]\n")
+	return sb.String()
 }
 
 func dedupWithStore(store hookcore.StateStore, content string, minSize int) (token string, deduped bool) {

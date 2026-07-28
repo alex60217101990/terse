@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -157,9 +158,16 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 
 func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.HookOutput {
 	hashHex := cache.ShortHex(hash[:8])
-	msg := fmt.Sprintf("[READ §unchanged:%s§ %s — content identical to read at turn %d. Full content available if needed.]",
-		hashHex, path, cachedAtTurn)
-	return protocol.Replace(msg)
+	var sb strings.Builder
+	sb.Grow(len(hashHex) + len(path) + 96)
+	sb.WriteString("[READ §unchanged:")
+	sb.WriteString(hashHex)
+	sb.WriteString("§ ")
+	sb.WriteString(path)
+	sb.WriteString(" — content identical to read at turn ")
+	sb.WriteString(strconv.Itoa(cachedAtTurn))
+	sb.WriteString(". Full content available if needed.]")
+	return protocol.Replace(sb.String())
 }
 
 func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *protocol.HookOutput {
@@ -171,7 +179,12 @@ func serveDelta(path string, newHash [32]byte, oldContent, newContent []byte) *p
 	hashHex := cache.ShortHex(newHash[:8])
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "[READ §delta:%s§ %s — showing changes since last read]\n", hashHex, path)
+	sb.Grow(len(diff) + len(path) + 64)
+	sb.WriteString("[READ §delta:")
+	sb.WriteString(hashHex)
+	sb.WriteString("§ ")
+	sb.WriteString(path)
+	sb.WriteString(" — showing changes since last read]\n")
 	if diff == "" {
 		// Shouldn't happen (hashes differ but diff is empty) — serve full.
 		sb.Write(newContent)

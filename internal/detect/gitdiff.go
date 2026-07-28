@@ -30,6 +30,10 @@ func SummarizeGitDiff(content string) string {
 		return ""
 	}
 	var b strings.Builder
+	// Output only drops or copies bytes from content, never adds net length, so
+	// len(content) is a tight upper bound — one Grow avoids the Builder's
+	// realloc chain on large diffs.
+	b.Grow(len(content))
 	collapsed := false
 	lines := 0
 	ctxStart := -1 // byte offset where the current context run began
