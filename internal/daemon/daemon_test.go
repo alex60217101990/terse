@@ -33,14 +33,22 @@ func tempSock(t *testing.T) string {
 // waitForSock polls for sockPath to exist, up to ~1s.
 func waitForSock(t *testing.T, sockPath string) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
+	// Readiness must mean "the listener accepts", not merely "the socket file
+	// exists": on a slow/loaded runner (observed on ubuntu-24.04-arm CI) there
+	// is a window where the file is present but Accept isn't serving yet, so a
+	// stat-only poll races ahead and the first real dial gets ECONNREFUSED.
+	// Probe with an actual dial; a successful connect proves the accept loop is
+	// live. The empty connection we open here is closed immediately (the daemon
+	// logs one benign "unexpected end of JSON input" for it — harmless).
+	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if _, err := os.Stat(sockPath); err == nil {
+		if c, err := net.Dial("unix", sockPath); err == nil {
+			_ = c.Close()
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("socket %s never appeared", sockPath)
+	t.Fatalf("socket %s never became dialable", sockPath)
 }
 
 // roundtrip dials sockPath, writes payload, half-closes the write side, and
