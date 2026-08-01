@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/alex60217101990/qdf v0.1.2
-	github.com/buger/jsonparser v1.2.0
+	github.com/buger/jsonparser v1.6.0
 	github.com/spf13/cobra v1.10.2
 )
 
