@@ -1,7 +1,7 @@
 github.com/alex60217101990/qdf v0.1.2 h1:nnX7yhcQsPvAqfJMvqOqBtUV8HbaQs+9rmvJ5FWuxT8=
 github.com/alex60217101990/qdf v0.1.2/go.mod h1:mEv4o9jlv785TBJADmJK6ogQnGXQroGF7tUyZHEA1kI=
-github.com/buger/jsonparser v1.2.0 h1:4EFcvK1kD4jyj6YqNK6skK6w+y7FHHBR+XBCtxwu/6g=
-github.com/buger/jsonparser v1.2.0/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
+github.com/buger/jsonparser v1.6.0 h1:IHTgLjkgckOjAp8p0aYfXkv+cqC+zrzALg/JywnPjxY=
+github.com/buger/jsonparser v1.6.0/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
