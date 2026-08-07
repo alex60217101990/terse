@@ -1,6 +1,7 @@
 package tokens_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -110,3 +111,20 @@ func TestCountSingleSpaceIsFree(t *testing.T) {
 	}
 }
 
+// BenchmarkCount puts the steady-state cost of the exact counter on record over
+// the committed corpus, which is a deliberate mix of the shapes qdf-hook sees:
+// logs, diffs, stack traces, JSON, paths, hex, CJK and emoji. The one-time
+// vocabulary load is warmed out of the measurement — TestVocabularyLoadsLazily
+// is where the first-call cost is pinned.
+func BenchmarkCount(b *testing.B) {
+	_, contents := loadCorpus(b)
+	payload := string(bytes.Join(contents, []byte("\n")))
+
+	tokens.Count("warm")
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = tokens.Count(payload)
+	}
+}
