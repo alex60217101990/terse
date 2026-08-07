@@ -102,13 +102,13 @@ func (offlineLoader) LoadTiktokenBpe(tiktokenBpeFile string) (map[string]int, er
 	if err != nil {
 		return nil, fmt.Errorf("tokens: open vendored vocabulary: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	zr, err := gzip.NewReader(f)
 	if err != nil {
 		return nil, fmt.Errorf("tokens: gunzip vocabulary: %w", err)
 	}
-	defer zr.Close()
+	defer func() { _ = zr.Close() }()
 
 	// o200k_base is one "<base64-token> <rank>" pair per line.
 	ranks := make(map[string]int, 200000)
