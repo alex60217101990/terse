@@ -11,9 +11,11 @@ import (
 // real transcript archive would leak home paths, private source, and possibly
 // secrets. Discipline is not enough — check it.
 func TestCorpusHasNoRealUserData(t *testing.T) {
-	banned := []string{"/Users/", "/home/", "C:\\Users\\", "ssh-rsa", "BEGIN PRIVATE KEY",
-		"xoxb-", "ghp_", "sk-", "AKIA"}
-	root := filepath.Join("testdata", "corpus")
+	banned := []string{
+		"/Users/", "/home/", "C:\\Users\\", "ssh-rsa", "BEGIN PRIVATE KEY",
+		"xoxb-", "ghp_", "sk-", "AKIA",
+	}
+	root := corpusRoot
 	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
