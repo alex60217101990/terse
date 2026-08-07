@@ -15,6 +15,7 @@ import (
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/alex60217101990/terse/internal/protocol"
+	"github.com/alex60217101990/terse/internal/tokens"
 )
 
 // HandleWrite compresses Write/Edit/MultiEdit tool responses.
@@ -48,15 +49,17 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 
 	echoLen := inp.ToolResponse.EchoLen()
 
-	record := func(action string, bytesOut int) {
+	record := func(action string, bytesOut, tokensOut, tokensIn int) {
 		_ = analytics.Record(analytics.Event{
-			TS:       time.Now().UnixNano(),
-			SID:      inp.SessionID,
-			Hook:     inp.ToolName, // canonical Claude tool name (Write/Edit/MultiEdit)
-			Action:   action,
-			BytesIn:  echoLen,
-			BytesOut: bytesOut,
-			DurNS:    time.Since(start).Nanoseconds(),
+			TS:        time.Now().UnixNano(),
+			SID:       inp.SessionID,
+			Hook:      inp.ToolName, // canonical Claude tool name (Write/Edit/MultiEdit)
+			Action:    action,
+			BytesIn:   echoLen,
+			BytesOut:  bytesOut,
+			TokensIn:  tokensIn,
+			TokensOut: tokensOut,
+			DurNS:     time.Since(start).Nanoseconds(),
 		})
 	}
 
@@ -101,10 +104,27 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		}
 	}
 
-	// Replace the (often large) echo with a compact cache-ref marker, but only
-	// when we cached the file and the marker is actually shorter than the echo
-	// it replaces (never-worse). Otherwise pass the response through unchanged.
-	if cached {
+	// Replace the echo with a compact cache-ref marker, but only when we cached
+	// the file AND the marker actually costs the model fewer tokens than the
+	// echo it replaces.
+	//
+	// The gate used to be len(marker) < EchoLen, and it was wrong twice over.
+	// EchoLen is the raw tool_response JSON — for Edit that embeds the entire
+	// pre-edit originalFile, so it is enormous, while what the model is shown
+	// is one short rendered sentence. And bytes are not what the model pays: a
+	// 32-char hex hash is byte-cheap and token-expensive, roughly one token per
+	// two or three characters. Measured over 1251 real Write/Edit calls, the
+	// old gate fired almost every time and made the output BIGGER — Edit −3.4%,
+	// Write −9.4%.
+	//
+	// So the comparison is against Text(), which is what the model actually
+	// sees, in tokens. When Text() is empty the rendered echo is not visible to
+	// this process at all (the real Edit shape), and a marker cannot be shown
+	// to be cheaper than something we cannot measure — so it passes through.
+	// The cache priming above already happened either way; that, not the
+	// marker, is this hook's purpose.
+	echo := inp.ToolResponse.Text()
+	if cached && echo != "" {
 		var mb strings.Builder
 		mb.Grow(len(hashHex) + len(ti.FilePath) + 48)
 		mb.WriteString("[WRITE §ref:")
@@ -115,11 +135,12 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		mb.WriteString(strconv.Itoa(lineCount))
 		mb.WriteString(" lines, cached for delta tracking]")
 		marker := mb.String()
-		if len(marker) < echoLen {
-			record("compressed", len(marker))
+		if markerTok, echoTok := tokens.Count(marker), tokens.Count(echo); markerTok < echoTok {
+			record("compressed", len(marker), markerTok, echoTok)
 			return protocol.EncodeOutput(w, protocol.Replace(marker))
 		}
 	}
-	record("passthrough", echoLen)
+	echoTok := tokens.Count(echo)
+	record("passthrough", echoLen, echoTok, echoTok)
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }
