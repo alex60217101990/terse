@@ -1,0 +1,26 @@
+^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+)@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$
+^\s*(?P<lvl>[A-Z]{4,5})\s+(?P<mod>[A-Z]+)\s+(?P<msg>.*)$
+/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/
+s/([{}()\[\]|^$*+?.\\])/\\$1/g
+{{- if and .Values.tls.enabled (not .Values.tls.selfSigned) }}
+a && (b || !c) ? d ?? e : f |> g >>= h <$> i
+x <<= 3; y >>= 2; z ^= ~w; q &= 0x0F; r |= 0xF0;
+(((((()))))) [[[[]]]] {{{{}}}} <<<<>>>>
+--> <-- ==> <== ~~> <~~ ->> <<- =~ !~ <=> ::: ..= ..< #!/ #[[ ]]#
+::std::vec::Vec<::std::collections::HashMap<String, Vec<u8>>>
+$#@!%^&*()_+-={}|[]\:";'<>?,./`~
+awk -F'\t' '{ if ($3 ~ /^ERR/) { n++; s += $5 } } END { printf "%d/%.2f\n", n, s }'
+jq -r '.items[] | select(.status=="failed") | [.id, .code] | @tsv'
+sed -E 's|^(/[a-z]+)+/||; t; s|^\./||'
+find . -type f -name '*.go' ! -path './vendor/*' -print0
+printf '%s\t%s\n' "${key%%=*}" "${key#*=}"
+echo "${arr[@]:1:3}" "${#arr[@]}" "${var:-default}" "${var:+set}"
+if [[ "$x" =~ ^([0-9]+)\.([0-9]+)$ ]]; then echo "${BASH_REMATCH[1]}"; fi
+SELECT a.*, b.n FROM t a LEFT JOIN (SELECT k, COUNT(*) n FROM u GROUP BY k) b
+  ON b.k = a.k WHERE a.ts >= ? AND a.ts < ? AND (a.f & 0x04) <> 0 ORDER BY 1, 2;
+"key": "value", "list": [1, 2, 3], "nested": {"a": {"b": {"c": null}}}
+<tag attr="1" other='2'/><!-- comment --><![CDATA[ raw & < > ]]>
+%s%d%f%v%+v%#v%q%x%08.3f%-20s%%
+\x00\x01\x7f\xffé\U0001F600\n\r\t\\\'\"
+== != === !== <> >= <= += -= *= /= %= **= //= &&= ||= ??=
+.....,,,,,;;;;;:::::!!!!!?????'''''"""""

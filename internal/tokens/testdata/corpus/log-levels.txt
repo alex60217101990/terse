@@ -1,0 +1,25 @@
+INFO  BOOT     starting invoice-router 4.11.2 revision 9F3C1AD7 on GOMAXPROCS=8
+INFO  CONFIG   loaded 3 upstream definitions from /srv/app/etc/router.yaml
+DEBUG CONFIG   TLS minimum version set to 1.3, 3 cipher suites permitted
+INFO  LISTEN   bound 0.0.0.0:8443 with TLS enabled
+WARN  CONFIG   feature flag SHADOW_TRAFFIC_PERCENT is 0; shadow lane disabled
+INFO  POOL     opened 8 connections to BILLING, 4 to CATALOGUE, 2 to LEDGER
+DEBUG HEALTH   BILLING /livez OK in 11ms
+DEBUG HEALTH   CATALOGUE /livez OK in 19ms
+DEBUG HEALTH   LEDGER /livez OK in 7ms
+INFO  READY    accepting traffic after 412ms of startup
+WARN  LIMIT    queue depth 1801 of 2048 exceeds soft watermark 1600
+ERROR UPSTREAM CATALOGUE timed out after 900ms, request R-0006 abandoned
+ERROR UPSTREAM CATALOGUE timed out after 900ms, request R-0007 abandoned
+FATAL never emitted; kept here so the parser must handle every level name
+WARN  CIRCUIT  CATALOGUE opened after 5 consecutive failures within 30s
+INFO  CIRCUIT  CATALOGUE half-open, admitting probe 1 of 3
+INFO  CIRCUIT  CATALOGUE closed, probe latency 812ms below 900ms budget
+DEBUG CACHE    hit ratio 0.94 over 4096 lookups, evictions 118
+INFO  METRICS  REQ=91 ERR=6 RETRY=11 P50=41ms P95=402ms P99=812ms
+WARN  SHED     rejecting 3% of traffic while P99 exceeds 750ms
+INFO  DRAIN    SIGTERM received, refusing new connections
+INFO  DRAIN    41 in-flight requests remain, waiting up to 30s
+INFO  DRAIN    0 in-flight requests remain after 6.2s
+INFO  SHUTDOWN closed 14 upstream connections, flushed 2 metric batches
+INFO  SHUTDOWN invoice-router 4.11.2 exited cleanly with status 0

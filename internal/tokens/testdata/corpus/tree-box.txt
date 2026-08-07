@@ -1,0 +1,53 @@
+/srv/app
+├── bin
+│   ├── router
+│   ├── reconcile
+│   └── migrate
+├── etc
+│   ├── router.yaml
+│   ├── upstreams.d
+│   │   ├── billing.yaml
+│   │   ├── catalogue.yaml
+│   │   └── ledger.yaml
+│   └── certs
+│       ├── router.pem
+│       └── chain.pem
+├── src
+│   └── router
+│       ├── cmd
+│       │   ├── router
+│       │   │   └── main.go
+│       │   └── reconcile
+│       │       └── main.go
+│       ├── internal
+│       │   ├── billing
+│       │   │   ├── authorise.go
+│       │   │   ├── authorise_test.go
+│       │   │   └── settle.go
+│       │   ├── ledger
+│       │   │   ├── journal.go
+│       │   │   ├── journal_test.go
+│       │   │   └── entry.go
+│       │   ├── pool
+│       │   │   └── pool.go
+│       │   └── transport
+│       │       ├── middleware.go
+│       │       └── server.go
+│       ├── go.mod
+│       └── go.sum
+├── var
+│   ├── log
+│   │   ├── router.log
+│   │   └── reconcile.log
+│   └── spool
+│       ├── settlement
+│       └── archive
+└── README.md
+
+┌──────────────┬──────────┬─────────┐
+│ upstream     │ requests │ errors  │
+├──────────────┼──────────┼─────────┤
+│ billing      │    41902 │     118 │
+│ catalogue    │    28114 │    1902 │
+│ ledger       │     9004 │       2 │
+└──────────────┴──────────┴─────────┘

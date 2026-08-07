@@ -1,0 +1,24 @@
+✅ build passed — 24 packages, 0 failures, 41.2s
+⚠️ 3 lint warnings in internal/transport (unused parameter, shadowed err)
+❌ deploy blocked: upstream catalogue circuit is open 🔌
+🚀 release 4.11.2 promoted to staging at 09:14 UTC
+🔍 scanning 1,204 files for redaction patterns…
+📦 artefact router.tar.zst is 41.2 MB (was 44.9 MB, −8.2%)
+🧪 flaky test detected: TestPoolReaperEvictsIdle failed 2 of 50 runs
+🐛 filed issue #4417 "journal flush deadline ignored under load"
+🔥 p99 latency 812ms exceeds the 750ms shed threshold
+🧯 mitigation applied: shedding 3% of traffic
+📉 error rate falling: 6.2% → 1.1% → 0.3% over nine minutes
+📈 queue drain rate recovered to 121/s
+🕐 09:20  🕑 09:21  🕒 09:22  🕓 09:23  🕔 09:24
+🇩🇪 DE 41902 requests · 🇳🇱 NL 28114 · 🇬🇧 GB 9004 · 🇨🇭 CH 1188
+👩‍💻 reviewer requested changes on PR #221
+👨‍🔧 on-call acknowledged the page in 2m14s
+🧑‍🚀 nobody is actually in space, this line exists to carry a ZWJ sequence
+🎉🎉🎉 first quarter closed with zero unreconciled batches 🎉🎉🎉
+🙂🙃😀😃😄😁😆😅😂🤣😊😇🙃🥲😉😌😍🥰😘😗😙😚
+🌍🌎🌏🌐🗺️🧭🏔️⛰️🌋🗻🏕️🏖️🏜️🏝️🏞️🏟️🏛️🏗️🧱🪨
+▶️ resume  ⏸️ pause  ⏹️ stop  ⏺️ record  ⏭️ next  ⏮️ previous  🔁 loop
+mixed ascii and emoji in one line: total=128940 ✅ net=121500 ✅ fees=7440 ⚠️
+another mixed line: retries=3 ❌ backoff=2.0× jitter=0.25 🔁 budget=900ms ⏱️
+final line, plain text only, so the tail of the file is not multi-byte

@@ -1,0 +1,72 @@
+apiVersion: routing.example.com/v2
+kind: RouterConfig
+metadata:
+  name: invoice-router
+  namespace: payments
+  labels:
+    team: payments-platform
+    tier: edge
+    revision: 9f3c1ad7
+spec:
+  listen:
+    host: 0.0.0.0
+    port: 8443
+    tls:
+      enabled: true
+      certificate: /srv/app/etc/certs/router.pem
+      chain: /srv/app/etc/certs/chain.pem
+      minimumVersion: "1.3"
+      ciphers:
+        - TLS_AES_128_GCM_SHA256
+        - TLS_AES_256_GCM_SHA384
+        - TLS_CHACHA20_POLY1305_SHA256
+  upstreams:
+    - name: billing
+      endpoint: https://billing.internal.example.com:9443
+      timeoutMs: 2500
+      retries: 3
+      backoff:
+        initialMs: 50
+        multiplier: 2.0
+        jitter: 0.25
+        maximumMs: 4000
+      healthcheck:
+        path: /livez
+        intervalMs: 5000
+        unhealthyAfter: 3
+    - name: catalogue
+      endpoint: https://catalogue.internal.example.com:9443
+      timeoutMs: 900
+      retries: 1
+      backoff:
+        initialMs: 25
+        multiplier: 1.5
+        jitter: 0.1
+        maximumMs: 500
+      healthcheck:
+        path: /livez
+        intervalMs: 3000
+        unhealthyAfter: 5
+  limits:
+    maxBodyBytes: 4194304
+    maxConcurrentRequests: 512
+    queueDepth: 2048
+    shedAboveLatencyMs: 750
+  telemetry:
+    metrics: true
+    traces: false
+    sampleRatio: 0.05
+    exporter: otlp
+    endpoint: https://collector.internal.example.com:4317
+  featureFlags:
+    asyncSettlement: false
+    strictCurrencyCheck: true
+    legacyHeaderFallback: false
+    shadowTrafficPercent: 0
+  notes: |
+    Do not raise timeoutMs for catalogue without talking to its owners.
+    A longer budget converts a fast failure into a slow one and moves the
+    backlog somewhere harder to see.
+  annotations: >
+    This block is folded, so the newlines collapse into spaces
+    when the value is parsed, which is what we want for prose.

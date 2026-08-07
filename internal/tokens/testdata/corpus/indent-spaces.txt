@@ -1,0 +1,68 @@
+def build_report(ledger, period, currency):
+    rows = []
+    for batch in ledger.batches(period):
+        if batch.currency != currency:
+            continue
+        if not batch.entries:
+            continue
+        total = 0
+        for entry in batch.entries:
+            if entry.reversed:
+                continue
+            if entry.amount < 0:
+                total -= abs(entry.amount)
+            else:
+                total += entry.amount
+        if batch.rate:
+            net = total / batch.rate
+        else:
+            net = 0.0
+        rows.append(
+            {
+                "batch": batch.identifier,
+                "opened": batch.opened_at.isoformat(),
+                "closed": (
+                    batch.closed_at.isoformat()
+                    if batch.closed_at is not None
+                    else None
+                ),
+                "entries": len(batch.entries),
+                "total_minor": total,
+                "net": round(net, 2),
+            }
+        )
+    return {
+        "period": period,
+        "currency": currency,
+        "rows": rows,
+        "summary": {
+            "batches": len(rows),
+            "entries": sum(r["entries"] for r in rows),
+            "total_minor": sum(r["total_minor"] for r in rows),
+        },
+    }
+
+
+class Reconciler:
+    def __init__(self, ledger, clock):
+        self.ledger = ledger
+        self.clock = clock
+        self.failures = []
+
+    def run(self, periods):
+        for period in periods:
+            try:
+                report = build_report(
+                    self.ledger,
+                    period=period,
+                    currency="EUR",
+                )
+            except ZeroDivisionError:
+                self.failures.append(
+                    (
+                        period,
+                        "rate was zero",
+                    )
+                )
+            else:
+                yield report
