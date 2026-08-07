@@ -1,0 +1,84 @@
+{
+  "fingerprint": {
+    "hash": "839ab2c79a6dac37c1efb32ca7e275afe613001c3e87597768ade5764fc1ca2a",
+    "files": 7,
+    "total_bytes": 60257
+  },
+  "sessions": 7,
+  "triples": 15,
+  "skipped": 0,
+  "filtered": 0,
+  "unpaired": 0,
+  "by_hook_action": {
+    "Bash/columnar": {
+      "n": 1,
+      "tokens_in": 5027,
+      "tokens_out": 390
+    },
+    "Bash/jsonobject": {
+      "n": 1,
+      "tokens_in": 1066,
+      "tokens_out": 182
+    },
+    "Bash/passthrough": {
+      "n": 2,
+      "tokens_in": 4164,
+      "tokens_out": 4164
+    },
+    "Bash/rerun-delta": {
+      "n": 1,
+      "tokens_in": 3162,
+      "tokens_out": 198
+    },
+    "Bash/squeezed": {
+      "n": 1,
+      "tokens_in": 1546,
+      "tokens_out": 76
+    },
+    "Bash/stacktrace": {
+      "n": 1,
+      "tokens_in": 587,
+      "tokens_out": 380
+    },
+    "Bash/summary": {
+      "n": 2,
+      "tokens_in": 912,
+      "tokens_out": 62
+    },
+    "Bash/table": {
+      "n": 1,
+      "tokens_in": 1067,
+      "tokens_out": 306
+    },
+    "Grep/grouped": {
+      "n": 1,
+      "tokens_in": 551,
+      "tokens_out": 523
+    },
+    "Grep/tree": {
+      "n": 1,
+      "tokens_in": 200,
+      "tokens_out": 17
+    },
+    "Read/delta": {
+      "n": 1,
+      "tokens_in": 294,
+      "tokens_out": 103
+    },
+    "Read/full": {
+      "n": 1,
+      "tokens_in": 281,
+      "tokens_out": 281
+    },
+    "Read/unchanged": {
+      "n": 1,
+      "tokens_in": 281,
+      "tokens_out": 40
+    }
+  },
+  "total": {
+    "n": 15,
+    "tokens_in": 19138,
+    "tokens_out": 6722
+  }
+}
