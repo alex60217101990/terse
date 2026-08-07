@@ -83,7 +83,7 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 				hash := sha256.Sum256(fileBytes)
 				hashHex = cache.ShortHex(hash[:8])
 				lineCount = bytes.Count(fileBytes, []byte("\n"))
-				if state := store.LoadSession(inp.SessionID); state != nil {
+				if state := store.LoadSession(ContextKey(inp)); state != nil {
 					state.Turn++
 					state.Files[ti.FilePath] = cache.FileEntry{
 						Hash:       hash,
@@ -94,7 +94,7 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 						LastReadAt: time.Now().Unix(),
 						ReadCount:  1,
 					}
-					store.SaveSession(inp.SessionID, state)
+					store.SaveSession(ContextKey(inp), state)
 					cached = true
 				}
 			}

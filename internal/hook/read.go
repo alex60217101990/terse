@@ -83,7 +83,7 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	}
 
 	// Load session state.
-	state := store.LoadSession(inp.SessionID)
+	state := store.LoadSession(ContextKey(inp))
 	if state == nil {
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
@@ -134,7 +134,7 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	updatedEntry.CtimeNS = ctimeNS
 	state.Files[ti.FilePath] = updatedEntry
 
-	store.SaveSession(inp.SessionID, state)
+	store.SaveSession(ContextKey(inp), state)
 
 	// Record analytics (best-effort — never block the hook). Passthrough emits
 	// the full content, so its emitted size is len(content) (a neutral 0%
@@ -207,7 +207,7 @@ func serveWindowUnchanged(store hookcore.StateStore, inp *protocol.HookInput, ti
 	if err != nil {
 		return nil
 	}
-	state := store.LoadSession(inp.SessionID)
+	state := store.LoadSession(ContextKey(inp))
 	if state == nil {
 		return nil
 	}
