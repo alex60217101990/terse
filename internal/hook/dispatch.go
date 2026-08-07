@@ -209,8 +209,35 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	}
 
 	// Remember this output for the next run's delta on the unstructured paths.
+	// This has to happen before the prefix fold below, which rewrites what the
+	// model sees but must not change what the next run diffs against.
 	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" {
 		store.LastPut(key, content)
+	}
+
+	// Last resort for everything no summarizer claimed. Command output is
+	// line-oriented and incrementally similar — consecutive lines sharing a
+	// directory, a package, a log prefix, an indent — and folding those shared
+	// heads is worth 11.5% of the Bash output that currently passes through
+	// untouched, which is the single largest uncompressed category left.
+	//
+	// The gate is in tokens, not bytes. A byte-smaller replacement that costs
+	// the model more tokens is exactly the trap the Write/Edit marker fell into.
+	//
+	// It also has to clear a margin, not merely break even. Folding changes the
+	// shape of what the model reads, and that is a real cost paid in exchange
+	// for tokens; a fold that returns 0.2% is the reader paying for nothing.
+	//
+	// Passthrough only. Tried on the summarizers' output too — grouped, tree,
+	// grep — and it folded exactly nothing: those already emit one line per
+	// group with the shared directory hoisted by FoldPathPrefix, so there is no
+	// run of near-identical lines left for this to find. The two transforms
+	// cover different shapes rather than overlapping.
+	if action == "passthrough" {
+		if folded := detect.FoldLinePrefixes(content); folded != "" &&
+			tokens.Count(folded) < countContent()*(100-prefixFoldMarginPct)/100 {
+			action, replacement = "prefix-folded", folded
+		}
 	}
 
 	if replacement != "" {
@@ -220,6 +247,12 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	record(action, content)
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }
+
+// prefixFoldMarginPct is the token saving a prefix fold must clear before it is
+// worth reshaping what the model reads. Measured over one project's archive,
+// this drops the folds returning under a percent — several MCP readers and a
+// WebFetch — while keeping every one that pays double digits.
+const prefixFoldMarginPct = 5
 
 // tryRerunDelta returns a unified diff of content against the previous run under
 // key, when strictly smaller. Diff inputs are zero-copy views (read-only).

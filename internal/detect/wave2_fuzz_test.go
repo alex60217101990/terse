@@ -34,3 +34,5 @@ func FuzzSummarizeStackTrace(f *testing.F) { fuzzNeverWorse(f, detect.SummarizeS
 func FuzzSummarizeJSONObject(f *testing.F) { fuzzNeverWorse(f, detect.SummarizeJSONObject, true) }
 func FuzzFoldRepeatedBlocks(f *testing.F)  { fuzzNeverWorse(f, detect.FoldRepeatedBlocks, false) }
 func FuzzFoldPathPrefix(f *testing.F)      { fuzzNeverWorse(f, detect.FoldPathPrefix, false) }
+func FuzzFoldLinePrefixes(f *testing.F)    { fuzzNeverWorse(f, detect.FoldLinePrefixes, true) }
+func FuzzThinLineNumbers(f *testing.F)     { fuzzNeverWorse(f, detect.ThinLineNumbers, true) }

@@ -1,11 +1,11 @@
 {
   "fingerprint": {
-    "hash": "0805426eb43b5cf931314e067608e6803996666c198ce25f3410b5f0dd89f435",
-    "files": 10,
-    "total_bytes": 67729
+    "hash": "541a5bba6c2c8b1b86daa930821174aeaebaff7866346849b3fa44b0dd513c7e",
+    "files": 11,
+    "total_bytes": 70154
   },
-  "sessions": 10,
-  "triples": 19,
+  "sessions": 11,
+  "triples": 20,
   "skipped": 0,
   "filtered": 0,
   "unpaired": 0,
@@ -20,10 +20,10 @@
       "tokens_in": 1066,
       "tokens_out": 182
     },
-    "Bash/passthrough": {
-      "n": 2,
-      "tokens_in": 4164,
-      "tokens_out": 4164
+    "Bash/prefix-folded": {
+      "n": 3,
+      "tokens_in": 4644,
+      "tokens_out": 3141
     },
     "Bash/rerun-delta": {
       "n": 1,
@@ -87,8 +87,8 @@
     }
   },
   "total": {
-    "n": 19,
-    "tokens_in": 20595,
-    "tokens_out": 7872
+    "n": 20,
+    "tokens_in": 21075,
+    "tokens_out": 6849
   }
 }
