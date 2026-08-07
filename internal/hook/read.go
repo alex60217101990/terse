@@ -14,6 +14,7 @@ import (
 	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/bytesconv"
 	"github.com/alex60217101990/terse/internal/cache"
+	"github.com/alex60217101990/terse/internal/detect"
 	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/alex60217101990/terse/internal/protocol"
 	"github.com/alex60217101990/terse/internal/tokens"
@@ -46,6 +47,24 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
+	// Zero-copy view: content is only read (hashed, diffed, cached) within this
+	// call; the cache copies it out on Save. Text() resolves the Read tool's
+	// nested file.content (top-level "content" is empty for Read).
+	content := bytesconv.S2B(inp.ToolResponse.Text())
+
+	// finish is the single exit: thin the line-number gutter off anything being
+	// passed through, then record and encode. Every branch below routes through
+	// it, including the windowed-read branch that used to return without
+	// recording at all — which is why windowed reads showed up as an unlabelled
+	// 169k tokens in the replay report.
+	finish := func(out *protocol.HookOutput, action string) error {
+		if thinned, ok := thinGutter(out, bytesconv.B2S(content)); ok {
+			out, action = thinned, action+"-thin"
+		}
+		recordRead(inp, start, content, out, action)
+		return protocol.EncodeOutput(w, out)
+	}
+
 	// A windowed read returns only a slice of the file, not the whole file.
 	// Caching that slice as the file's entry would poison the delta/unchanged
 	// logic — a later full read (or a Write that caches the raw file) would
@@ -61,9 +80,9 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	}
 	if partial {
 		if out := serveWindowUnchanged(store, inp, &ti); out != nil {
-			return protocol.EncodeOutput(w, out)
+			return finish(out, "unchanged-window")
 		}
-		return protocol.EncodeOutput(w, protocol.Passthrough())
+		return finish(protocol.Passthrough(), "window")
 	}
 
 	// Stat the file to capture its modification time and ctime.
@@ -72,11 +91,6 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 		modTime = info.ModTime().UnixNano()
 		ctimeNS = statCtimeNS(info)
 	}
-
-	// Zero-copy view: content is only read (hashed, diffed, cached) within this
-	// call; the cache copies it out on Save. Text() resolves the Read tool's
-	// nested file.content (top-level "content" is empty for Read).
-	content := bytesconv.S2B(inp.ToolResponse.Text())
 
 	// Binary content: always pass through, no diff.
 	if cache.IsBinaryContent(content) {
@@ -137,9 +151,30 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 
 	store.SaveSession(ContextKey(inp), state)
 
-	// Record analytics (best-effort — never block the hook). Passthrough emits
-	// the full content, so its emitted size is len(content) (a neutral 0%
-	// saving) — not 0, which would falsely read as 100% saved.
+	return finish(out, action)
+}
+
+// thinGutter turns a passthrough into a thinned-gutter replacement, but only
+// when that actually costs the model fewer tokens.
+//
+// It touches passthroughs only. The unchanged/delta markers are already far
+// smaller than the content they replace, and a delta is a unified diff whose
+// line numbers live in its hunk headers, not in a gutter.
+func thinGutter(out *protocol.HookOutput, content string) (*protocol.HookOutput, bool) {
+	if out.HookSpecificOutput != nil {
+		return out, false
+	}
+	thinned := detect.ThinLineNumbers(content)
+	if thinned == "" || tokens.Count(thinned) >= tokens.Count(content) {
+		return out, false
+	}
+	return protocol.Replace(thinned), true
+}
+
+// recordRead writes the analytics event for one Read. Passthrough emits the
+// full content, so its emitted size is len(content) — a neutral 0% saving, not
+// 0, which would falsely read as 100% saved.
+func recordRead(inp *protocol.HookInput, start time.Time, content []byte, out *protocol.HookOutput, action string) {
 	emitted := bytesconv.B2S(content)
 	if out.HookSpecificOutput != nil {
 		emitted = out.HookSpecificOutput.UpdatedToolOutput
@@ -160,8 +195,6 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 		TokensOut: tokensOut,
 		DurNS:     time.Since(start).Nanoseconds(),
 	})
-
-	return protocol.EncodeOutput(w, out)
 }
 
 func serveUnchanged(path string, hash [32]byte, cachedAtTurn int) *protocol.HookOutput {

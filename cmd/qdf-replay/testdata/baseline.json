@@ -1,11 +1,11 @@
 {
   "fingerprint": {
-    "hash": "7c2573ad56434f9f8656b81ad91785e3fdb96c338cf8d63a59005a6c24aead9e",
-    "files": 9,
-    "total_bytes": 64810
+    "hash": "0805426eb43b5cf931314e067608e6803996666c198ce25f3410b5f0dd89f435",
+    "files": 10,
+    "total_bytes": 67729
   },
-  "sessions": 9,
-  "triples": 17,
+  "sessions": 10,
+  "triples": 19,
   "skipped": 0,
   "filtered": 0,
   "unpaired": 0,
@@ -70,15 +70,25 @@
       "tokens_in": 281,
       "tokens_out": 281
     },
+    "Read/full-thin": {
+      "n": 1,
+      "tokens_in": 377,
+      "tokens_out": 313
+    },
     "Read/unchanged": {
       "n": 1,
       "tokens_in": 281,
       "tokens_out": 40
+    },
+    "Read/window-thin": {
+      "n": 1,
+      "tokens_in": 208,
+      "tokens_out": 185
     }
   },
   "total": {
-    "n": 17,
-    "tokens_in": 20010,
-    "tokens_out": 7374
+    "n": 19,
+    "tokens_in": 20595,
+    "tokens_out": 7872
   }
 }
