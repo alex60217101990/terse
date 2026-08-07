@@ -15,10 +15,11 @@ func TestIsHookOutput(t *testing.T) {
 	compressed := []string{
 		"§ref:abc123§ (7179 bytes, identical to earlier output)",
 		"[READ §unchanged:deadbeef§ /tmp/x.go — content identical]",
-		"~ref abc123456789 (7179 bytes, identical to earlier output)",
-		"[READ unchanged:deadbeef /tmp/x.go — content identical]",
 		"⟦↑ repeat: \"connecting\"⟧",
 		"[repeat: \"connecting\"]",
+		"[repeat of \"connecting\" except 3->4]",
+		"§P=/Users/dev/work/src/acme§",
+		"[^=/Users/dev/work/src/acme]",
 		"[TABLE 40 rows × 5 cols]",
 		"[grep: 12 matches in 3 files]",
 		"[full output: qdf-hook expand abc123]",

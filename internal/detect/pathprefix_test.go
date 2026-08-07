@@ -19,10 +19,10 @@ func TestFoldPathPrefix_Folds(t *testing.T) {
 	if len(out) >= len(in) {
 		t.Fatalf("expected shrink, got %d vs %d", len(out), len(in))
 	}
-	if !strings.Contains(out, "§P=/Users/dev/work/src/github.com/acme/widget-service/internal/pkg§") {
+	if !strings.Contains(out, "[^=/Users/dev/work/src/github.com/acme/widget-service/internal/pkg]") {
 		t.Errorf("prefix declaration missing:\n%s", out)
 	}
-	if !strings.Contains(out, "§P§/filea.go") {
+	if !strings.Contains(out, "^/filea.go") {
 		t.Errorf("substituted line missing:\n%s", out)
 	}
 }
@@ -52,12 +52,12 @@ func TestFoldPathPrefix_MixedLinesPreserved(t *testing.T) {
 	}
 }
 
-// If the input already contains our own token literally (e.g. it's quoting
-// earlier compressed output, or someone's log message happens to include
-// it), folding must bail out entirely — otherwise the folded "§P§" line and
-// content that already read "§P§" verbatim become indistinguishable, and
-// mechanical reconstruction (strip decl line, replace §P§→prefix) would
-// corrupt the line that was never touched.
+// If the input already contains our own token in the position folding would
+// put it (e.g. it's quoting earlier compressed output, or someone's log
+// message happens to include it), folding must bail out entirely — otherwise
+// the folded "^/..." line and content that already read "^/..." verbatim
+// become indistinguishable, and mechanical reconstruction (strip decl line,
+// replace ^ with the prefix) would corrupt the line that was never touched.
 func TestFoldPathPrefix_AlreadyContainsToken_Unchanged(t *testing.T) {
 	var b strings.Builder
 	for i := range 8 {
@@ -65,15 +65,15 @@ func TestFoldPathPrefix_AlreadyContainsToken_Unchanged(t *testing.T) {
 		b.WriteByte(byte('0' + i))
 		b.WriteString(".txt: 12 matches\n")
 	}
-	b.WriteString("note: token §P§ appears verbatim here\n")
+	b.WriteString("note: token ^/already appears verbatim here\n")
 	in := b.String()
 	if out := detect.FoldPathPrefix(in); out != in {
-		t.Fatalf("input already contains §P§ — must be byte-identical, unchanged:\ngot:\n%s\nwant:\n%s", out, in)
+		t.Fatalf("input already contains ^/ — must be byte-identical, unchanged:\ngot:\n%s\nwant:\n%s", out, in)
 	}
 }
 
-// Same guard, but the literal occurrence is the declaration-line form
-// ("§P=") rather than the substitution token ("§P§").
+// Same guard, but the literal occurrence is the declaration-line opener
+// ("[^=") rather than the substitution token.
 func TestFoldPathPrefix_AlreadyContainsDeclToken_Unchanged(t *testing.T) {
 	var b strings.Builder
 	for i := range 8 {
@@ -81,10 +81,32 @@ func TestFoldPathPrefix_AlreadyContainsDeclToken_Unchanged(t *testing.T) {
 		b.WriteByte(byte('0' + i))
 		b.WriteString(".txt: 12 matches\n")
 	}
-	b.WriteString("note: mentions §P=something here\n")
+	b.WriteString("note: mentions [^=something here\n")
 	in := b.String()
 	if out := detect.FoldPathPrefix(in); out != in {
-		t.Fatalf("input already contains §P= — must be byte-identical, unchanged:\ngot:\n%s\nwant:\n%s", out, in)
+		t.Fatalf("input already contains [^= — must be byte-identical, unchanged:\ngot:\n%s\nwant:\n%s", out, in)
+	}
+}
+
+// A bare "^" that is NOT immediately before a slash is not ambiguous with a
+// folded line, so it must not cost the whole payload its folding. This is the
+// point of guarding on "^/" rather than on "^": regex-bearing grep output is
+// full of anchors, and the old blunt guard would have refused to fold it.
+func TestFoldPathPrefix_BareCaretStillFolds(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("pattern: ^func Test\n")
+	for i := range 8 {
+		b.WriteString("/very/long/shared/directory/prefix/of/paths/entry")
+		b.WriteByte(byte('0' + i))
+		b.WriteString(".txt: 12 matches\n")
+	}
+	in := b.String()
+	out := detect.FoldPathPrefix(in)
+	if len(out) >= len(in) {
+		t.Fatalf("a bare ^ blocked folding:\n%s", out)
+	}
+	if !strings.Contains(out, "pattern: ^func Test") {
+		t.Errorf("the anchor line was not preserved verbatim:\n%s", out)
 	}
 }
 

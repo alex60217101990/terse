@@ -85,35 +85,31 @@ const scanWindow = 4 << 10
 // hookMarkers are the literal strings qdf-hook emits. Any result containing
 // one was already compressed by an earlier run of the tool.
 //
-// BOTH marker generations are listed. The Unicode forms (§ref:, ⟦↑ repeat) are
-// what the tool emits today; the ASCII forms (~ref, [repeat:) are what a later
-// task switches to, because a Unicode marker costs up to twice its ASCII
-// equivalent in tokens. A transcript archive spans months, so it spans both,
-// and the filter has to keep recognising the old form for as long as the
-// archive holds it.
+// TWO generations are listed. The § markers are current — measurement showed
+// § costs exactly one token, the same as an ASCII sigil, so there was nothing
+// to win by renaming them and they stayed. The block-dedup and path-prefix
+// markers did move to ASCII, because ⟦ ⟧ cost three tokens each and §P§ cost
+// three per folded line; their retired forms stay listed here because a
+// transcript archive spans months, and therefore spans both.
 //
 // Precision matters more than brevity here in one direction only: a marker
 // this list MISSES lets already-compressed output back into the corpus, where
 // the pipeline compresses it a second time and manufactures a win that no real
 // session ever saw. A marker that over-matches merely shrinks the corpus.
 var hookMarkers = []string{
-	// Unicode generation.
+	// Current.
 	"§ref:",
 	"§unchanged:",
 	"§unchanged-window:",
 	"§delta:",
 	"§rerun-delta§",
-	"§P=",
-	"⟦↑ repeat",
 	"  ⨯",
+	"[repeat",
+	"[^=",
 
-	// ASCII generation.
-	"~ref",
-	"[repeat:",
-	"[READ unchanged:",
-	"[READ unchanged-window:",
-	"[READ delta:",
-	"[rerun-delta",
+	// Retired: block dedup and path-prefix folding before the ASCII switch.
+	"⟦↑ repeat",
+	"§P=",
 
 	// Generation-independent: the recovery footer and the structural summary
 	// headers, whose text is not marker-dependent.

@@ -78,7 +78,7 @@ func TestDispatch_MCPRepeatedBlocks_Folded(t *testing.T) {
 	if len(got) >= len(content) {
 		t.Fatalf("expected shrink: %d >= %d", len(got), len(content))
 	}
-	if !strings.Contains(got, "↑ repeat:") {
+	if !strings.Contains(got, "[repeat: ") {
 		t.Errorf("expected a fold back-reference marker, got:\n%s", got)
 	}
 }
@@ -359,7 +359,7 @@ func TestDispatch_GrepLongPaths_PrefixFolded(t *testing.T) {
 		t.Fatal("grep should compress")
 	}
 	got := resp.HookSpecificOutput.UpdatedToolOutput
-	if !strings.Contains(got, "§P=") {
+	if !strings.Contains(got, "[^=") {
 		t.Errorf("expected prefix fold:\n%s", got)
 	}
 }
