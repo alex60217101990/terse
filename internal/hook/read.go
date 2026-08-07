@@ -16,6 +16,7 @@ import (
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/alex60217101990/terse/internal/protocol"
+	"github.com/alex60217101990/terse/internal/tokens"
 )
 
 // HandleRead processes a PostToolUse hook call for the Read tool.
@@ -139,18 +140,25 @@ func handleRead(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	// Record analytics (best-effort — never block the hook). Passthrough emits
 	// the full content, so its emitted size is len(content) (a neutral 0%
 	// saving) — not 0, which would falsely read as 100% saved.
-	bytesOut := len(content)
+	emitted := bytesconv.B2S(content)
 	if out.HookSpecificOutput != nil {
-		bytesOut = len(out.HookSpecificOutput.UpdatedToolOutput)
+		emitted = out.HookSpecificOutput.UpdatedToolOutput
+	}
+	tokensIn := tokens.Count(bytesconv.B2S(content))
+	tokensOut := tokensIn
+	if len(emitted) != len(content) {
+		tokensOut = tokens.Count(emitted)
 	}
 	_ = analytics.Record(analytics.Event{
-		TS:       time.Now().UnixNano(),
-		SID:      inp.SessionID,
-		Hook:     inp.ToolName, // canonical Claude tool name (e.g. "Read")
-		Action:   action,
-		BytesIn:  len(content),
-		BytesOut: bytesOut,
-		DurNS:    time.Since(start).Nanoseconds(),
+		TS:        time.Now().UnixNano(),
+		SID:       inp.SessionID,
+		Hook:      inp.ToolName, // canonical Claude tool name (e.g. "Read")
+		Action:    action,
+		BytesIn:   len(content),
+		BytesOut:  len(emitted),
+		TokensIn:  tokensIn,
+		TokensOut: tokensOut,
+		DurNS:     time.Since(start).Nanoseconds(),
 	})
 
 	return protocol.EncodeOutput(w, out)

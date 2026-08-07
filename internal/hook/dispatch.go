@@ -13,6 +13,7 @@ import (
 	"github.com/alex60217101990/terse/internal/detect"
 	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/alex60217101990/terse/internal/protocol"
+	"github.com/alex60217101990/terse/internal/tokens"
 )
 
 // Dispatch is the single PostToolUse entry point. It decodes the event once and
@@ -100,20 +101,40 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 
 	content := detect.StripNoise(inp.ToolResponse.Text())
 
-	record := func(action string, bytesOut int) {
+	// contentTokens is memoised because tokenizing is the expensive part and the
+	// same content is measured by every gate in the try-chain below. Computing it
+	// per call would tokenise one payload up to nine times.
+	contentTokens := -1
+	countContent := func() int {
+		if contentTokens < 0 {
+			contentTokens = tokens.Count(content)
+		}
+		return contentTokens
+	}
+
+	// record takes the emitted TEXT, not its length, because tokens are the real
+	// cost and cannot be recovered from a byte count. Passthrough emits the
+	// content itself, so it reuses the memoised count instead of paying twice.
+	record := func(action string, emitted string) {
+		tokensOut := countContent()
+		if len(emitted) != len(content) || emitted != content {
+			tokensOut = tokens.Count(emitted)
+		}
 		_ = analytics.Record(analytics.Event{
-			TS:       time.Now().UnixNano(),
-			SID:      inp.SessionID,
-			Hook:     toolName,
-			Action:   action,
-			BytesIn:  len(content),
-			BytesOut: bytesOut,
-			DurNS:    time.Since(start).Nanoseconds(),
+			TS:        time.Now().UnixNano(),
+			SID:       inp.SessionID,
+			Hook:      toolName,
+			Action:    action,
+			BytesIn:   len(content),
+			BytesOut:  len(emitted),
+			TokensIn:  countContent(),
+			TokensOut: tokensOut,
+			DurNS:     time.Since(start).Nanoseconds(),
 		})
 	}
 
 	if len(content) < 256 {
-		record("passthrough", len(content))
+		record("passthrough", content)
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -193,10 +214,10 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	}
 
 	if replacement != "" {
-		record(action, len(replacement))
+		record(action, replacement)
 		return protocol.EncodeOutput(w, protocol.Replace(replacement))
 	}
-	record(action, len(content))
+	record(action, content)
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }
 
