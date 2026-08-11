@@ -215,6 +215,22 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 		store.LastPut(key, content)
 	}
 
+	// A file dumped through Bash — cat -n, nl, a loop echoing a header before
+	// each file — is the same numbered listing a Read produces, and costs the
+	// same redundant gutter tokens, but no summarizer above claims it. Thinning
+	// the numbered runs is worth 2.35 points of the corpus; the strict
+	// whole-payload check the Read path uses would take only 1.35 of that,
+	// because a single header line disqualifies the whole payload.
+	//
+	// It runs before the fold below, not after: dropping the gutter is what
+	// leaves neighbouring lines with a shared head for the fold to find.
+	if action == "passthrough" {
+		if thinned := detect.ThinLineNumberRuns(content); thinned != "" &&
+			tokens.Count(thinned) < countContent()*(100-gutterThinMarginPct)/100 {
+			action, replacement = "gutter-thinned", thinned
+		}
+	}
+
 	// Last resort for everything no summarizer claimed. Command output is
 	// line-oriented and incrementally similar — consecutive lines sharing a
 	// directory, a package, a log prefix, an indent — and folding those shared
@@ -233,9 +249,14 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	// group with the shared directory hoisted by FoldPathPrefix, so there is no
 	// run of near-identical lines left for this to find. The two transforms
 	// cover different shapes rather than overlapping.
-	if action == "passthrough" {
-		if folded := detect.FoldLinePrefixes(content); folded != "" &&
-			tokens.Count(folded) < countContent()*(100-prefixFoldMarginPct)/100 {
+	if action == "passthrough" || action == "gutter-thinned" {
+		src := content
+		count := countContent()
+		if replacement != "" {
+			src, count = replacement, tokens.Count(replacement)
+		}
+		if folded := detect.FoldLinePrefixes(src); folded != "" &&
+			tokens.Count(folded) < count*(100-prefixFoldMarginPct)/100 {
 			action, replacement = "prefix-folded", folded
 		}
 	}
@@ -253,6 +274,11 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 // this drops the folds returning under a percent — several MCP readers and a
 // WebFetch — while keeping every one that pays double digits.
 const prefixFoldMarginPct = 5
+
+// gutterThinMarginPct is the same idea for the line-number thin: numbers a
+// reader may want to count from are only worth dropping for a real saving. The
+// runs that clear it in practice return around 20%.
+const gutterThinMarginPct = 5
 
 // tryRerunDelta returns a unified diff of content against the previous run under
 // key, when strictly smaller. Diff inputs are zero-copy views (read-only).

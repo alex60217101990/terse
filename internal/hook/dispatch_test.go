@@ -363,3 +363,42 @@ func TestDispatch_GrepLongPaths_PrefixFolded(t *testing.T) {
 		t.Errorf("expected prefix fold:\n%s", got)
 	}
 }
+
+// A file dumped through Bash with a header line in front of it — `wc -l f &&
+// cat -n f`, or a loop echoing a name before each file — is a numbered listing
+// no summarizer claims and the strict Read-path check refuses. The runs get
+// thinned anyway, and every body line survives byte-for-byte.
+func TestDispatch_BashCatNWithHeader_GutterThinned(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	var b strings.Builder
+	b.WriteString("===== internal/detect/readgutter.go =====\n")
+	for i := 1; i <= 40; i++ {
+		fmt.Fprintf(&b, "%d\t\tif err := step%02d(ctx); err != nil {\n", i, i)
+	}
+	in := b.String()
+
+	resp := runDispatch(t, "Bash", in)
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("a numbered dump behind a header should compress")
+	}
+	got := resp.HookSpecificOutput.UpdatedToolOutput
+	if !strings.Contains(got, "===== internal/detect/readgutter.go =====") {
+		t.Errorf("the header must survive:\n%s", got)
+	}
+	for _, anchor := range []string{"\n1\t", "\n10\t", "\n40\t"} {
+		if !strings.Contains(got, anchor) {
+			t.Errorf("anchor %q must survive:\n%s", anchor, got)
+		}
+	}
+	if strings.Contains(got, "\n13\t") {
+		t.Errorf("non-anchor line numbers must be gone:\n%s", got)
+	}
+	// The number takes its tab with it, so a thinned line keeps the file's own
+	// indentation and nothing else.
+	for i := 1; i <= 40; i++ {
+		body := fmt.Sprintf("\tif err := step%02d(ctx); err != nil {", i)
+		if !strings.Contains(got, body) {
+			t.Fatalf("body of line %d was corrupted:\n%s", i, got)
+		}
+	}
+}

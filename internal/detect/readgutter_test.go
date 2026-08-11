@@ -144,3 +144,56 @@ func gutter(l string) (num int, body string, ok bool) {
 	}
 	return n, l[i+1:], true
 }
+
+// The shape the run variant exists for: a header line no strict check tolerates,
+// then a numbered dump, then another header and another dump.
+func TestThinLineNumberRuns_ThinsEachRunAroundHeaders(t *testing.T) {
+	in := "=== a.go ===\n" + catN(1, 24) + "=== b.go ===\n" + catN(1, 12)
+	out := detect.ThinLineNumberRuns(in)
+	if out == "" {
+		t.Fatal("mixed header/listing content must be thinned")
+	}
+	if detect.ThinLineNumbers(in) != "" {
+		t.Fatal("the strict variant is supposed to refuse this shape")
+	}
+	if strings.Count(out, "\n") != strings.Count(in, "\n") {
+		t.Fatalf("line count changed:\n%s", out)
+	}
+	for _, want := range []string{"=== a.go ===", "=== b.go ===", "1\t", "10\t", "20\t", "24\t", "12\t"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q must survive:\n%s", want, out)
+		}
+	}
+	// Every body line comes back byte-for-byte, gutter or not.
+	for _, l := range strings.Split(strings.TrimRight(in, "\n"), "\n") {
+		_, body, _ := gutter(l)
+		if !strings.Contains(out, body) {
+			t.Errorf("body %q was corrupted:\n%s", body, out)
+		}
+	}
+}
+
+// A run shorter than the anchor interval is left alone: that is the guard that
+// keeps a numeric TSV out of reach.
+func TestThinLineNumberRuns_RefusesShortRunsAndPlainText(t *testing.T) {
+	cases := map[string]string{
+		"short run":  "header\n" + catN(1, 9) + "footer\n",
+		"plain":      "the quick brown fox\njumped over\n",
+		"empty":      "",
+		"restarting": "1\ta\n1\tb\n1\tc\n1\td\n1\te\n1\tf\n1\tg\n1\th\n1\ti\n1\tj\n",
+	}
+	for name, in := range cases {
+		if out := detect.ThinLineNumberRuns(in); out != "" {
+			t.Errorf("%s must be refused, got:\n%s", name, out)
+		}
+	}
+}
+
+// Whole-payload listings are the strict variant's job, and the run variant must
+// agree with it there — one shape, one answer.
+func TestThinLineNumberRuns_MatchesStrictOnAWholeListing(t *testing.T) {
+	in := catN(1, 40)
+	if runs, strict := detect.ThinLineNumberRuns(in), detect.ThinLineNumbers(in); runs != strict {
+		t.Errorf("run variant disagrees with strict:\n%s\n---\n%s", runs, strict)
+	}
+}

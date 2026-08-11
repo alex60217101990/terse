@@ -36,3 +36,4 @@ func FuzzFoldRepeatedBlocks(f *testing.F)  { fuzzNeverWorse(f, detect.FoldRepeat
 func FuzzFoldPathPrefix(f *testing.F)      { fuzzNeverWorse(f, detect.FoldPathPrefix, false) }
 func FuzzFoldLinePrefixes(f *testing.F)    { fuzzNeverWorse(f, detect.FoldLinePrefixes, true) }
 func FuzzThinLineNumbers(f *testing.F)     { fuzzNeverWorse(f, detect.ThinLineNumbers, true) }
+func FuzzThinLineNumberRuns(f *testing.F)  { fuzzNeverWorse(f, detect.ThinLineNumberRuns, true) }
