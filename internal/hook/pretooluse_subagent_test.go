@@ -84,11 +84,11 @@ func TestPreToolUse_DenyIsRecoverable(t *testing.T) {
 		t.Fatalf("expected deny, got %q", d)
 	}
 	const marker = "qdf-hook expand "
-	i := strings.Index(reason, marker)
-	if i < 0 {
+	_, after, ok0 := strings.Cut(reason, marker)
+	if !ok0 {
 		t.Fatalf("deny reason offers no way to recover the content: %q", reason)
 	}
-	hash := strings.TrimSpace(reason[i+len(marker):])
+	hash := strings.TrimSpace(after)
 
 	got, ok := cache.RefGet(hash)
 	if !ok {

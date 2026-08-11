@@ -196,8 +196,8 @@ func scanGutter(content string) (first, last int, ok bool) {
 
 // cutLine splits off the first line of s, reporting whether more followed.
 func cutLine(s string) (line, rest string, more bool) {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i], s[i+1:], true
+	if before, after, ok := strings.Cut(s, "\n"); ok {
+		return before, after, true
 	}
 	return s, "", false
 }

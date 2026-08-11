@@ -22,8 +22,8 @@ import (
 type Triple struct {
 	Session string          `json:"session"`
 	Tool    string          `json:"tool"`
-	Input   json.RawMessage `json:"input"`
 	Result  string          `json:"result"`
+	Input   json.RawMessage `json:"input"`
 }
 
 // Session is one transcript file's worth of triples, in transcript order.

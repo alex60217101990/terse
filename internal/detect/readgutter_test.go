@@ -58,7 +58,7 @@ func TestThinLineNumbers_BodyIsUntouched(t *testing.T) {
 	}
 	strip := func(s string) []string {
 		var bodies []string
-		for _, l := range strings.Split(strings.TrimRight(s, "\n"), "\n") {
+		for l := range strings.SplitSeq(strings.TrimRight(s, "\n"), "\n") {
 			if _, body, ok := gutter(l); ok {
 				bodies = append(bodies, body)
 			} else {
@@ -84,7 +84,7 @@ func TestThinLineNumbers_WindowKeepsAbsoluteNumbers(t *testing.T) {
 		t.Fatal("expected thinning")
 	}
 	var anchors []int
-	for _, l := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(out, "\n"), "\n") {
 		if n, _, ok := gutter(l); ok {
 			anchors = append(anchors, n)
 		}
@@ -165,7 +165,7 @@ func TestThinLineNumberRuns_ThinsEachRunAroundHeaders(t *testing.T) {
 		}
 	}
 	// Every body line comes back byte-for-byte, gutter or not.
-	for _, l := range strings.Split(strings.TrimRight(in, "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(in, "\n"), "\n") {
 		_, body, _ := gutter(l)
 		if !strings.Contains(out, body) {
 			t.Errorf("body %q was corrupted:\n%s", body, out)

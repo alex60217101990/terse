@@ -45,13 +45,6 @@ func (c *Cell) add(in, out int) {
 // Report is one replay's result: what corpus it ran over, what the walk had to
 // throw away, and the per-category token ledger.
 type Report struct {
-	Fingerprint Fingerprint `json:"fingerprint"`
-
-	Sessions int `json:"sessions"`
-	Triples  int `json:"triples"`
-	Skipped  int `json:"skipped"`
-	Filtered int `json:"filtered"`
-	Unpaired int `json:"unpaired"`
 
 	// ByHookAction is keyed "<tool>/<action>", e.g. "Bash/summary".
 	//
@@ -59,7 +52,15 @@ type Report struct {
 	// the failure that matters: a change that improves one detector by more
 	// than it breaks another looks like a win in aggregate and is not one.
 	ByHookAction map[string]Cell `json:"by_hook_action"`
-	Total        Cell            `json:"total"`
+	Fingerprint  Fingerprint     `json:"fingerprint"`
+
+	Total Cell `json:"total"`
+
+	Sessions int `json:"sessions"`
+	Triples  int `json:"triples"`
+	Skipped  int `json:"skipped"`
+	Filtered int `json:"filtered"`
+	Unpaired int `json:"unpaired"`
 }
 
 // Replay runs every session's triples through the hook pipeline and reports the

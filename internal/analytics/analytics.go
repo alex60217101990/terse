@@ -39,21 +39,21 @@ func SetWriter(w *Writer) {
 
 // Event records one hook invocation for analytics purposes.
 type Event struct {
-	SID      string `json:"sid"` // first 16 chars of session_id
-	Hook     string `json:"hook"`
-	Action   string `json:"action"`
+	SID    string `json:"sid"` // first 16 chars of session_id
+	Hook   string `json:"hook"`
+	Action string `json:"action"`
+	// Features is the active QDF_FEATURES value, empty for the default set. It
+	// lets `stats --ab` partition a live A/B without two installs.
+	Features string `json:"ft,omitempty"`
 	TS       int64  `json:"ts"` // unix nanoseconds
 	BytesIn  int    `json:"bi"`
 	BytesOut int    `json:"bo"`
 	// TokensIn/TokensOut are the real cost. Bytes stay because they are free to
 	// record and because historical events only have them; see Stats.SavedTokens
 	// for how the two eras are kept apart rather than silently mixed.
-	TokensIn  int `json:"ti"`
-	TokensOut int `json:"to"`
-	// Features is the active QDF_FEATURES value, empty for the default set. It
-	// lets `stats --ab` partition a live A/B without two installs.
-	Features string `json:"ft,omitempty"`
-	DurNS    int64  `json:"dur"` // hook duration in nanoseconds
+	TokensIn  int   `json:"ti"`
+	TokensOut int   `json:"to"`
+	DurNS     int64 `json:"dur"` // hook duration in nanoseconds
 }
 
 // AnalyticsPath returns the path to the analytics JSONL file.

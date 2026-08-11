@@ -42,11 +42,11 @@ func ContextKey(inp *protocol.HookInput) string {
 // send agent_id, so it errs toward "" — a wrong split would scatter a single
 // context's cache across many keys, which costs tokens but never correctness.
 func agentFromTranscript(path string) string {
-	i := strings.Index(path, subagentMarker)
-	if i < 0 {
+	_, after, ok := strings.Cut(path, subagentMarker)
+	if !ok {
 		return ""
 	}
-	id := path[i+len(subagentMarker):]
+	id := after
 	if j := strings.IndexByte(id, '/'); j >= 0 {
 		id = id[:j]
 	}
