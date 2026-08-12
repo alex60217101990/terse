@@ -94,7 +94,7 @@ func runCmd(tasksPath string, o opts) error {
 			// warmer cache, so a fixed order keeps that bias on one side where
 			// it can be reasoned about, instead of alternating it into noise.
 			for _, variant := range []string{variantOff, variantOn} {
-				res, err := drive(task, variant, o.model, o.dir, o.allowed, o.timeout)
+				res, err := drive(task, variant, o)
 				if err != nil {
 					return fmt.Errorf("%s/%s attempt %d: %w", task.Name, variant, attempt, err)
 				}
@@ -140,25 +140,28 @@ func loadTasks(path string) ([]Task, error) {
 
 // drive runs one task under one variant and returns the session's result line.
 //
-// allowed is the pre-approved tool list and timeout bounds one session. Both
+// o.allowed is the pre-approved tool list and o.timeout bounds one session. Both
 // exist for the same reason: an unattended sweep is 2 runs per task per attempt,
 // and a single session stopping to ask for permission would otherwise hang the
 // whole thing with no output to show for the runs that already cost money.
-func drive(task Task, variant, model, dir string, allowed []string, timeout time.Duration) (Result, error) {
-	args := claudeArgs(model, allowed)
+func drive(task Task, variant string, o opts) (Result, error) {
+	args := claudeArgs(o.model, o.allowed)
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "claude", args...)
 	// The prompt goes in on stdin, not as a trailing argument: --allowedTools and
 	// --model are variadic, so a positional prompt is read as one more value for
 	// whichever flag came last, and the session dies asking for input.
 	cmd.Stdin = strings.NewReader(task.Prompt)
-	cmd.Dir = dir
+	cmd.Dir = o.dir
 	cmd.Env = os.Environ()
 	if variant == variantOff {
 		cmd.Env = append(cmd.Env, "QDF_OFF=1")
 	}
+	// Note what this does NOT control: which qdf-hook actually runs. See the
+	// package comment — that is settled by the installed settings and the
+	// resident daemon, not by anything this process can pass down.
 	// stderr is left attached: a session that stalls on a permission prompt or
 	// dies on an auth error should say so on the terminal rather than time out
 	// silently behind a pipe.

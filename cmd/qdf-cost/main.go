@@ -13,13 +13,22 @@
 // input_tokens, cache_creation_input_tokens, cache_read_input_tokens,
 // output_tokens, and total_cost_usd.
 //
-// Two things to know before trusting a run:
+// Three things to know before trusting a run:
 //
 //   - It spends real tokens and real money, twice per task.
 //   - A live session is not deterministic. The model may take a different route
 //     through the same prompt on the two runs, and that difference can be larger
 //     than the effect being measured. Write tasks that pin the tool sequence,
 //     use --runs to see the spread, and treat a single pair as an anecdote.
+//   - It measures the INSTALLED hook, not this working tree, and there is no
+//     flag that changes that. `qdf-hook init` writes absolute binary paths into
+//     settings.json, and PostToolUse hooks from --settings are ADDED to those
+//     rather than replacing them, so a second hook does not displace the first.
+//     Worse, any qdf-hook invoked while the resident daemon holds
+//     ~/.qdf-hook/d.sock proxies the work to that daemon's binary — so even
+//     running a freshly built binary by absolute path measures the daemon.
+//     To measure a working tree: install it and restart the daemon. Skipping
+//     that once cost a 24-session sweep that silently graded the last release.
 package main
 
 import (
@@ -49,6 +58,8 @@ const usage = `usage: qdf-cost run [flags] <tasks.json>
         --dir PATH          working directory for the session (default: the cwd)
         --allowed-tools L   comma-separated tools to pre-approve, so an
                             unattended sweep never stalls on a permission prompt
+WARNING: this measures the INSTALLED hook, never the working tree. See the
+package comment for why there is no flag for that.
         --timeout D         per-session timeout (default 5m)
         --json              emit the report as JSON on stdout
 
