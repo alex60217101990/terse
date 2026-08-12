@@ -26,6 +26,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 )
 
 const usage = `usage: qdf-cost run [flags] <tasks.json>
@@ -40,11 +42,15 @@ const usage = `usage: qdf-cost run [flags] <tasks.json>
           [{"name": "read-daemon",
             "prompt": "Read internal/daemon/daemon.go and reply with its line count."}]
 
-        --runs N      repeat every task N times (default 1); the report keeps
-                      each run separate, because the spread is the point
-        --model M     model to drive (default: whatever Claude Code is set to)
-        --dir PATH    working directory for the session (default: the cwd)
-        --json        emit the report as JSON on stdout
+        --runs N            repeat every task N times (default 1); the report
+                            keeps each run separate, because the spread is the
+                            point
+        --model M           model to drive (default: Claude Code's own setting)
+        --dir PATH          working directory for the session (default: the cwd)
+        --allowed-tools L   comma-separated tools to pre-approve, so an
+                            unattended sweep never stalls on a permission prompt
+        --timeout D         per-session timeout (default 5m)
+        --json              emit the report as JSON on stdout
 
 WARNING: every task costs real tokens twice over. Start with one small task.
 `
@@ -58,10 +64,14 @@ func main() {
 	switch os.Args[1] {
 	case "run":
 		fs := flag.NewFlagSet("run", flag.ExitOnError)
-		runs := fs.Int("runs", 1, "repeat every task N times")
-		model := fs.String("model", "", "model to drive")
-		dir := fs.String("dir", "", "working directory for the session")
-		asJSON := fs.Bool("json", false, "emit the report as JSON")
+		o := opts{}
+		fs.IntVar(&o.runs, "runs", 1, "repeat every task N times")
+		fs.StringVar(&o.model, "model", "", "model to drive")
+		fs.StringVar(&o.dir, "dir", "", "working directory for the session")
+		fs.DurationVar(&o.timeout, "timeout", 5*time.Minute, "per-session timeout")
+		fs.BoolVar(&o.asJSON, "json", false, "emit the report as JSON")
+		allowed := fs.String("allowed-tools", "",
+			"comma-separated tools to pre-approve, so a sweep never stalls on a prompt")
 		if err := fs.Parse(os.Args[2:]); err != nil {
 			os.Exit(2)
 		}
@@ -69,7 +79,12 @@ func main() {
 			fmt.Fprint(os.Stderr, usage)
 			os.Exit(2)
 		}
-		if err := runCmd(fs.Arg(0), *runs, *model, *dir, *asJSON); err != nil {
+		for t := range strings.SplitSeq(*allowed, ",") {
+			if t = strings.TrimSpace(t); t != "" {
+				o.allowed = append(o.allowed, t)
+			}
+		}
+		if err := runCmd(fs.Arg(0), o); err != nil {
 			fmt.Fprintf(os.Stderr, "qdf-cost: %v\n", err)
 			os.Exit(1)
 		}

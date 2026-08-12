@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // Task is one prompt to drive. Keep prompts explicit about which tools to use:
@@ -64,8 +66,19 @@ const (
 	variantOn  = "on"
 )
 
-func runCmd(tasksPath string, runs int, model, dir string, asJSON bool) error {
-	if runs < 1 {
+// opts is one invocation's configuration, threaded through rather than passed as
+// a widening parameter list.
+type opts struct {
+	runs    int
+	model   string
+	dir     string
+	allowed []string
+	timeout time.Duration
+	asJSON  bool
+}
+
+func runCmd(tasksPath string, o opts) error {
+	if o.runs < 1 {
 		return fmt.Errorf("--runs must be at least 1")
 	}
 	tasks, err := loadTasks(tasksPath)
@@ -73,22 +86,22 @@ func runCmd(tasksPath string, runs int, model, dir string, asJSON bool) error {
 		return err
 	}
 
-	rep := Report{Model: model, Dir: dir}
-	for attempt := 1; attempt <= runs; attempt++ {
+	rep := Report{Model: o.model, Dir: o.dir}
+	for attempt := 1; attempt <= o.runs; attempt++ {
 		for _, task := range tasks {
 			// Baseline first, every time. The order matters for the same reason
 			// it matters on a laptop benchmark: the second run of a pair reads a
 			// warmer cache, so a fixed order keeps that bias on one side where
 			// it can be reasoned about, instead of alternating it into noise.
 			for _, variant := range []string{variantOff, variantOn} {
-				res, err := drive(task, variant, model, dir)
+				res, err := drive(task, variant, o.model, o.dir, o.allowed, o.timeout)
 				if err != nil {
 					return fmt.Errorf("%s/%s attempt %d: %w", task.Name, variant, attempt, err)
 				}
 				rep.Runs = append(rep.Runs, Run{
 					Task: task.Name, Variant: variant, Attempt: attempt, Result: res,
 				})
-				if !asJSON {
+				if !o.asJSON {
 					fmt.Fprintf(os.Stderr, "  ran %-24s %-3s attempt %d — %d turns, $%.4f\n",
 						task.Name, variant, attempt, res.NumTurns, res.TotalCostUSD)
 				}
@@ -96,7 +109,7 @@ func runCmd(tasksPath string, runs int, model, dir string, asJSON bool) error {
 		}
 	}
 
-	if asJSON {
+	if o.asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(rep)
@@ -126,14 +139,25 @@ func loadTasks(path string) ([]Task, error) {
 }
 
 // drive runs one task under one variant and returns the session's result line.
-func drive(task Task, variant, model, dir string) (Result, error) {
+//
+// allowed is the pre-approved tool list and timeout bounds one session. Both
+// exist for the same reason: an unattended sweep is 2 runs per task per attempt,
+// and a single session stopping to ask for permission would otherwise hang the
+// whole thing with no output to show for the runs that already cost money.
+func drive(task Task, variant, model, dir string, allowed []string, timeout time.Duration) (Result, error) {
 	args := []string{"-p", "--output-format", "stream-json", "--verbose"}
 	if model != "" {
 		args = append(args, "--model", model)
 	}
+	if len(allowed) > 0 {
+		args = append(args, "--allowedTools")
+		args = append(args, allowed...)
+	}
 	args = append(args, task.Prompt)
 
-	cmd := exec.Command("claude", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "claude", args...)
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	if variant == variantOff {
