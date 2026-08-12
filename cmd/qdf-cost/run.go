@@ -6,10 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/alex60217101990/terse/internal/daemon"
 )
 
 // Task is one prompt to drive. Keep prompts explicit about which tools to use:
@@ -59,7 +62,16 @@ type Report struct {
 	Model string `json:"model"`
 	Dir   string `json:"dir"`
 	Runs  []Run  `json:"runs"`
+	// Failed counts sessions that never produced a result. They are reported
+	// rather than dropped: a table built from half the intended runs is still
+	// usable, but only if it says so.
+	Failed int `json:"failed"`
 }
+
+// maxConsecutiveFailures stops a sweep whose failures are systematic — a broken
+// login, an exhausted rate limit — instead of paying for every remaining run to
+// fail the same way.
+const maxConsecutiveFailures = 3
 
 const (
 	variantOff = "off"
@@ -86,7 +98,10 @@ func runCmd(tasksPath string, o opts) error {
 		return err
 	}
 
+	warnAboutTheDaemon(os.Stderr)
+
 	rep := Report{Model: o.model, Dir: o.dir}
+	consecutive := 0
 	for attempt := 1; attempt <= o.runs; attempt++ {
 		for _, task := range tasks {
 			// Baseline first, every time. The order matters for the same reason
@@ -96,8 +111,22 @@ func runCmd(tasksPath string, o opts) error {
 			for _, variant := range []string{variantOff, variantOn} {
 				res, err := drive(task, variant, o)
 				if err != nil {
-					return fmt.Errorf("%s/%s attempt %d: %w", task.Name, variant, attempt, err)
+					// Never discard runs that have already been paid for. One
+					// session can fail for its own reasons — a stray permission
+					// prompt, a rate limit — and losing twenty good runs with it
+					// is the expensive failure, not the missing one.
+					rep.Failed++
+					consecutive++
+					fmt.Fprintf(os.Stderr, "  FAILED %-24s %-3s attempt %d: %v\n",
+						task.Name, variant, attempt, err)
+					if consecutive >= maxConsecutiveFailures {
+						writeReport(os.Stderr, rep)
+						return fmt.Errorf("gave up after %d consecutive failures, last: %w",
+							consecutive, err)
+					}
+					continue
 				}
+				consecutive = 0
 				rep.Runs = append(rep.Runs, Run{
 					Task: task.Name, Variant: variant, Attempt: attempt, Result: res,
 				})
@@ -116,6 +145,29 @@ func runCmd(tasksPath string, o opts) error {
 	}
 	writeReport(os.Stdout, rep)
 	return nil
+}
+
+// warnAboutTheDaemon says which qdf-hook is about to be graded, before any money
+// is spent. A resident daemon answers every hook call in the session, so the
+// sweep measures the daemon's binary no matter what was just built — and the
+// daemon reports its own version over the socket, which is the only reliable way
+// to find out from here.
+func warnAboutTheDaemon(w io.Writer) {
+	sock := daemon.SockPath()
+	if _, err := os.Stat(sock); err != nil {
+		fmt.Fprintf(w, "no daemon at %s: each hook call dispatches inline, "+
+			"grading whichever qdf-hook the installed settings name.\n", sock)
+		return
+	}
+	reply, err := daemon.Ping(sock, 2*time.Second)
+	if err != nil {
+		fmt.Fprintf(w, "a socket exists at %s but does not answer (%v): "+
+			"calls may fall back to inline dispatch mid-sweep.\n", sock, err)
+		return
+	}
+	fmt.Fprintf(w, "a resident daemon owns %s and will serve every hook call:\n"+
+		"  %s\nthis sweep grades THAT binary. Restart the daemon to grade a new build.\n",
+		sock, strings.TrimSpace(reply))
 }
 
 func loadTasks(path string) ([]Task, error) {
@@ -235,25 +287,32 @@ func parseResult(stream []byte) (Result, error) {
 	return found, nil
 }
 
-func writeReport(w *os.File, rep Report) {
+func writeReport(w io.Writer, rep Report) {
 	bw := bufio.NewWriter(w)
 	defer func() { _ = bw.Flush() }()
 
-	fmt.Fprintf(bw, "\n%-24s %-4s %-4s %8s %10s %10s %8s %10s\n",
-		"TASK", "RUN", "HOOK", "IN", "CACHE-W", "CACHE-R", "OUT", "USD")
+	const row = "%-24s %-4s %-4s %6s %8s %10s %10s %8s %10s\n"
+	fmt.Fprintf(bw, "\n"+row,
+		"TASK", "RUN", "HOOK", "TURNS", "IN", "CACHE-W", "CACHE-R", "OUT", "USD")
 
 	var offTotal, onTotal Usage
 	var offUSD, onUSD float64
+	var offTurns, onTurns int
 	for _, pair := range pairs(rep.Runs) {
 		for _, r := range []Run{pair.off, pair.on} {
 			u := r.Result.Usage
-			fmt.Fprintf(bw, "%-24s %-4d %-4s %8d %10d %10d %8d %10.4f\n",
-				r.Task, r.Attempt, r.Variant,
+			fmt.Fprintf(bw, "%-24s %-4d %-4s %6d %8d %10d %10d %8d %10.4f\n",
+				r.Task, r.Attempt, r.Variant, r.Result.NumTurns,
 				u.InputTokens, u.CacheCreationTokens, u.CacheReadTokens, u.OutputTokens,
 				r.Result.TotalCostUSD)
 		}
-		fmt.Fprintf(bw, "%-24s %-4s %-4s %8s %10s %10s %8s %10s\n",
+		// TURNS is in the table because a route change is the confound that
+		// dominates everything else: one extra turn re-reads the whole prefix and
+		// swamps any compression delta. A pair whose turn counts differ is not a
+		// comparison, and the reader has to be able to see that.
+		fmt.Fprintf(bw, row,
 			"", "", "Δ",
+			pct(pair.off.Result.NumTurns, pair.on.Result.NumTurns),
 			pct(pair.off.Result.Usage.InputTokens, pair.on.Result.Usage.InputTokens),
 			pct(pair.off.Result.Usage.CacheCreationTokens, pair.on.Result.Usage.CacheCreationTokens),
 			pct(pair.off.Result.Usage.CacheReadTokens, pair.on.Result.Usage.CacheReadTokens),
@@ -264,15 +323,19 @@ func writeReport(w *os.File, rep Report) {
 		onTotal = add(onTotal, pair.on.Result.Usage)
 		offUSD += pair.off.Result.TotalCostUSD
 		onUSD += pair.on.Result.TotalCostUSD
+		offTurns += pair.off.Result.NumTurns
+		onTurns += pair.on.Result.NumTurns
 	}
 
-	fmt.Fprintf(bw, "\n%-34s %8d %10d %10d %8d %10.4f\n", "TOTAL off",
-		offTotal.InputTokens, offTotal.CacheCreationTokens, offTotal.CacheReadTokens,
+	const total = "%-34s %6s %8s %10s %10s %8s %10s\n"
+	fmt.Fprintf(bw, "\n%-34s %6d %8d %10d %10d %8d %10.4f\n", "TOTAL off",
+		offTurns, offTotal.InputTokens, offTotal.CacheCreationTokens, offTotal.CacheReadTokens,
 		offTotal.OutputTokens, offUSD)
-	fmt.Fprintf(bw, "%-34s %8d %10d %10d %8d %10.4f\n", "TOTAL on",
-		onTotal.InputTokens, onTotal.CacheCreationTokens, onTotal.CacheReadTokens,
+	fmt.Fprintf(bw, "%-34s %6d %8d %10d %10d %8d %10.4f\n", "TOTAL on",
+		onTurns, onTotal.InputTokens, onTotal.CacheCreationTokens, onTotal.CacheReadTokens,
 		onTotal.OutputTokens, onUSD)
-	fmt.Fprintf(bw, "%-34s %8s %10s %10s %8s %10s\n", "TOTAL Δ",
+	fmt.Fprintf(bw, total, "TOTAL Δ",
+		pct(offTurns, onTurns),
 		pct(offTotal.InputTokens, onTotal.InputTokens),
 		pct(offTotal.CacheCreationTokens, onTotal.CacheCreationTokens),
 		pct(offTotal.CacheReadTokens, onTotal.CacheReadTokens),
@@ -280,7 +343,11 @@ func writeReport(w *os.File, rep Report) {
 		pctF(offUSD, onUSD))
 
 	fmt.Fprint(bw, "\nbilled tokens and cost as reported by the API, not an o200k estimate.\n"+
-		"a live session is not deterministic: read the per-run spread before the total.\n")
+		"a live session is not deterministic: read the per-run spread before the total,\n"+
+		"and discard any pair whose TURNS differ — that pair measured two routes.\n")
+	if rep.Failed > 0 {
+		fmt.Fprintf(bw, "%d session(s) failed and are missing from the table above.\n", rep.Failed)
+	}
 }
 
 // pair is one task's baseline and treatment run for a single attempt.
@@ -325,6 +392,5 @@ func pctF(base, got float64) string {
 		}
 		return "new"
 	}
-	d := (got - base) / base * 100
-	return strings.TrimSuffix(fmt.Sprintf("%+.1f%%", d), "\n")
+	return fmt.Sprintf("%+.1f%%", (got-base)/base*100)
 }

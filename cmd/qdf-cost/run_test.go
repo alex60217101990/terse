@@ -122,3 +122,32 @@ func TestClaudeArgs_NeverCarriesThePrompt(t *testing.T) {
 		}
 	}
 }
+
+// The report has to make the dominant confound visible. A pair whose turn counts
+// differ measured two different routes through the prompt, and any token delta
+// between them is meaningless — so TURNS is a column, and failed sessions are
+// counted rather than quietly missing.
+func TestWriteReport_ShowsTurnsAndFailures(t *testing.T) {
+	rep := Report{
+		Failed: 2,
+		Runs: []Run{
+			{Task: "t", Variant: variantOff, Attempt: 1, Result: Result{
+				NumTurns: 3, TotalCostUSD: 0.10,
+				Usage: Usage{InputTokens: 10, CacheReadTokens: 1000, OutputTokens: 100},
+			}},
+			{Task: "t", Variant: variantOn, Attempt: 1, Result: Result{
+				NumTurns: 4, TotalCostUSD: 0.12,
+				Usage: Usage{InputTokens: 10, CacheReadTokens: 1500, OutputTokens: 120},
+			}},
+		},
+	}
+	var b strings.Builder
+	writeReport(&b, rep)
+	got := b.String()
+
+	for _, want := range []string{"TURNS", "+33.3%", "2 session(s) failed", "TURNS differ"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("report must mention %q:\n%s", want, got)
+		}
+	}
+}
