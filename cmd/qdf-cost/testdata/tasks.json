@@ -1,0 +1,22 @@
+[
+  {
+    "name": "read-one-file",
+    "prompt": "Read internal/daemon/daemon.go with the Read tool and reply with only its line count. Use no other tool."
+  },
+  {
+    "name": "reread-same-file",
+    "prompt": "Read internal/daemon/daemon.go with the Read tool, then read it a second time, then reply with only its line count. Use no other tool."
+  },
+  {
+    "name": "bash-git-log",
+    "prompt": "Run `git log --oneline -30` with the Bash tool and reply with only the newest commit's subject line. Use no other tool."
+  },
+  {
+    "name": "cat-n-dump",
+    "prompt": "Run `cat -n internal/hookcore/memstore.go` with the Bash tool and reply with only the name of the last function defined in it. Use no other tool."
+  },
+  {
+    "name": "grep-symbol",
+    "prompt": "Use the Grep tool to find every definition matching 'func Thin' under internal/detect, then reply with only the matching file names. Use no other tool."
+  }
+]

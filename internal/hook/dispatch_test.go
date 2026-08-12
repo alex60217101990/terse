@@ -402,3 +402,21 @@ func TestDispatch_BashCatNWithHeader_GutterThinned(t *testing.T) {
 		}
 	}
 }
+
+// QDF_OFF is the A/B switch cmd/qdf-cost flips: the hook still runs, and still
+// answers, but it must hand back the output untouched. A payload the pipeline
+// would otherwise claim is the only honest test of that.
+func TestDispatch_QDFOff_PassesEverythingThrough(t *testing.T) {
+	t.Setenv("QDF_OFF", "1")
+	var b strings.Builder
+	b.WriteString("===== internal/detect/readgutter.go =====\n")
+	for i := 1; i <= 40; i++ {
+		fmt.Fprintf(&b, "%d\t\tif err := step%02d(ctx); err != nil {\n", i, i)
+	}
+
+	resp := runDispatch(t, "Bash", b.String())
+	if resp.HookSpecificOutput != nil {
+		t.Errorf("QDF_OFF must not rewrite the output:\n%s",
+			resp.HookSpecificOutput.UpdatedToolOutput)
+	}
+}

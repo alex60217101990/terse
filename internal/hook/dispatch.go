@@ -46,6 +46,16 @@ func DispatchBytes(store hookcore.StateStore, req []byte, w io.Writer) error {
 }
 
 func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
+	// QDF_OFF turns the whole pipeline into a pass-through while leaving the hook
+	// installed and invoked. That is the A/B switch cmd/qdf-cost flips between
+	// its baseline and treatment runs: unhooking instead would change the
+	// session's shape (one less hook in the settings) and move the very prefix
+	// tokens the comparison is trying to hold still. Nothing is recorded either,
+	// so a baseline run cannot skew the user's own stats.
+	if os.Getenv("QDF_OFF") != "" {
+		return protocol.EncodeOutput(w, protocol.Passthrough())
+	}
+
 	// PreToolUse (the Read mtime fast-path) is distinguished by the event name
 	// Claude sends in the payload — the daemon multiplexes both events over one
 	// socket, unlike the CLI where the subcommand picked the handler. Anything
