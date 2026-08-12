@@ -52,7 +52,16 @@ func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer)
 	// session's shape (one less hook in the settings) and move the very prefix
 	// tokens the comparison is trying to hold still. Nothing is recorded either,
 	// so a baseline run cannot skew the user's own stats.
+	//
+	// This covers direct callers — inline dispatch, cmd/qdf-replay, the daemon
+	// when it was itself started with the variable set. The switch a session can
+	// actually reach is the client-side one in cmd/qdf-hook: a resident daemon
+	// runs this function in its OWN process and reads its own environment.
 	if os.Getenv("QDF_OFF") != "" {
+		if inp.HookEventName == "PreToolUse" {
+			// A PreToolUse event needs a permission decision, not an empty object.
+			return protocol.EncodePre(w, "allow", "")
+		}
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -124,10 +133,15 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 
 	// record takes the emitted TEXT, not its length, because tokens are the real
 	// cost and cannot be recovered from a byte count. Passthrough emits the
-	// content itself, so it reuses the memoised count instead of paying twice.
-	record := func(action string, emitted string) {
-		tokensOut := countContent()
-		if len(emitted) != len(content) || emitted != content {
+	// content itself, so it reuses the memoised count instead of paying twice;
+	// known >= 0 is a count a gate has already paid for.
+	record := func(action string, emitted string, known int) {
+		tokensOut := known
+		switch {
+		case known >= 0:
+		case emitted == content:
+			tokensOut = countContent()
+		default:
 			tokensOut = tokens.Count(emitted)
 		}
 		_ = analytics.Record(analytics.Event{
@@ -144,7 +158,7 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	}
 
 	if len(content) < 256 {
-		record("passthrough", content)
+		record("passthrough", content, -1)
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -234,10 +248,16 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	//
 	// It runs before the fold below, not after: dropping the gutter is what
 	// leaves neighbouring lines with a shared head for the fold to find.
+	// replacementTokens is the token count of replacement once a gate has paid
+	// for it, so the next gate and the analytics record reuse it instead of
+	// tokenising the same string again. -1 means not counted yet.
+	replacementTokens := -1
+
 	if action == "passthrough" {
-		if thinned := detect.ThinLineNumberRuns(content); thinned != "" &&
-			tokens.Count(thinned) < countContent()*(100-gutterThinMarginPct)/100 {
-			action, replacement = "gutter-thinned", thinned
+		if thinned := detect.ThinLineNumberRuns(content); thinned != "" {
+			if n := tokens.Count(thinned); n < countContent()*(100-gutterThinMarginPct)/100 {
+				action, replacement, replacementTokens = "gutter-thinned", thinned, n
+			}
 		}
 	}
 
@@ -260,22 +280,24 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	// run of near-identical lines left for this to find. The two transforms
 	// cover different shapes rather than overlapping.
 	if action == "passthrough" || action == "gutter-thinned" {
-		src := content
-		count := countContent()
+		// replacement is non-empty here only when the thin above set it, and it
+		// set replacementTokens with it — nothing else reaches this branch.
+		src, count := content, countContent()
 		if replacement != "" {
-			src, count = replacement, tokens.Count(replacement)
+			src, count = replacement, replacementTokens
 		}
-		if folded := detect.FoldLinePrefixes(src); folded != "" &&
-			tokens.Count(folded) < count*(100-prefixFoldMarginPct)/100 {
-			action, replacement = "prefix-folded", folded
+		if folded := detect.FoldLinePrefixes(src); folded != "" {
+			if n := tokens.Count(folded); n < count*(100-prefixFoldMarginPct)/100 {
+				action, replacement, replacementTokens = "prefix-folded", folded, n
+			}
 		}
 	}
 
 	if replacement != "" {
-		record(action, replacement)
+		record(action, replacement, replacementTokens)
 		return protocol.EncodeOutput(w, protocol.Replace(replacement))
 	}
-	record(action, content)
+	record(action, content, -1)
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }
 

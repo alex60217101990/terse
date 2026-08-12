@@ -72,9 +72,15 @@ func ThinLineNumbers(content string) string {
 // passthrough output is worth 1.35 points of the corpus and this is worth 2.35.
 //
 // A run must reach gutterKeepEvery lines before it is touched. That is what
-// keeps the relaxed rule safe: a TSV or a numbered list would have to hold ten
-// perfectly consecutive integers before this could reach it, and even then it
-// only thins numbers a reader can re-derive by counting from the anchor above.
+// keeps the relaxed rule safe on arbitrary command output: a TSV or a numbered
+// list would have to hold ten perfectly consecutive integers before this could
+// reach it.
+//
+// And when it does reach one, nothing is lost. A run is consecutive by
+// definition, so every dropped number is its anchor plus the offset of its line
+// — recoverable by counting, with the error bounded by the anchor interval. The
+// cost is reader effort, not information, which is the same trade the strict
+// variant already makes on the Read path.
 func ThinLineNumberRuns(content string) string {
 	runs := scanGutterRuns(content)
 	if len(runs) == 0 {

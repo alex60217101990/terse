@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"runtime"
@@ -12,6 +13,7 @@ import (
 	"github.com/alex60217101990/terse/internal/daemon"
 	"github.com/alex60217101990/terse/internal/hook"
 	"github.com/alex60217101990/terse/internal/hookcore"
+	"github.com/alex60217101990/terse/internal/protocol"
 	"github.com/spf13/cobra"
 )
 
@@ -261,14 +263,47 @@ func runSessionStart() error { return hook.HandleSessionStart(os.Stdin, os.Stdou
 // runPost tries the resident daemon first (pure-Go socket client), falling
 // back to a correct in-process dispatch when the daemon is unreachable. This
 // replaces the old `nc || qdf-hook post` shell hybrid: one process, one spawn.
-func runPost() error { return socketFirst() }
+func runPost() error {
+	if qdfOff() {
+		drainStdin()
+		return protocol.EncodeOutput(os.Stdout, protocol.Passthrough())
+	}
+	return socketFirst()
+}
+
+// drainStdin reads and discards the payload. The off-switch answers without
+// looking at the event, but exiting while Claude Code is still writing to the
+// pipe hands the writer an EPIPE, which surfaces as a hook failure rather than
+// as the clean no-op this is supposed to be.
+func drainStdin() { _, _ = io.Copy(io.Discard, os.Stdin) }
+
+// qdfOff reports whether the pipeline is switched off for this invocation.
+//
+// The check has to live here, in the client, and not only in hook.routeInput:
+// when a resident daemon owns the socket it is the DAEMON's process that runs
+// routeInput, reading the daemon's environment rather than this session's. A
+// baseline run driven by cmd/qdf-cost would be compressed like any other, and
+// the A/B would compare a build against itself — which is what happened to one
+// 24-session sweep before this existed.
+//
+// It covers the tool-output hooks only. The compaction hooks are left alone:
+// their response shape is not a plain passthrough, and a sweep whose sessions
+// never compact is unaffected either way.
+func qdfOff() bool { return os.Getenv("QDF_OFF") != "" }
 
 // runPreToolUse tries the resident daemon first, same as runPost — the daemon
 // multiplexes both PreToolUse and PostToolUse over one socket (see
 // hook.routeInput), so both subcommands share the identical socket-first
 // dispatch, distinguished only by the hook_event_name already present in the
 // stdin payload.
-func runPreToolUse() error { return socketFirst() }
+func runPreToolUse() error {
+	if qdfOff() {
+		drainStdin()
+		// "allow" is this hook's no-opinion answer; it never denies anything else.
+		return protocol.EncodePre(os.Stdout, "allow", "")
+	}
+	return socketFirst()
+}
 
 // socketFirst dials the daemon's unix socket and, on success, proxies the
 // already-dialed connection (os.Stdin/os.Stdout) through it — committing to

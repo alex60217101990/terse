@@ -420,3 +420,31 @@ func TestDispatch_QDFOff_PassesEverythingThrough(t *testing.T) {
 			resp.HookSpecificOutput.UpdatedToolOutput)
 	}
 }
+
+// A PreToolUse event needs a permission decision, not an empty object. The
+// QDF_OFF short-circuit used to answer both events the same way, which handed
+// Claude Code `{}` where it expects hookSpecificOutput.permissionDecision.
+func TestDispatch_QDFOff_PreToolUse_AnswersAllow(t *testing.T) {
+	t.Setenv("QDF_OFF", "1")
+	t.Setenv("HOME", t.TempDir())
+
+	req := map[string]any{
+		"session_id":      "off-pre",
+		"hook_event_name": "PreToolUse",
+		"tool_name":       "Read",
+		"tool_input":      map[string]any{"file_path": "/nonexistent/file.go"},
+	}
+	body, _ := json.Marshal(req)
+
+	var out strings.Builder
+	if err := hook.Dispatch(hookcore.NewDiskStore(), strings.NewReader(string(body)), &out); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	got := out.String()
+	if !strings.Contains(got, `"permissionDecision":"allow"`) {
+		t.Errorf("PreToolUse under QDF_OFF must allow, got: %s", got)
+	}
+	if !strings.Contains(got, `"hookEventName":"PreToolUse"`) {
+		t.Errorf("response must name the event it answers, got: %s", got)
+	}
+}
