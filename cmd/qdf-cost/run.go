@@ -145,19 +145,15 @@ func loadTasks(path string) ([]Task, error) {
 // and a single session stopping to ask for permission would otherwise hang the
 // whole thing with no output to show for the runs that already cost money.
 func drive(task Task, variant, model, dir string, allowed []string, timeout time.Duration) (Result, error) {
-	args := []string{"-p", "--output-format", "stream-json", "--verbose"}
-	if model != "" {
-		args = append(args, "--model", model)
-	}
-	if len(allowed) > 0 {
-		args = append(args, "--allowedTools")
-		args = append(args, allowed...)
-	}
-	args = append(args, task.Prompt)
+	args := claudeArgs(model, allowed)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "claude", args...)
+	// The prompt goes in on stdin, not as a trailing argument: --allowedTools and
+	// --model are variadic, so a positional prompt is read as one more value for
+	// whichever flag came last, and the session dies asking for input.
+	cmd.Stdin = strings.NewReader(task.Prompt)
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	if variant == variantOff {
@@ -180,6 +176,21 @@ func drive(task Task, variant, model, dir string, allowed []string, timeout time
 		return res, fmt.Errorf("session ended in error (%s)", res.Subtype)
 	}
 	return res, nil
+}
+
+// claudeArgs builds the CLI invocation. The prompt is deliberately absent: it
+// travels on stdin, because --allowedTools and --model are variadic and would
+// read a trailing positional prompt as one more value.
+func claudeArgs(model string, allowed []string) []string {
+	args := []string{"-p", "--output-format", "stream-json", "--verbose"}
+	if model != "" {
+		args = append(args, "--model", model)
+	}
+	if len(allowed) > 0 {
+		args = append(args, "--allowedTools")
+		args = append(args, allowed...)
+	}
+	return args
 }
 
 // parseResult pulls the final result line out of a stream-json transcript.

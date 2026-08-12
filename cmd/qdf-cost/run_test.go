@@ -102,3 +102,23 @@ func TestPct(t *testing.T) {
 		}
 	}
 }
+
+// The prompt must never be an argument. --allowedTools and --model are variadic,
+// so a trailing positional prompt is read as one more value for whichever flag
+// came last and the session dies with "Input must be provided". That failure
+// costs a whole sweep, so pin it: the prompt travels on stdin.
+func TestClaudeArgs_NeverCarriesThePrompt(t *testing.T) {
+	args := claudeArgs("claude-haiku-4-5", []string{"Read", "Bash"})
+	joined := strings.Join(args, " ")
+	if strings.Contains(joined, "Reply with") {
+		t.Fatalf("prompt leaked into args: %q", joined)
+	}
+	if last := args[len(args)-1]; last != "Bash" {
+		t.Errorf("variadic flag values must end the args, got %q in %q", last, joined)
+	}
+	for _, want := range []string{"-p", "--output-format", "stream-json", "--allowedTools"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing %q in %q", want, joined)
+		}
+	}
+}
