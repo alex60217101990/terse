@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -312,6 +313,11 @@ func TestMemStore_FlushDirty_NoDeadlockUnderLoadSaveStorm(t *testing.T) {
 		}(g)
 	}
 
+	// flushes counts completed flush+decode cycles. The watchdog below reads it
+	// instead of watching the clock: a deadlock stops progress, while a slow
+	// machine only slows it, and a total-time deadline cannot tell those apart.
+	var flushes atomic.Int64
+
 	flushDone := make(chan struct{})
 	go func() {
 		defer close(flushDone)
@@ -330,13 +336,40 @@ func TestMemStore_FlushDirty_NoDeadlockUnderLoadSaveStorm(t *testing.T) {
 					panic(fmt.Sprintf("corrupt entry %q after flush: %+v", path, fe))
 				}
 			}
+			flushes.Add(1)
 		}
 	}()
 
-	select {
-	case <-flushDone:
-	case <-time.After(20 * time.Second):
-		t.Fatal("FlushDirty storm deadlocked or stalled")
+	// Watch progress, not elapsed time. Each iteration writes and re-reads a
+	// snapshot from disk while sixteen goroutines contend for the same locks, so
+	// total runtime tracks the machine: ~5s on a laptop, over 20s on a
+	// two-core CI runner under -race. The old 20s total-time deadline therefore
+	// failed on a slow runner and reported it as a deadlock. A deadlock is the
+	// counter not moving; the total cap only stops a wedged run from hanging
+	// until the package timeout.
+	const stallLimit = 15 * time.Second
+	const totalLimit = 3 * time.Minute
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+	total := time.After(totalLimit)
+	lastN, lastMove := int64(0), time.Now()
+watch:
+	for {
+		select {
+		case <-flushDone:
+			break watch
+		case <-total:
+			close(done)
+			t.Fatalf("storm unfinished after %s (%d flush cycles)", totalLimit, flushes.Load())
+		case <-tick.C:
+			if n := flushes.Load(); n != lastN {
+				lastN, lastMove = n, time.Now()
+			} else if since := time.Since(lastMove); since > stallLimit {
+				close(done)
+				t.Fatalf("FlushDirty made no progress for %s at %d cycles: deadlocked",
+					since.Truncate(time.Second), n)
+			}
+		}
 	}
 	close(done)
 	wg.Wait()
