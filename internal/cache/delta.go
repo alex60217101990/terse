@@ -171,6 +171,18 @@ func myersDiff(s *diffScratch, a, b []string) []edit {
 		return nil
 	}
 
+	// Bound the input before deriving any size from it. Both w and the snapshot
+	// budget below are proportional to n+m, so an enormous pair of inputs would
+	// allocate v — 2*(n+m)+3 ints — before maxD ever got the chance to refuse
+	// the trace, and those same products are what a static analyser flags as a
+	// possible overflow. This ceiling is ~8Mi lines, far past any payload a hook
+	// ever sees, and it keeps every derived size inside the same ~128MiB budget
+	// maxTraceInts already sets. Refusing looks like every other oversized case:
+	// no diff.
+	if n+m > maxTraceInts/2 {
+		return nil
+	}
+
 	// v holds the furthest-reaching x for diagonal k=x-y,
 	// stored at index k+offset to avoid negative indexing.
 	offset := n + m + 1
