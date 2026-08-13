@@ -196,21 +196,22 @@ func myersDiff(s *diffScratch, a, b []string) []edit {
 		return nil
 	}
 
-	// v holds the furthest-reaching x for diagonal k=x-y,
-	// stored at index k+offset to avoid negative indexing.
-	offset := n + m + 1
-
-	// The width is computed in uint64 and bounded before it narrows back to a
-	// size. With the ceiling above the int form cannot overflow either, but that
-	// takes reading two guards in two places to establish — and a size whose
-	// safety has to be reconstructed by the reader is one go/allocation-size-overflow
-	// is right to flag. Here the product is unsigned, cannot wrap for any input
-	// this side of maxDiffLines, and is checked against the budget it must fit.
-	width := 2*uint64(offset) + 1
+	// Every size below is derived in uint64 and narrowed at ONE point, after the
+	// bound that makes narrowing safe. With the ceiling above the signed form
+	// could not overflow either, but establishing that takes reading a guard in
+	// one place and the arithmetic in another — and a size whose safety has to be
+	// reconstructed by the reader is one go/allocation-size-overflow is right to
+	// flag. Unsigned, no input this side of maxDiffLines can wrap it, and the
+	// value checked is the one that becomes a size.
+	//
+	// offset is where a diagonal k=x-y is stored as k+offset, so that a negative
+	// k does not index below zero; width is the span of those diagonals.
+	offset64 := uint64(n) + uint64(m) + 1
+	width := 2*offset64 + 1
 	if width > uint64(maxTraceInts) {
 		return nil
 	}
-	w := int(width)
+	offset, w := int(offset64), int(width)
 	maxD := maxTraceInts / w
 
 	if cap(s.v) < w {
