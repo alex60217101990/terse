@@ -136,14 +136,7 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	// content itself, so it reuses the memoised count instead of paying twice;
 	// known >= 0 is a count a gate has already paid for.
 	record := func(action string, emitted string, known int) {
-		tokensOut := known
-		switch {
-		case known >= 0:
-		case emitted == content:
-			tokensOut = countContent()
-		default:
-			tokensOut = tokens.Count(emitted)
-		}
+		tokensIn, tokensOut := statsTokens(content, emitted, contentTokens, known)
 		_ = analytics.Record(analytics.Event{
 			TS:        time.Now().UnixNano(),
 			SID:       inp.SessionID,
@@ -151,7 +144,7 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			Action:    action,
 			BytesIn:   len(content),
 			BytesOut:  len(emitted),
-			TokensIn:  countContent(),
+			TokensIn:  tokensIn,
 			TokensOut: tokensOut,
 			DurNS:     time.Since(start).Nanoseconds(),
 		})
@@ -253,11 +246,17 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	// tokenising the same string again. -1 means not counted yet.
 	replacementTokens := -1
 
+	// The margin here is in bytes, unlike the fold below. Thinning only deletes
+	// runs of spaces, digits and a tab from line starts, so it cannot cost tokens
+	// (see thinGutter in read.go for the argument and the fuzz target that pins
+	// it) — never-worse is guaranteed without asking the tokeniser. What the
+	// margin buys is taste, not safety: it refuses to reshape what a reader looks
+	// at in exchange for a saving too small to matter, and bytes rank that just
+	// as well as tokens do.
 	if action == "passthrough" {
-		if thinned := detect.ThinLineNumberRuns(content); thinned != "" {
-			if n := tokens.Count(thinned); n < countContent()*(100-gutterThinMarginPct)/100 {
-				action, replacement, replacementTokens = "gutter-thinned", thinned, n
-			}
+		if thinned := detect.ThinLineNumberRuns(content); thinned != "" &&
+			len(thinned) < len(content)*(100-gutterThinMarginPct)/100 {
+			action, replacement = "gutter-thinned", thinned
 		}
 	}
 
@@ -279,16 +278,24 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	// group with the shared directory hoisted by FoldPathPrefix, so there is no
 	// run of near-identical lines left for this to find. The two transforms
 	// cover different shapes rather than overlapping.
+	// This gate DOES pay the tokeniser, because folding is not monotone: it
+	// rewrites lines and adds a declaration line, so a byte-smaller result can
+	// cost more tokens. That is the one thing bytes cannot answer, and the reason
+	// the two counts below are also what the analytics row reports — the only
+	// rows carrying exact counts are the ones a gate had to compute anyway.
 	if action == "passthrough" || action == "gutter-thinned" {
-		// replacement is non-empty here only when the thin above set it, and it
-		// set replacementTokens with it — nothing else reaches this branch.
-		src, count := content, countContent()
+		src := content
 		if replacement != "" {
-			src, count = replacement, replacementTokens
+			src = replacement
 		}
 		if folded := detect.FoldLinePrefixes(src); folded != "" {
-			if n := tokens.Count(folded); n < count*(100-prefixFoldMarginPct)/100 {
+			srcTokens := countContent()
+			if replacement != "" {
+				srcTokens = tokens.Count(src)
+			}
+			if n := tokens.Count(folded); n < srcTokens*(100-prefixFoldMarginPct)/100 {
 				action, replacement, replacementTokens = "prefix-folded", folded, n
+				contentTokens = countContent()
 			}
 		}
 	}

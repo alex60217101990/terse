@@ -78,7 +78,14 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
-          version: latest
+          # Pinned, not "latest". The action's own binary download is the least
+          # reliable step in this workflow — it failed two runs in a row with a
+          # socket hang up and a 503 from the release CDN, which reads as a lint
+          # failure on the pull request. A fixed version also fixes the tool cache
+          # key, so a successful run makes every later one a cache hit with no
+          # download at all; "latest" re-resolves and re-downloads whenever
+          # upstream publishes.
+          version: v2.12.2
           args: --timeout=5m
 
   client:

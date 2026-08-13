@@ -135,12 +135,24 @@ func handleWrite(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer
 		mb.WriteString(strconv.Itoa(lineCount))
 		mb.WriteString(" lines, cached for delta tracking]")
 		marker := mb.String()
-		if markerTok, echoTok := tokens.Count(marker), tokens.Count(echo); markerTok < echoTok {
+		// The marker is a few dozen bytes and the echo is a whole file, so this
+		// comparison is nearly always settled before the tokeniser is involved:
+		// count the marker exactly (cheap, and it is the number the analytics row
+		// wants anyway) and weigh it against the echo's LOWER bound. Only a small
+		// echo makes it past that, and a small echo is cheap to count.
+		markerTok := tokens.Count(marker)
+		echoTok := tokens.LowerBound(echo)
+		if markerTok >= echoTok {
+			echoTok = tokens.Count(echo)
+		}
+		if markerTok < echoTok {
 			record("compressed", len(marker), markerTok, echoTok)
 			return protocol.EncodeOutput(w, protocol.Replace(marker))
 		}
 	}
-	echoTok := tokens.Count(echo)
-	record("passthrough", echoLen, echoTok, echoTok)
+	// Nothing was replaced, so there is no saving to report exactly. Zero token
+	// counts route this row through the byte estimate in internal/analytics
+	// rather than paying for a BPE pass over the echo to learn that in == out.
+	record("passthrough", echoLen, 0, 0)
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }

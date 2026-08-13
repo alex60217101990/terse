@@ -72,6 +72,25 @@ func Count(s string) int {
 	return len(enc.Encode(s, nil, nil))
 }
 
+// MaxTokenBytes is the length of the longest token in the o200k vocabulary: a
+// run of 128 spaces. exact_test.go walks the vocabulary and fails if anything
+// exceeds it, so a future vocabulary swap cannot silently invalidate the bound
+// below.
+const MaxTokenBytes = 128
+
+// LowerBound is the smallest number of tokens s can possibly cost, computed from
+// its length alone — no vocabulary, no encoding, no allocation.
+//
+// It exists so a gate can decide the easy cases for free. Comparing a fixed
+// marker of a few dozen bytes against a multi-kilobyte payload does not need an
+// exact count of the payload: if the marker's exact count is already below the
+// payload's lower bound, the marker wins and there is nothing left to compute.
+// Encoding is roughly 15 MB/s and allocates per regex match, so skipping it on
+// the hook's critical path is worth more than the tighter number would be.
+func LowerBound(s string) int {
+	return (len(s) + MaxTokenBytes - 1) / MaxTokenBytes
+}
+
 func load() {
 	// tiktoken-go resolves vocabularies through a package-global loader that
 	// fetches over HTTP by default. Replacing it with the offline one keeps

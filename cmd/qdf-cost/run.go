@@ -53,8 +53,8 @@ type Result struct {
 type Run struct {
 	Task    string `json:"task"`
 	Variant string `json:"variant"` // "off" or "on"
-	Attempt int    `json:"attempt"`
 	Result  Result `json:"result"`
+	Attempt int    `json:"attempt"`
 }
 
 // Report is every run of an invocation, in the order they were driven.
@@ -81,10 +81,10 @@ const (
 // opts is one invocation's configuration, threaded through rather than passed as
 // a widening parameter list.
 type opts struct {
-	runs    int
 	model   string
 	dir     string
 	allowed []string
+	runs    int
 	timeout time.Duration
 	asJSON  bool
 }

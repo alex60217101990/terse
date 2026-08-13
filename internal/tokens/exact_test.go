@@ -128,3 +128,44 @@ func BenchmarkCount(b *testing.B) {
 		_ = tokens.Count(payload)
 	}
 }
+
+// MaxTokenBytes is the basis of LowerBound, so it has to be a fact about the
+// vendored vocabulary rather than a remembered number: a vocabulary swap that
+// introduced a longer token would make every bound unsound, and a gate that
+// trusts an unsound bound skips compression it should have applied.
+func TestMaxTokenBytes_MatchesTheVocabulary(t *testing.T) {
+	ranks, err := tokens.LoadVocabForTest()
+	if err != nil {
+		t.Fatalf("load vocabulary: %v", err)
+	}
+	if len(ranks) == 0 {
+		t.Fatal("vocabulary is empty")
+	}
+	longest := 0
+	for tok := range ranks {
+		if len(tok) > longest {
+			longest = len(tok)
+		}
+	}
+	if longest > tokens.MaxTokenBytes {
+		t.Errorf("vocabulary holds a %d-byte token; MaxTokenBytes is %d",
+			longest, tokens.MaxTokenBytes)
+	}
+	if longest != tokens.MaxTokenBytes {
+		t.Logf("note: longest token is %d bytes, bound is %d — sound but loose",
+			longest, tokens.MaxTokenBytes)
+	}
+}
+
+func TestLowerBound_NeverExceedsTheExactCount(t *testing.T) {
+	for _, s := range []string{
+		"", "a", "hello world",
+		strings.Repeat("x", 1000),
+		strings.Repeat(" ", 1000),
+		strings.Repeat("/Users/dev/project/internal/pkg/file.go:42:\n", 40),
+	} {
+		if lo, exact := tokens.LowerBound(s), tokens.Count(s); lo > exact {
+			t.Errorf("bound above exact count for %d bytes: %d > %d", len(s), lo, exact)
+		}
+	}
+}
