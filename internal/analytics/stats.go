@@ -18,9 +18,11 @@ import (
 
 // HookAgg aggregates calls and bytes for one hook.
 type HookAgg struct {
-	Count    int `json:"count"`
-	BytesIn  int `json:"bytes_in"`
-	BytesOut int `json:"bytes_out"`
+	Count     int `json:"count"`
+	BytesIn   int `json:"bytes_in"`
+	BytesOut  int `json:"bytes_out"`
+	TokensIn  int `json:"tokens_in"`
+	TokensOut int `json:"tokens_out"`
 }
 
 // Stats holds aggregated analytics data.
@@ -32,6 +34,12 @@ type Stats struct {
 	TotalInvocations int                       `json:"total_invocations"`
 	TotalBytesIn     int                       `json:"total_bytes_in"`
 	TotalBytesOut    int                       `json:"total_bytes_out"`
+	TotalTokensIn    int                       `json:"total_tokens_in"`
+	TotalTokensOut   int                       `json:"total_tokens_out"`
+	// EstimatedTokens is true when any counted event predates token recording,
+	// so its tokens had to be estimated as bytes/4. Reported, never hidden: the
+	// two eras must not be silently averaged together.
+	EstimatedTokens bool `json:"estimated_tokens"`
 }
 
 // LatStat holds latency percentiles in milliseconds.
@@ -42,8 +50,19 @@ type LatStat struct {
 }
 
 func (s Stats) SavedBytes() int     { return s.TotalBytesIn - s.TotalBytesOut }
-func (s Stats) SavedTokens() int    { return s.SavedBytes() / 4 }
-func (s Stats) OriginalTokens() int { return s.TotalBytesIn / 4 }
+func (s Stats) SavedTokens() int    { return s.TotalTokensIn - s.TotalTokensOut }
+func (s Stats) OriginalTokens() int { return s.TotalTokensIn }
+
+// eventTokens returns an events token counts, falling back to the old bytes/4
+// estimate for events recorded before token counting existed. The third result
+// reports whether the fallback was used, so a mixed window can say so rather
+// than presenting an average of two different units as one number.
+func eventTokens(e Event) (in, out int, estimated bool) {
+	if e.TokensIn == 0 && e.TokensOut == 0 && (e.BytesIn != 0 || e.BytesOut != 0) {
+		return e.BytesIn / 4, e.BytesOut / 4, true
+	}
+	return e.TokensIn, e.TokensOut, false
+}
 
 // humanTokens formats a token count compactly: 1234 -> "1.2k", 4_500_000 -> "4.5M".
 func humanTokens(n int) string {
@@ -108,6 +127,10 @@ func ComputeStats(events []Event) Stats {
 		if !contextHooks[hook] {
 			s.TotalBytesIn += e.BytesIn
 			s.TotalBytesOut += e.BytesOut
+			ti, to, est := eventTokens(e)
+			s.TotalTokensIn += ti
+			s.TotalTokensOut += to
+			s.EstimatedTokens = s.EstimatedTokens || est
 		}
 		key := hook + "/" + e.Action
 		if s.ByHookAction[hook] == nil {
@@ -118,6 +141,9 @@ func ComputeStats(events []Event) Stats {
 		agg.Count++
 		agg.BytesIn += e.BytesIn
 		agg.BytesOut += e.BytesOut
+		ati, ato, _ := eventTokens(e)
+		agg.TokensIn += ati
+		agg.TokensOut += ato
 		s.ByHook[hook] = agg
 		s.Latencies[key] = append(s.Latencies[key], e.DurNS)
 	}

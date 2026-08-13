@@ -103,6 +103,14 @@ type edit struct {
 // normal edit, and full content is the correct fallback there anyway.
 const maxTraceInts = 16 << 20 // ~128 MiB of int snapshots (8 bytes each)
 
+// maxDiffLines caps the lines myersDiff will accept per side, so every size it
+// derives from them stays inside the maxTraceInts budget above: the trace width
+// is 2*(n+m)+3 ints, which at this ceiling cannot exceed that budget, and the
+// per-round snapshot growth is bounded by the width in turn. Refusing a larger
+// input is not a loss — a diff of four million lines is not a diff anyone reads,
+// and the caller already treats "no diff" as "send the content".
+const maxDiffLines = maxTraceInts / 4
+
 // diffScratch holds reusable scratch buffers for one myersDiff call.
 //
 // All trace snapshots taken during a call have identical width
@@ -171,10 +179,39 @@ func myersDiff(s *diffScratch, a, b []string) []edit {
 		return nil
 	}
 
-	// v holds the furthest-reaching x for diagonal k=x-y,
-	// stored at index k+offset to avoid negative indexing.
-	offset := n + m + 1
-	w := 2*offset + 1
+	// Bound each input before deriving any size from it. offset, w and the
+	// snapshot budget below are all products of n and m, so an enormous pair of
+	// inputs would allocate v — 2*(n+m)+3 ints — before maxD ever got the chance
+	// to refuse the trace.
+	//
+	// The guard is on the operands, one each, rather than on their sum: that is
+	// where the bound actually holds, and it is also the only form a taint
+	// analyser follows back to the len() it came from. A ceiling on n+m alone
+	// left go/allocation-size-overflow still reporting these products.
+	//
+	// maxDiffLines is ~4Mi lines per side, far past any payload a hook sees, and
+	// it keeps every derived size inside the same ~128MiB budget maxTraceInts
+	// already sets. Refusing looks like every other oversized case: no diff.
+	if n > maxDiffLines || m > maxDiffLines {
+		return nil
+	}
+
+	// Every size below is derived in uint64 and narrowed at ONE point, after the
+	// bound that makes narrowing safe. With the ceiling above the signed form
+	// could not overflow either, but establishing that takes reading a guard in
+	// one place and the arithmetic in another — and a size whose safety has to be
+	// reconstructed by the reader is one go/allocation-size-overflow is right to
+	// flag. Unsigned, no input this side of maxDiffLines can wrap it, and the
+	// value checked is the one that becomes a size.
+	//
+	// offset is where a diagonal k=x-y is stored as k+offset, so that a negative
+	// k does not index below zero; width is the span of those diagonals.
+	offset64 := uint64(n) + uint64(m) + 1
+	width := 2*offset64 + 1
+	if width > uint64(maxTraceInts) {
+		return nil
+	}
+	offset, w := int(offset64), int(width)
 	maxD := maxTraceInts / w
 
 	if cap(s.v) < w {
@@ -208,7 +245,15 @@ func myersDiff(s *diffScratch, a, b []string) []edit {
 		// backing array is exhausted. On reallocation, re-slice every
 		// already-taken snapshot (rounds 0..d-1) from the new array so
 		// trace stays valid — the data itself is copied forward too.
-		needed := (d + 1) * w
+		// Same treatment as the width: unsigned product, bounded before it is used
+		// as a size. d is at most maxD by the check above and maxD*w cannot exceed
+		// maxTraceInts, so the ceiling here is one width of slack over that budget
+		// and is unreachable — it is the bound written down, not a live branch.
+		need := (uint64(d) + 1) * uint64(w)
+		if need > uint64(maxTraceInts)+width {
+			return nil
+		}
+		needed := int(need)
 		if cap(s.snaps) < needed {
 			newCap := max(needed, cap(s.snaps)*2)
 			newSnaps := make([]int, needed, newCap)

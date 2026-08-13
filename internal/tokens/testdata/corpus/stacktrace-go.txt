@@ -1,0 +1,35 @@
+panic: runtime error: index out of range [7] with length 4
+
+goroutine 118 [running]:
+example.com/router/internal/ledger.(*Journal).Flush(0xc0001a4090, {0x10a41c8, 0xc0000b2010})
+	/srv/app/src/router/internal/ledger/journal.go:214 +0x2e5
+example.com/router/internal/ledger.(*Journal).commitLocked(0xc0001a4090)
+	/srv/app/src/router/internal/ledger/journal.go:171 +0x9c
+example.com/router/internal/billing.(*Authoriser).settle(0xc00019c000, {0x10a41c8, 0xc0000b2010}, 0xc0002d4120)
+	/srv/app/src/router/internal/billing/authorise.go:88 +0x1b4
+example.com/router/internal/billing.(*Authoriser).Handle(0xc00019c000, {0x10a41c8?, 0xc0000b2010?}, 0xc0002d4120)
+	/srv/app/src/router/internal/billing/authorise.go:52 +0xd1
+example.com/router/internal/transport.wrapTimeout.func1({0x10a6b40, 0xc0002ee000}, 0xc0002be200)
+	/srv/app/src/router/internal/transport/middleware.go:97 +0x11a
+net/http.HandlerFunc.ServeHTTP(0xc0002be200?, {0x10a6b40?, 0xc0002ee000?}, 0x4b2f1c?)
+	/usr/local/go/src/net/http/server.go:2220 +0x29
+example.com/router/internal/transport.recoverPanic.func1({0x10a6b40, 0xc0002ee000}, 0xc0002be200)
+	/srv/app/src/router/internal/transport/middleware.go:41 +0xf7
+net/http.serverHandler.ServeHTTP({0xc0002a8000?}, {0x10a6b40?, 0xc0002ee000?}, 0x6?)
+	/usr/local/go/src/net/http/server.go:3210 +0x8e
+net/http.(*conn).serve(0xc0002c2000, {0x10a7cd0, 0xc0001860f0})
+	/usr/local/go/src/net/http/server.go:2092 +0x5d0
+created by net/http.(*Server).Serve in goroutine 1
+	/usr/local/go/src/net/http/server.go:3360 +0x485
+
+goroutine 1 [chan receive, 4 minutes]:
+main.main()
+	/srv/app/src/router/cmd/router/main.go:74 +0x2c9
+
+goroutine 22 [select, 4 minutes]:
+example.com/router/internal/pool.(*Pool).reaper(0xc0000ac0a0)
+	/srv/app/src/router/internal/pool/pool.go:188 +0xd2
+created by example.com/router/internal/pool.New in goroutine 1
+	/srv/app/src/router/internal/pool/pool.go:63 +0x1ee
+
+exit status 2

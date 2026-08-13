@@ -1,0 +1,72 @@
+diff --git a/internal/ledger/journal.go b/internal/ledger/journal.go
+index 4a1c88e..b02df31 100644
+--- a/internal/ledger/journal.go
++++ b/internal/ledger/journal.go
+@@ -12,6 +12,7 @@ import (
+ 	"errors"
+ 	"fmt"
+ 	"sync"
++	"time"
+ )
+
+ var ErrAccountClosed = errors.New("ledger: account is closed")
+@@ -41,9 +42,15 @@ func (j *Journal) Post(accountID string, amount int64, currency string) error {
+ 	if accountID == "" {
+ 		return fmt.Errorf("ledger: empty account id")
+ 	}
++	if currency == "" {
++		return fmt.Errorf("ledger: entry for %s has no currency", accountID)
++	}
+ 	j.mu.Lock()
+ 	defer j.mu.Unlock()
+-	j.pending = append(j.pending, Entry{accountID, amount, currency})
++	j.pending = append(j.pending, Entry{
++		AccountID: accountID,
++		Amount:    amount,
++		Currency:  currency,
++		PostedAt:  j.clock(),
++	})
+ 	return nil
+ }
+
+@@ -78,12 +85,14 @@ func (j *Journal) Flush(ctx context.Context) error {
+ 	if len(batch) == 0 {
+ 		return nil
+ 	}
+-	var net int64
++	net := make(map[string]int64, 4)
+ 	for _, e := range batch {
+-		net += e.Amount
++		net[e.Currency] += e.Amount
+ 	}
+-	if net != 0 {
+-		return fmt.Errorf("ledger: batch does not balance: net %d", net)
++	for cur, amount := range net {
++		if amount != 0 {
++			return fmt.Errorf("ledger: batch does not balance in %s: net %d", cur, amount)
++		}
+ 	}
+ 	return j.sink.Commit(ctx, batch)
+ }
+diff --git a/internal/ledger/journal_test.go b/internal/ledger/journal_test.go
+index 77b0ca2..91ee0d4 100644
+--- a/internal/ledger/journal_test.go
++++ b/internal/ledger/journal_test.go
+@@ -102,6 +102,21 @@ func TestFlushRejectsUnbalanced(t *testing.T) {
+ 	}
+ }
+
++// Two currencies that happen to cancel numerically must still be rejected:
++// 100 EUR and -100 USD is not a balanced batch.
++func TestFlushRejectsCrossCurrencyCancellation(t *testing.T) {
++	j := NewJournal(&fakeSink{})
++	mustPost(t, j, "acct-1", 100, "EUR")
++	mustPost(t, j, "acct-2", -100, "USD")
++	if err := j.Flush(context.Background()); err == nil {
++		t.Fatal("cross-currency cancellation must not balance")
++	}
++}
++
+ func TestFlushEmptyIsNoop(t *testing.T) {
+ 	j := NewJournal(&fakeSink{})
+ 	if err := j.Flush(context.Background()); err != nil {

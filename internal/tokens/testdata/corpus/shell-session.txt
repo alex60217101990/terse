@@ -1,0 +1,46 @@
+$ cd /srv/app/src/router
+$ git status --short
+ M internal/ledger/journal.go
+ M internal/ledger/journal_test.go
+?? internal/ledger/entry.go
+$ go build ./...
+$ go test ./internal/ledger/ -run TestFlush -v
+=== RUN   TestFlushRejectsUnbalanced
+--- PASS: TestFlushRejectsUnbalanced (0.00s)
+=== RUN   TestFlushRejectsCrossCurrencyCancellation
+--- PASS: TestFlushRejectsCrossCurrencyCancellation (0.00s)
+=== RUN   TestFlushEmptyIsNoop
+--- PASS: TestFlushEmptyIsNoop (0.00s)
+PASS
+ok  	example.com/router/internal/ledger	0.114s
+$ go test ./... 2>&1 | tail -n 6
+ok  	example.com/router/internal/billing	0.402s
+ok  	example.com/router/internal/ledger	0.114s
+ok  	example.com/router/internal/pool	1.881s
+ok  	example.com/router/internal/transport	0.319s
+?   	example.com/router/cmd/reconcile	[no test files]
+?   	example.com/router/cmd/router	[no test files]
+$ ./build/router --config /srv/app/etc/router.yaml --check
+config ok: 2 upstreams, tls enabled, 4 feature flags
+$ curl -sS -o /dev/null -w '%{http_code} %{time_total}\n' https://localhost:8443/livez
+200 0.014
+$ ps -o pid,rss,etime,command -p 4192
+  PID    RSS     ELAPSED COMMAND
+ 4192 642180    14:02:11 ./build/router --config /srv/app/etc/router.yaml
+$ df -h /srv/app
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p3  200G   41G  150G  22% /srv
+$ tail -n 3 /srv/app/var/log/router.log
+2031-04-18 09:20:36.921 +0000 router[4192] probe succeeded in 812ms
+2031-04-18 09:21:00.000 +0000 router[4192] flushed metrics: req=91 err=6
+2031-04-18 09:21:14.408 +0000 router[4192] cache hit ratio 0.94 over 4096
+$ git add -A && git commit -m 'fix(ledger): reject cross-currency cancellation'
+[work 91ee0d4] fix(ledger): reject cross-currency cancellation
+ 3 files changed, 48 insertions(+), 9 deletions(-)
+ create mode 100644 internal/ledger/entry.go
+$ git log --oneline -3
+91ee0d4 fix(ledger): reject cross-currency cancellation
+b02df31 refactor(ledger): key the pending net by currency
+4a1c88e feat(ledger): add journal flush deadline
+$ exit
+logout

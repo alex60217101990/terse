@@ -109,7 +109,39 @@ func TestWrite_CachesRealFileNotResponse(t *testing.T) {
 	}
 }
 
-func TestWrite_CachesContent(t *testing.T) {
+// A visible echo that genuinely costs more tokens than the marker is replaced.
+// The echo here is prose, which tokenizes at roughly a token per word, so it
+// clears the marker's cost (a 32-char hex hash is most of that cost).
+func TestWrite_ExpensiveEcho_Compressed(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	echo := strings.Repeat("wrote the configuration section for the billing service\n", 12)
+	path := filepath.Join(t.TempDir(), "a.go")
+	if err := os.WriteFile(path, []byte(echo), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if err := hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-3", path, echo)), &out); err != nil {
+		t.Fatalf("HandleWrite returned error: %v", err)
+	}
+	var resp protocol.HookOutput
+	if jsonErr := json.Unmarshal([]byte(out.String()), &resp); jsonErr != nil {
+		t.Fatalf("output is not valid JSON: %v", jsonErr)
+	}
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("an echo far more expensive than the marker must be compressed")
+	}
+	if !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, path) {
+		t.Errorf("compressed output must contain the file path: %s",
+			resp.HookSpecificOutput.UpdatedToolOutput)
+	}
+}
+
+// The never-worse invariant, in the unit that matters. 300 repeated bytes are
+// large enough to have passed the old byte-length gate, and cheap enough in
+// tokens that the marker — most of it a 32-char hex hash — costs more. Emitting
+// it would make the payload bigger, which is what the old gate did on 1251 real
+// Write/Edit calls.
+func TestWrite_CheapEcho_PassesThroughAndStillCaches(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	content := bytes.Repeat([]byte("x"), 300)
 	path := filepath.Join(t.TempDir(), "a.go")
@@ -117,31 +149,30 @@ func TestWrite_CachesContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out strings.Builder
-	err := hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-3", path, string(content))), &out)
-	if err != nil {
+	if err := hook.HandleWrite(strings.NewReader(makeWriteInput(t, "sess-w-4", path, string(content))), &out); err != nil {
 		t.Fatalf("HandleWrite returned error: %v", err)
 	}
-	// Output must be a valid HookOutput JSON (compressed, not empty).
 	var resp protocol.HookOutput
 	if jsonErr := json.Unmarshal([]byte(out.String()), &resp); jsonErr != nil {
 		t.Fatalf("output is not valid JSON: %v", jsonErr)
 	}
-	if resp.HookSpecificOutput == nil {
-		t.Fatal("content >256 bytes must produce a compressed output")
-	}
-	// The compressed marker must reference the expected path.
-	if !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, path) {
-		t.Errorf("compressed output must contain the file path: %s",
+	if resp.HookSpecificOutput != nil {
+		t.Fatalf("a marker costlier than the echo must not be emitted, got: %s",
 			resp.HookSpecificOutput.UpdatedToolOutput)
 	}
+	assertReadIsUnchanged(t, "sess-w-4", path, string(content))
 }
 
-// TestWrite_EditShape_CachesAndCompresses uses the REAL Edit tool_response
-// shape (no "content"/"stdout" — {filePath, oldString, newString,
-// originalFile, structuredPatch}) verified from a live payload. handleWrite
-// must still cache the on-disk file and replace the large echo with a marker,
-// even though Text() is empty (echo size comes from the raw response length).
-func TestWrite_EditShape_CachesAndCompresses(t *testing.T) {
+// TestWrite_EditShape_CachesWithoutCompressing uses the REAL Edit
+// tool_response shape (no "content"/"stdout" — {filePath, oldString,
+// newString, originalFile, structuredPatch}) verified from a live payload.
+//
+// That shape is large in bytes — originalFile embeds the whole pre-edit file —
+// but the model is never shown it. Claude Code renders one short sentence, and
+// the sentence is what the tokens are spent on. This process cannot see it, so
+// it cannot show a marker to be cheaper, and must not gamble: caching is the
+// point of this hook, and caching happens either way.
+func TestWrite_EditShape_CachesWithoutCompressing(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	path := filepath.Join(t.TempDir(), "edited.go")
 	fileContent := strings.Repeat("package main\nfunc foo() {}\n", 20)
@@ -168,21 +199,35 @@ func TestWrite_EditShape_CachesAndCompresses(t *testing.T) {
 	}
 	var resp protocol.HookOutput
 	_ = json.Unmarshal([]byte(out.String()), &resp)
-	if resp.HookSpecificOutput == nil || !strings.Contains(resp.HookSpecificOutput.UpdatedToolOutput, "[WRITE") {
-		t.Fatalf("Edit's large echo must be compressed to a [WRITE ...] marker, got: %v", out.String())
+	if resp.HookSpecificOutput != nil {
+		t.Fatalf("Edit's echo is not visible to the hook — it must pass through, got: %s",
+			resp.HookSpecificOutput.UpdatedToolOutput)
 	}
-	// And the file must be cached for delta priming: a later Read is §unchanged.
+	// And the file must still be cached for delta priming, which is the whole
+	// reason this hook runs on Edit at all.
+	assertReadIsUnchanged(t, "sess-edit", path, fileContent)
+}
+
+// assertReadIsUnchanged checks that a Read of path in this session resolves to
+// the §unchanged marker — i.e. the write/edit primed the delta cache.
+func assertReadIsUnchanged(t *testing.T, sessionID, path, content string) {
+	t.Helper()
+	lines := strings.Count(content, "\n")
 	rin := map[string]any{
-		"session_id": "sess-edit", "tool_name": "Read",
-		"tool_input":    map[string]any{"file_path": path},
-		"tool_response": map[string]any{"file": map[string]any{"content": fileContent, "startLine": 1, "numLines": 40, "totalLines": 40}},
+		"session_id": sessionID, "tool_name": "Read",
+		"tool_input": map[string]any{"file_path": path},
+		"tool_response": map[string]any{"file": map[string]any{
+			"content": content, "startLine": 1, "numLines": lines, "totalLines": lines,
+		}},
 	}
 	rb, _ := json.Marshal(rin)
 	var rout strings.Builder
-	_ = hook.HandleRead(strings.NewReader(string(rb)), &rout)
+	if err := hook.HandleRead(strings.NewReader(string(rb)), &rout); err != nil {
+		t.Fatalf("HandleRead: %v", err)
+	}
 	var rr protocol.HookOutput
 	_ = json.Unmarshal([]byte(rout.String()), &rr)
 	if rr.HookSpecificOutput == nil || !strings.Contains(rr.HookSpecificOutput.UpdatedToolOutput, "§unchanged") {
-		t.Errorf("Read after Edit must be §unchanged (delta primed by Edit), got: %v", rout.String())
+		t.Errorf("Read after the write must be §unchanged (delta primed), got: %v", rout.String())
 	}
 }

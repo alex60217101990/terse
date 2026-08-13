@@ -130,7 +130,7 @@ func TestFoldRepeatedBlocks_FuzzyFoldsWithDiff(t *testing.T) {
 		t.Fatalf("expected shrink, got %d vs %d", len(out), len(in))
 	}
 	// the differing tokens must BOTH be visible in the fold marker
-	for _, must := range []string{"7→9", "10:00:01", "10:00:02"} {
+	for _, must := range []string{"7->9", "10:00:01", "10:00:02"} {
 		if !strings.Contains(out, must) {
 			t.Errorf("marker must show difference %q:\n%s", must, out)
 		}
@@ -191,15 +191,15 @@ func TestFoldRepeatedBlocks_ExactCopyOfNearDupFoldsToBase(t *testing.T) {
 	if got := strings.Count(out, "worker started job id=2 on host"); got != 0 {
 		t.Fatalf("near-dup and its exact copy must both fold, found %d raw:\n%s", got, out)
 	}
-	// Both folded occurrences must show the 1→2 difference.
-	if got := strings.Count(out, "1→2"); got != 2 {
-		t.Fatalf("expected both folds to show 1→2, got %d:\n%s", got, out)
+	// Both folded occurrences must show the 1->2 difference.
+	if got := strings.Count(out, "1->2"); got != 2 {
+		t.Fatalf("expected both folds to show 1->2, got %d:\n%s", got, out)
 	}
 }
 
 // Zero-loss guard: if two differing tokens in the SAME block both have old
 // value "111" but diverge to different new values ("222" vs "333"), a marker
-// listing "111→222, 111→333" could not tell a reader which occurrence of
+// listing "111->222, 111->333" could not tell a reader which occurrence of
 // "111" becomes which — ambiguous reconstruction. The fold must be refused,
 // leaving BOTH blocks verbatim (output byte-identical to input).
 func TestFoldRepeatedBlocks_AmbiguousDuplicateOldStaysVerbatim(t *testing.T) {
@@ -234,8 +234,8 @@ func TestFoldRepeatedBlocks_DuplicateUnchangedTokensStillFold(t *testing.T) {
 	if len(out) >= len(in) {
 		t.Fatalf("expected shrink (non-ambiguous fold), got %d vs %d:\n%s", len(out), len(in), out)
 	}
-	if !strings.Contains(out, "1→2") {
-		t.Fatalf("marker must show the 1→2 difference:\n%s", out)
+	if !strings.Contains(out, "1->2") {
+		t.Fatalf("marker must show the 1->2 difference:\n%s", out)
 	}
 	if !strings.Contains(out, a) {
 		t.Fatalf("first occurrence must stay verbatim:\n%s", out)
@@ -250,7 +250,7 @@ func TestFoldRepeatedBlocks_ExactStillWins(t *testing.T) {
 	block := "# hdr\n" + strings.Repeat("same line of content here\n", 6)
 	in := block + "\n\n" + block + "\n"
 	out := detect.FoldRepeatedBlocks(in)
-	if !strings.Contains(out, "⟦↑ repeat: ") {
+	if !strings.Contains(out, "[repeat: ") {
 		t.Fatalf("exact dup must use the exact marker:\n%s", out)
 	}
 }

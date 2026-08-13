@@ -1,0 +1,35 @@
+Traceback (most recent call last):
+  File "/srv/app/reconcile/cli.py", line 118, in <module>
+    main()
+  File "/srv/app/reconcile/cli.py", line 92, in main
+    report = build_report(ledger, period=args.period, currency=args.currency)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/srv/app/reconcile/report.py", line 204, in build_report
+    rows = [summarise(batch) for batch in ledger.batches(period)]
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/srv/app/reconcile/report.py", line 141, in summarise
+    net = sum(entry.amount for entry in batch.entries) / batch.rate
+                                                       ~~~~~~~~~~~~
+ZeroDivisionError: division by zero
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/srv/app/reconcile/cli.py", line 121, in <module>
+    fail(exc)
+  File "/srv/app/reconcile/cli.py", line 61, in fail
+    raise ReconcileError(f"period {args.period} could not be reconciled") from exc
+reconcile.errors.ReconcileError: period 2031-Q2 could not be reconciled
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/srv/app/reconcile/worker.py", line 88, in run_once
+    self.dispatch(job)
+  File "/srv/app/reconcile/worker.py", line 112, in dispatch
+    handler(job.payload)
+  File "/srv/app/reconcile/handlers/quarterly.py", line 37, in handle
+    subprocess.run(cmd, check=True, timeout=600)
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args, output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['reconcile', '--period', '2031-Q2']' returned non-zero exit status 1.

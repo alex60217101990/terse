@@ -1,0 +1,18 @@
+[
+  {
+    "name": "read-six-files",
+    "prompt": "Read these six files with the Read tool, one call each: internal/daemon/daemon.go, internal/hook/dispatch.go, internal/hookcore/memstore.go, internal/detect/readgutter.go, internal/detect/squeeze.go, internal/cache/evict.go. Then reply with only the total number of lines across all six. Use no other tool."
+  },
+  {
+    "name": "cat-n-three-files",
+    "prompt": "Run these three Bash commands, one at a time: `cat -n internal/hookcore/memstore.go`, `cat -n internal/detect/squeeze.go`, `cat -n internal/cache/evict.go`. Then reply with only the name of the last function defined in each file, one per line. Use no other tool."
+  },
+  {
+    "name": "rerun-same-command",
+    "prompt": "Run `git log --stat -25` with the Bash tool, then run the exact same command a second time, then reply with only the number of commits it printed. Use no other tool."
+  },
+  {
+    "name": "grep-then-read",
+    "prompt": "Use the Grep tool to find every match for 'func ' under internal/detect, then Read the file with the most matches, then reply with only that file's name and its line count. Use no other tool."
+  }
+]

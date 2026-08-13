@@ -1,0 +1,26 @@
+UPSTREAM      REQUESTS   ERRORS   RETRIES     P50      P95      P99   BUDGET   STATUS
+billing          41902      118        44     31ms    180ms    402ms    500ms   healthy
+catalogue        28114     1902       880    112ms    701ms    899ms    900ms   degraded
+ledger            9004        2         0     11ms     28ms     41ms    250ms   healthy
+notifier          1188       41        12    204ms    612ms    980ms   1000ms   healthy
+archive             92        0         0    881ms   1420ms   1890ms   2000ms   healthy
+
+ACCOUNT     CURRENCY      OPENING      DEBITS     CREDITS      CLOSING   ENTRIES
+acct-00012       EUR    128940000     4419000     3210000    127731000      1842
+acct-00012       USD     44190000      881000     1204000     44513000       411
+acct-33017       GBP      7500000           0      750000      8250000        19
+acct-44190       EUR      2044000      128940           0      1915060        88
+acct-51882       USD        49900        4990        4990        49900         4
+acct-90011       CHF            0      100000      100000            0         2
+
+QUEUE           DEPTH   OLDEST      RATE_IN   RATE_OUT   WORKERS   LAG
+settlement         41   6120ms      118/s      121/s          8    ok
+reconcile           0      0ms       12/s       12/s          2    ok
+notify           1801   9440ms      412/s      388/s         16    warn
+archive             2    120ms        1/s        1/s          1    ok
+
+NODE          ROLE       CPU     MEMORY      DISK   UPTIME       VERSION
+node-a01      leader     41%    6.2/16G    41/200G   14d 2h       4.11.2
+node-a02      follower   38%    5.9/16G    39/200G   14d 2h       4.11.2
+node-a03      follower   44%    7.1/16G    52/200G    2d 6h       4.11.2
+node-b01      standby     2%    0.8/16G    11/200G   61d 9h       4.10.9

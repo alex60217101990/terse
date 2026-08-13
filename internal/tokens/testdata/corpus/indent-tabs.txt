@@ -1,0 +1,67 @@
+func (r *Reconciler) Run(ctx context.Context, periods []string) error {
+	for _, period := range periods {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		batches, err := r.ledger.Batches(ctx, period)
+		if err != nil {
+			return fmt.Errorf("reconcile %s: load batches: %w", period, err)
+		}
+		for _, batch := range batches {
+			if batch.Currency != r.currency {
+				continue
+			}
+			if len(batch.Entries) == 0 {
+				continue
+			}
+			var total int64
+			for _, entry := range batch.Entries {
+				switch {
+				case entry.Reversed:
+					continue
+				case entry.Amount < 0:
+					total -= -entry.Amount
+				default:
+					total += entry.Amount
+				}
+			}
+			if batch.Rate == 0 {
+				r.failures = append(r.failures, failure{
+					Period: period,
+					Batch:  batch.ID,
+					Reason: "rate was zero",
+				})
+				continue
+			}
+			row := Row{
+				Batch:      batch.ID,
+				Opened:     batch.OpenedAt,
+				Entries:    len(batch.Entries),
+				TotalMinor: total,
+				Net:        float64(total) / batch.Rate,
+			}
+			if batch.ClosedAt != nil {
+				row.Closed = *batch.ClosedAt
+			}
+			if err := r.sink.Write(ctx, row); err != nil {
+				return fmt.Errorf("reconcile %s: write row %s: %w",
+					period, batch.ID, err)
+			}
+		}
+	}
+	return nil
+}
+
+# Makefile fragment: recipes are tab-indented by definition.
+build:
+	go build -trimpath -o build/router ./cmd/router
+
+test:
+	go test ./... -count=1
+	go vet ./...
+
+release: build test
+	tar --create --zstd --file build/router.tar.zst build/router
+	shasum -a 256 build/router.tar.zst > build/router.tar.zst.sha256

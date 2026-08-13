@@ -86,7 +86,7 @@ func TestPostCompact_InjectsManifest(t *testing.T) {
 // The PostCompact manifest itself is path-dense (one absolute path per
 // tracked file) — buildManifest wraps its assembled string in
 // detect.FoldPathPrefix, so a session with several files under one long
-// shared directory gets that directory folded to a §P§ token.
+// shared directory gets that directory folded to a "^" token.
 func TestPostCompact_ManifestPrefixFolded(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
@@ -113,7 +113,7 @@ func TestPostCompact_ManifestPrefixFolded(t *testing.T) {
 		t.Fatal("PostCompact should inject a manifest")
 	}
 	got := resp.HookSpecificOutput.UpdatedToolOutput
-	if !strings.Contains(got, "§P=") {
+	if !strings.Contains(got, "[^=") {
 		t.Errorf("expected manifest prefix fold:\n%s", got)
 	}
 }

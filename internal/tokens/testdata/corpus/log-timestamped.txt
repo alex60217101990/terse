@@ -1,0 +1,24 @@
+2031-04-18 09:20:00.114 +0000 router[4192] accepted connection from 10.24.6.71:51204
+2031-04-18 09:20:00.147 +0000 router[4192] routing POST /v2/invoices to upstream billing (attempt 1 of 3)
+2031-04-18 09:20:00.402 +0000 billing[4207] authorised 1289.40 EUR for account 44190 in 251ms
+2031-04-18 09:20:00.418 +0000 router[4192] completed POST /v2/invoices 201 in 304ms (812 bytes in, 1044 bytes out)
+2031-04-18 09:20:01.003 +0000 router[4192] accepted connection from 10.24.6.71:51206
+2031-04-18 09:20:01.009 +0000 cache[4188] hit key inv:8823401 age 1902ms size 1044
+2031-04-18 09:20:01.011 +0000 router[4192] completed GET /v2/invoices/8823401 200 in 8ms
+2031-04-18 09:20:01.550 +0000 router[4192] upstream catalogue answered in 871ms, budget 900ms, margin 29ms
+2031-04-18 09:20:02.221 +0000 billing[4207] declined 750.00 GBP for account 33017: insufficient_funds
+2031-04-18 09:20:02.223 +0000 router[4192] completed POST /v2/invoices 402 in 1194ms
+2031-04-18 09:20:02.900 +0000 queue[4181] drained 12 of 53 messages, depth now 41, oldest 6120ms
+2031-04-18 09:20:03.140 +0000 router[4192] accepted connection from 10.24.6.90:39118
+2031-04-18 09:20:03.402 +0000 accounts[4211] rejected field vat on account 44190: checksum mismatch
+2031-04-18 09:20:03.404 +0000 router[4192] completed PUT /v2/accounts/44190 422 in 264ms
+2031-04-18 09:20:04.000 +0000 router[4192] flushed metrics: req=5 err=2 retry=1 inflight=3 queue=41
+2031-04-18 09:20:04.771 +0000 pool[4192] reaped 2 idle connections, 14 open of 64 maximum
+2031-04-18 09:20:05.318 +0000 catalogue[4219] timed out after 900ms talking to catalogue.internal.example.com:9443
+2031-04-18 09:20:05.320 +0000 router[4192] completed GET /v2/catalogue/items 504 in 903ms
+2031-04-18 09:20:06.101 +0000 router[4192] opened circuit for upstream catalogue after 5 failures in 30s
+2031-04-18 09:20:11.442 +0000 router[4192] shedding load: p99 latency 812ms above threshold 750ms
+2031-04-18 09:20:18.007 +0000 queue[4181] drained 41 of 41 messages, depth now 0, oldest 0ms
+2031-04-18 09:20:36.104 +0000 router[4192] half-opened circuit for upstream catalogue, probe 1 of 3
+2031-04-18 09:20:36.921 +0000 router[4192] probe succeeded in 812ms, closing circuit for upstream catalogue
+2031-04-18 09:21:00.000 +0000 router[4192] flushed metrics: req=91 err=6 retry=11 inflight=2 queue=0

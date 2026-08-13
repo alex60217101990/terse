@@ -13,6 +13,7 @@ import (
 	"github.com/alex60217101990/terse/internal/detect"
 	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/alex60217101990/terse/internal/protocol"
+	"github.com/alex60217101990/terse/internal/tokens"
 )
 
 // Dispatch is the single PostToolUse entry point. It decodes the event once and
@@ -45,6 +46,25 @@ func DispatchBytes(store hookcore.StateStore, req []byte, w io.Writer) error {
 }
 
 func routeInput(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
+	// QDF_OFF turns the whole pipeline into a pass-through while leaving the hook
+	// installed and invoked. That is the A/B switch cmd/qdf-cost flips between
+	// its baseline and treatment runs: unhooking instead would change the
+	// session's shape (one less hook in the settings) and move the very prefix
+	// tokens the comparison is trying to hold still. Nothing is recorded either,
+	// so a baseline run cannot skew the user's own stats.
+	//
+	// This covers direct callers — inline dispatch, cmd/qdf-replay, the daemon
+	// when it was itself started with the variable set. The switch a session can
+	// actually reach is the client-side one in cmd/qdf-hook: a resident daemon
+	// runs this function in its OWN process and reads its own environment.
+	if os.Getenv("QDF_OFF") != "" {
+		if inp.HookEventName == "PreToolUse" {
+			// A PreToolUse event needs a permission decision, not an empty object.
+			return protocol.EncodePre(w, "allow", "")
+		}
+		return protocol.EncodeOutput(w, protocol.Passthrough())
+	}
+
 	// PreToolUse (the Read mtime fast-path) is distinguished by the event name
 	// Claude sends in the payload — the daemon multiplexes both events over one
 	// socket, unlike the CLI where the subcommand picked the handler. Anything
@@ -100,20 +120,38 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 
 	content := detect.StripNoise(inp.ToolResponse.Text())
 
-	record := func(action string, bytesOut int) {
+	// contentTokens is memoised because tokenizing is the expensive part and the
+	// same content is measured by every gate in the try-chain below. Computing it
+	// per call would tokenise one payload up to nine times.
+	contentTokens := -1
+	countContent := func() int {
+		if contentTokens < 0 {
+			contentTokens = tokens.Count(content)
+		}
+		return contentTokens
+	}
+
+	// record takes the emitted TEXT, not its length, because tokens are the real
+	// cost and cannot be recovered from a byte count. Passthrough emits the
+	// content itself, so it reuses the memoised count instead of paying twice;
+	// known >= 0 is a count a gate has already paid for.
+	record := func(action string, emitted string, known int) {
+		tokensIn, tokensOut := statsTokens(content, emitted, contentTokens, known)
 		_ = analytics.Record(analytics.Event{
-			TS:       time.Now().UnixNano(),
-			SID:      inp.SessionID,
-			Hook:     toolName,
-			Action:   action,
-			BytesIn:  len(content),
-			BytesOut: bytesOut,
-			DurNS:    time.Since(start).Nanoseconds(),
+			TS:        time.Now().UnixNano(),
+			SID:       inp.SessionID,
+			Hook:      toolName,
+			Action:    action,
+			BytesIn:   len(content),
+			BytesOut:  len(emitted),
+			TokensIn:  tokensIn,
+			TokensOut: tokensOut,
+			DurNS:     time.Since(start).Nanoseconds(),
 		})
 	}
 
 	if len(content) < 256 {
-		record("passthrough", len(content))
+		record("passthrough", content, -1)
 		return protocol.EncodeOutput(w, protocol.Passthrough())
 	}
 
@@ -188,17 +226,103 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	}
 
 	// Remember this output for the next run's delta on the unstructured paths.
+	// This has to happen before the prefix fold below, which rewrites what the
+	// model sees but must not change what the next run diffs against.
 	if action == "passthrough" || action == "squeezed" || action == "rerun-delta" {
 		store.LastPut(key, content)
 	}
 
+	// A file dumped through Bash — cat -n, nl, a loop echoing a header before
+	// each file — is the same numbered listing a Read produces, and costs the
+	// same redundant gutter tokens, but no summarizer above claims it. Thinning
+	// the numbered runs is worth 2.35 points of the corpus; the strict
+	// whole-payload check the Read path uses would take only 1.35 of that,
+	// because a single header line disqualifies the whole payload.
+	//
+	// It runs before the fold below, not after: dropping the gutter is what
+	// leaves neighbouring lines with a shared head for the fold to find.
+	// replacementTokens is the token count of replacement once a gate has paid
+	// for it, so the next gate and the analytics record reuse it instead of
+	// tokenising the same string again. -1 means not counted yet.
+	replacementTokens := -1
+
+	// The margin here is in bytes, unlike the fold below. Thinning only deletes
+	// runs of spaces, digits and a tab from line starts, so it cannot cost tokens
+	// (see thinGutter in read.go for the argument and the fuzz target that pins
+	// it) — never-worse is guaranteed without asking the tokeniser. What the
+	// margin buys is taste, not safety: it refuses to reshape what a reader looks
+	// at in exchange for a saving too small to matter, and bytes rank that just
+	// as well as tokens do.
+	if action == "passthrough" {
+		if thinned := detect.ThinLineNumberRuns(content); thinned != "" &&
+			len(thinned) < len(content)*(100-gutterThinMarginPct)/100 {
+			action, replacement = "gutter-thinned", thinned
+		}
+	}
+
+	// Last resort for everything no summarizer claimed. Command output is
+	// line-oriented and incrementally similar — consecutive lines sharing a
+	// directory, a package, a log prefix, an indent — and folding those shared
+	// heads is worth 11.5% of the Bash output that currently passes through
+	// untouched, which is the single largest uncompressed category left.
+	//
+	// The gate is in tokens, not bytes. A byte-smaller replacement that costs
+	// the model more tokens is exactly the trap the Write/Edit marker fell into.
+	//
+	// It also has to clear a margin, not merely break even. Folding changes the
+	// shape of what the model reads, and that is a real cost paid in exchange
+	// for tokens; a fold that returns 0.2% is the reader paying for nothing.
+	//
+	// Passthrough only. Tried on the summarizers' output too — grouped, tree,
+	// grep — and it folded exactly nothing: those already emit one line per
+	// group with the shared directory hoisted by FoldPathPrefix, so there is no
+	// run of near-identical lines left for this to find. The two transforms
+	// cover different shapes rather than overlapping.
+	// This gate DOES pay the tokeniser, because folding is not monotone: it
+	// rewrites lines and adds a declaration line, so a byte-smaller result can
+	// cost more tokens. That is the one thing bytes cannot answer, and the reason
+	// the two counts below are also what the analytics row reports — the only
+	// rows carrying exact counts are the ones a gate had to compute anyway.
+	if action == "passthrough" || action == "gutter-thinned" {
+		src := content
+		if replacement != "" {
+			src = replacement
+		}
+		if folded := detect.FoldLinePrefixes(src); folded != "" {
+			// Count the text actually being folded, and only it. Measuring the
+			// original content when the fold is applied to a thinned intermediate
+			// is a whole wasted pass — and the memoised count is reused when they
+			// are the same string, which is the common case.
+			var srcTokens int
+			if src == content {
+				srcTokens = countContent()
+			} else {
+				srcTokens = tokens.Count(src)
+			}
+			if n := tokens.Count(folded); n < srcTokens*(100-prefixFoldMarginPct)/100 {
+				action, replacement, replacementTokens = "prefix-folded", folded, n
+			}
+		}
+	}
+
 	if replacement != "" {
-		record(action, len(replacement))
+		record(action, replacement, replacementTokens)
 		return protocol.EncodeOutput(w, protocol.Replace(replacement))
 	}
-	record(action, len(content))
+	record(action, content, -1)
 	return protocol.EncodeOutput(w, protocol.Passthrough())
 }
+
+// prefixFoldMarginPct is the token saving a prefix fold must clear before it is
+// worth reshaping what the model reads. Measured over one project's archive,
+// this drops the folds returning under a percent — several MCP readers and a
+// WebFetch — while keeping every one that pays double digits.
+const prefixFoldMarginPct = 5
+
+// gutterThinMarginPct is the same idea for the line-number thin: numbers a
+// reader may want to count from are only worth dropping for a real saving. The
+// runs that clear it in practice return around 20%.
+const gutterThinMarginPct = 5
 
 // tryRerunDelta returns a unified diff of content against the previous run under
 // key, when strictly smaller. Diff inputs are zero-copy views (read-only).

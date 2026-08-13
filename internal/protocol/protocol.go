@@ -15,9 +15,21 @@ type HookInput struct {
 	// ToolUseID is never read anywhere in the codebase, so we skip decoding it
 	// (json:"-") to avoid the per-event string alloc + copy. The field is kept
 	// for forward-compat: restoring the tag is all it takes to start reading it.
-	ToolUseID     string          `json:"-"`
-	HookEventName string          `json:"hook_event_name,omitempty"`
-	ToolInput     json.RawMessage `json:"tool_input"`
+	ToolUseID     string `json:"-"`
+	HookEventName string `json:"hook_event_name,omitempty"`
+	// AgentID and TranscriptPath identify the CONTEXT a tool call came from,
+	// which session_id does not: Claude Code reports a subagent's calls under
+	// the PARENT's session_id, but a subagent has its own context that is
+	// discarded when it finishes — nothing it reads reaches the parent.
+	//
+	// AgentID is the reliable discriminator: it is documented as present only
+	// on subagent tool calls. TranscriptPath is a fallback for builds that do
+	// not send it; subagent transcripts live under
+	// <project>/<session-id>/subagents/. hook.ContextKey combines the two into
+	// the state-store key so a subagent's reads cannot deny the parent's.
+	AgentID        string          `json:"agent_id,omitempty"`
+	TranscriptPath string          `json:"transcript_path,omitempty"`
+	ToolInput      json.RawMessage `json:"tool_input"`
 }
 
 // ToolResponse holds the raw tool output Claude Code produced. Different tools

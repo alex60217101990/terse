@@ -69,9 +69,17 @@ const maxFuzzyDiffs = 4
 // computed without building the string — the fold decision needs the length
 // before committing, and on a fold the pieces are written straight into the
 // output builder (no intermediate marker allocation).
+//
+// ASCII brackets rather than the ⟦ ⟧ this used to emit. Measured with o200k,
+// ⟦ and ⟧ cost three tokens EACH — they are outside the vocabulary and fall
+// back to per-byte pieces — so the pair alone was six tokens of pure framing
+// on every folded block. "[" and "]" cost one each, and the marker prefix goes
+// from seven tokens to four. Nothing parses these markers back, so the change
+// is one-way and safe; only IsHookOutput in cmd/qdf-replay has to keep
+// recognising the old form, because an archive spans both.
 const (
-	markerPre = "⟦↑ repeat: \""
-	markerSuf = "\"⟧"
+	markerPre = "[repeat: \""
+	markerSuf = "\"]"
 	markerEll = "…"
 )
 
@@ -79,11 +87,11 @@ const (
 // by its first line, exactly like the exact marker, then lists EVERY volatile
 // token that differs as "old→new" pairs — so no differing byte is ever hidden.
 const (
-	fuzzyPre    = "⟦↑ repeat of \""
+	fuzzyPre    = "[repeat of \""
 	fuzzyExcept = "\" except "
-	fuzzyArrow  = "→"
+	fuzzyArrow  = "->"
 	fuzzySep    = ", "
-	fuzzySuf    = "⟧"
+	fuzzySuf    = "]"
 )
 
 // blockClass classifies a byte for FoldRepeatedBlocks' single content scan:
@@ -293,9 +301,9 @@ func diffTokens(a, b string) (pairs []tokenPair, ok bool) {
 // minFoldBlock bytes, and only when the marker is strictly shorter) is replaced
 // by a self-describing one-line back-reference naming it by its first line:
 //
-//   - exact duplicate → ⟦↑ repeat: "<first line>"⟧
+//   - exact duplicate → [repeat: "<first line>"]
 //   - near-duplicate (identical apart from volatile tokens — ids, hex digests,
-//     timestamps) → ⟦↑ repeat of "<first line>" except <old>→<new>, …⟧, which
+//     timestamps) → [repeat of "<first line>" except <old>-><new>, …], which
 //     lists every differing token so the reader can reconstruct the block with
 //     ZERO information loss. This fold is refused (block kept verbatim) if any
 //     two differing tokens share the same old value: with no positional

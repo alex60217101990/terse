@@ -1,0 +1,33 @@
+The maintenance window opened just after midnight and the release engineer
+walked the checklist one line at a time. Nothing in the plan was clever. That
+was deliberate. A deployment that depends on cleverness fails in a way nobody
+can reason about at three in the morning, and the only thing worse than an
+outage is an outage whose cause is a surprise to the people fixing it.
+
+Each service drained its queue before it stopped accepting new work. The
+drain took longer than expected on the reporting tier, which turned out to be
+holding a batch of unacknowledged messages from an upstream that had itself
+been restarted an hour earlier. The messages were not lost. They were simply
+waiting, patiently and invisibly, for somebody to notice them.
+
+We have learned to distrust the word simply. When a postmortem says a change
+was simply a configuration update, it usually means nobody wrote down what the
+old value was. The habit we try to build instead is boring and repetitive:
+record the previous state, record the new state, record who decided and why,
+and keep the record somewhere a stranger can find it without asking.
+
+There is a temptation, once a system has run without incident for a season, to
+believe the quiet is a property of the system rather than of the traffic. It
+is almost never so. The quiet is usually a property of the load, and the load
+changes when a customer changes, and customers change without warning us.
+
+By four the window closed. The dashboards were green, the error budget had
+barely moved, and the engineer wrote three sentences in the channel describing
+what had happened and what had not. Those three sentences will be read by
+somebody in eight months who has never met her, and they will save that person
+an hour. That is the whole of the craft, most days: leaving a legible trail
+behind ordinary work so the next person does not have to reconstruct it.
+
+Nobody applauds a boring night. But a boring night is an achievement, and it
+is bought with a hundred small refusals to take a shortcut that would have
+worked this one time.

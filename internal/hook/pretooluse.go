@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alex60217101990/terse/internal/analytics"
+	"github.com/alex60217101990/terse/internal/bytesconv"
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/hookcore"
 	"github.com/alex60217101990/terse/internal/protocol"
@@ -45,7 +46,7 @@ func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.W
 		return protocol.EncodePre(w, "allow", "")
 	}
 
-	state := store.LoadSession(inp.SessionID)
+	state := store.LoadSession(ContextKey(inp))
 	if state == nil {
 		return protocol.EncodePre(w, "allow", "")
 	}
@@ -80,16 +81,22 @@ func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.W
 	ctimeMatch := entry.CtimeNS != 0 && curCtime != 0 && entry.CtimeNS == curCtime
 	if seen && state.SeenAfterCompact(ti.FilePath) && entry.ModTime == info.ModTime().UnixNano() && sizeMatch && ctimeMatch {
 		// mtime+size+ctime unchanged — safe to deny without reading.
+		// Register the cached content so the deny is RECOVERABLE. This is the
+		// only lossy path in the tool that carried no expand footer, which is
+		// what turns a wrong deny into silent context loss instead of one extra
+		// round trip (invariant 2: never-lossy-without-recovery).
+		refHash := refTokenFor(store, bytesconv.B2S(entry.Content))
 		hashHex := cache.ShortHex(entry.Hash[:8])
 		var b strings.Builder
-		b.Grow(len(hashHex) + len(ti.FilePath) + 80)
+		b.Grow(len(hashHex) + len(refHash) + len(ti.FilePath) + 100)
 		b.WriteString("§unchanged:")
 		b.WriteString(hashHex)
 		b.WriteString("§ ")
 		b.WriteString(ti.FilePath)
 		b.WriteString(" — mtime+size+ctime unchanged, cached at turn ")
 		b.WriteString(strconv.Itoa(entry.Turn))
-		b.WriteString(". No re-read needed.")
+		b.WriteString(". If you do not have this content, run: qdf-hook expand ")
+		b.WriteString(refHash)
 		reason = b.String()
 		decision = "deny"
 		action = "pretool-unchanged"

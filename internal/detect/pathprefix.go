@@ -4,17 +4,41 @@ import "strings"
 
 // Path-dense output (grep/glob summaries, PostCompact file manifests) often
 // repeats one long shared directory across every line. FoldPathPrefix folds
-// that shared directory into a single declaration line plus a 3-byte §P§
-// token per line — lossless and self-describing (no external state or
-// expansion step is needed to read it back).
+// that shared directory into a single declaration line plus a one-byte token
+// per line — lossless and self-describing (no external state or expansion
+// step is needed to read it back).
 const (
 	pathPrefixMinLines = 5  // fewer path-bearing lines: folding isn't worth it
 	pathPrefixMinLen   = 16 // shorter shared directory: folding isn't worth it
 )
 
+// The substitution token and its declaration wrapper.
+//
+// "^" rather than the "§P§" this used to emit: measured over a 60-line folded
+// listing with o200k, "§P§/internal/hook/read.go" costs three tokens more per
+// line than "^/internal/hook/read.go" — 1041 tokens against 919 for the whole
+// block. The saving is per line, so it scales with exactly the output this
+// transform exists for. It is not a byte-count effect: § is one token, the
+// same as ^; the cost is in how the surrounding path retokenizes around a
+// non-ASCII byte pair.
+//
+// "^" specifically, over the cheaper "=", "+" and "~" (859 tokens on the same
+// block): the token always lands immediately before a '/', and "~/" is a home
+// path, "=/" is an environment assignment and "+/" is a diff line. Those occur
+// in real path-dense output, and every occurrence would make the guard below
+// bail out of folding entirely. "^/" essentially does not occur, so the guard
+// stays quiet. Two tokens per line that always fires beats three that often
+// does not.
+const (
+	pathToken    = "^"
+	pathDeclPre  = "[^="
+	pathDeclSuf  = "]\n"
+	pathTokenAmb = "^/" // the token in the position folding would produce
+)
+
 // FoldPathPrefix losslessly folds the longest shared directory prefix across
-// the path-bearing lines of content into one "§P=<prefix>§" declaration
-// line, substituting the 3-byte token "§P§" for that prefix everywhere it
+// the path-bearing lines of content into one "[^=<prefix>]" declaration
+// line, substituting the one-byte token "^" for that prefix everywhere it
 // recurs. Non-path lines are copied verbatim. It is never-worse: content is
 // returned unchanged whenever no shared prefix clears the size bar, or the
 // folded form wouldn't come out strictly smaller.
@@ -24,26 +48,26 @@ const (
 // of path-bearing lines purely as sub-slices of content. Pass 2 (the only
 // allocating step) runs only once folding is already known to help.
 func FoldPathPrefix(content string) string {
-	// Bail out up front if content already contains our own token prefix
-	// ("§P§" or the "§P=...§" declaration). Folding on top of an existing
-	// occurrence would make original text indistinguishable from our own
-	// substitution, corrupting lossless reconstruction. strings.Contains is
-	// a single cheap scan (no allocation), so this preserves the zero-alloc
-	// non-match invariant and costs the common case exactly one extra pass.
-	if strings.Contains(content, "§P") {
+	// Bail out up front if content already contains our own token in the
+	// position folding would put it ("^/"), or the declaration opener.
+	// Folding on top of an existing occurrence would make original text
+	// indistinguishable from our own substitution, corrupting lossless
+	// reconstruction. strings.Contains is a single cheap scan (no
+	// allocation), so this preserves the zero-alloc non-match invariant and
+	// costs the common case exactly two extra passes.
+	if strings.Contains(content, pathTokenAmb) || strings.Contains(content, pathDeclPre) {
 		return content
 	}
 	prefix, count := scanPathPrefix(content)
 	if count < pathPrefixMinLines || len(prefix) < pathPrefixMinLen {
 		return content
 	}
-	// Each folded line trades len(prefix) bytes for the short §P§ token
-	// (treated as 3 bytes here — an estimate, not exact UTF-8 accounting);
-	// the declaration line itself costs len(prefix) plus a small fixed
-	// wrapper overhead. This is only a cheap gate to decide whether folding
-	// is worth attempting — the final never-worse check below catches any
-	// case where the estimate undershoots reality.
-	saving := count*(len(prefix)-3) - len(prefix) - 8
+	// Each folded line trades len(prefix) bytes for the one-byte token; the
+	// declaration line itself costs len(prefix) plus its wrapper. This is
+	// only a cheap gate to decide whether folding is worth attempting — the
+	// final never-worse check below catches any case where the estimate
+	// undershoots reality.
+	saving := count*(len(prefix)-len(pathToken)) - len(prefix) - len(pathDeclPre) - len(pathDeclSuf)
 	if saving <= 0 {
 		return content
 	}
@@ -120,8 +144,8 @@ func dirBoundary(s string) string {
 	return s[:i]
 }
 
-// buildFoldedPathPrefix renders the folded form: a "§P=<prefix>§" declaration
-// line followed by every line of content, with prefix replaced by "§P§"
+// buildFoldedPathPrefix renders the folded form: a "[^=<prefix>]" declaration
+// line followed by every line of content, with prefix replaced by "^"
 // wherever a line's path segment starts with it. estSaving sizes the
 // Builder; it's only a hint.
 func buildFoldedPathPrefix(content, prefix string, estSaving int) string {
@@ -129,9 +153,9 @@ func buildFoldedPathPrefix(content, prefix string, estSaving int) string {
 	if grow := len(content) - estSaving; grow > 0 {
 		b.Grow(grow)
 	}
-	b.WriteString("§P=")
+	b.WriteString(pathDeclPre)
 	b.WriteString(prefix)
-	b.WriteString("§\n")
+	b.WriteString(pathDeclSuf)
 
 	start := 0
 	for start <= len(content) {
@@ -145,7 +169,7 @@ func buildFoldedPathPrefix(content, prefix string, estSaving int) string {
 		}
 		if i, seg, ok := pathSegment(line); ok && strings.HasPrefix(seg, prefix) {
 			b.WriteString(line[:i])
-			b.WriteString("§P§")
+			b.WriteString(pathToken)
 			b.WriteString(seg[len(prefix):])
 			b.WriteString(line[i+len(seg):])
 		} else {

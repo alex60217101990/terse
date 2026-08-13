@@ -1,10 +1,12 @@
 package detect_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/alex60217101990/terse/internal/detect"
+	"github.com/alex60217101990/terse/internal/tokens"
 )
 
 // Every wave-2 transform must (a) never panic, (b) never grow the input,
@@ -34,3 +36,42 @@ func FuzzSummarizeStackTrace(f *testing.F) { fuzzNeverWorse(f, detect.SummarizeS
 func FuzzSummarizeJSONObject(f *testing.F) { fuzzNeverWorse(f, detect.SummarizeJSONObject, true) }
 func FuzzFoldRepeatedBlocks(f *testing.F)  { fuzzNeverWorse(f, detect.FoldRepeatedBlocks, false) }
 func FuzzFoldPathPrefix(f *testing.F)      { fuzzNeverWorse(f, detect.FoldPathPrefix, false) }
+func FuzzFoldLinePrefixes(f *testing.F)    { fuzzNeverWorse(f, detect.FoldLinePrefixes, true) }
+func FuzzThinLineNumbers(f *testing.F)     { fuzzNeverWorse(f, detect.ThinLineNumbers, true) }
+func FuzzThinLineNumberRuns(f *testing.F)  { fuzzNeverWorse(f, detect.ThinLineNumberRuns, true) }
+
+// Thinning a gutter must never cost tokens. Both variants only ever delete a run
+// of spaces, digits and a tab from the start of a line, which leaves what follows
+// beginning right after a newline and tokenising exactly as before — so the hook
+// skips the tokeniser here and trusts the property instead (see thinGutter in
+// internal/hook/read.go). That trust is what these two targets defend: if a
+// future change to the transform can inflate a count, the gates that stopped
+// checking need to hear about it from a test rather than from a bill.
+func FuzzThinLineNumbersNeverCostsTokens(f *testing.F) {
+	fuzzThinNeverCostsTokens(f, detect.ThinLineNumbers)
+}
+
+func FuzzThinLineNumberRunsNeverCostsTokens(f *testing.F) {
+	fuzzThinNeverCostsTokens(f, detect.ThinLineNumberRuns)
+}
+
+func fuzzThinNeverCostsTokens(f *testing.F, thin func(string) string) {
+	var numbered strings.Builder
+	for i := 1; i <= 24; i++ {
+		fmt.Fprintf(&numbered, "%d\t\tvalue := lookup(ctx, %q)\n", i, "key")
+	}
+	f.Add(numbered.String())
+	f.Add("=== header ===\n" + numbered.String())
+	f.Add("1\ta\n2\tb\n3\tc\n4\td\n5\te\n6\tf\n7\tg\n8\th\n9\ti\n10\tj\n11\tk\n")
+	f.Add("     1\t   indented\n     2\t   more\n")
+
+	f.Fuzz(func(t *testing.T, s string) {
+		out := thin(s)
+		if out == "" {
+			return
+		}
+		if got, in := tokens.Count(out), tokens.Count(s); got > in {
+			t.Fatalf("thinning cost tokens: %d -> %d for %q", in, got, s)
+		}
+	})
+}
