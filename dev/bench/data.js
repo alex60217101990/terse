@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786609042932,
+  "lastUpdate": 1786610027185,
   "repoUrl": "https://github.com/alex60217101990/terse",
   "entries": {
     "terse Go Benchmarks": [
@@ -22692,6 +22692,7194 @@ window.BENCHMARK_DATA = {
             "value": 130282,
             "unit": "allocs/op",
             "extra": "42 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "33520849+alex60217101990@users.noreply.github.com",
+            "name": "alex60217101990",
+            "username": "alex60217101990"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bf55086ecaa9c635c873613c0ceb0b043d1e488",
+          "message": "Merge pull request #29 from alex60217101990/dependabot/github_actions/docker/build-push-action-7.3.0\n\nchore(deps): bump docker/build-push-action from 6.19.2 to 7.3.0",
+          "timestamp": "2026-08-13T11:27:18+03:00",
+          "tree_id": "cd44dcd8ee5c90a5a343bb310928473e0369debe",
+          "url": "https://github.com/alex60217101990/terse/commit/2bf55086ecaa9c635c873613c0ceb0b043d1e488"
+        },
+        "date": 1786610026579,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics)",
+            "value": 13124,
+            "unit": "ns/op\t     680 B/op\t       7 allocs/op",
+            "extra": "91389 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - ns/op",
+            "value": 13124,
+            "unit": "ns/op",
+            "extra": "91389 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - B/op",
+            "value": 680,
+            "unit": "B/op",
+            "extra": "91389 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - allocs/op",
+            "value": 7,
+            "unit": "allocs/op",
+            "extra": "91389 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics)",
+            "value": 13171,
+            "unit": "ns/op\t     680 B/op\t       7 allocs/op",
+            "extra": "90822 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - ns/op",
+            "value": 13171,
+            "unit": "ns/op",
+            "extra": "90822 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - B/op",
+            "value": 680,
+            "unit": "B/op",
+            "extra": "90822 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - allocs/op",
+            "value": 7,
+            "unit": "allocs/op",
+            "extra": "90822 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics)",
+            "value": 13334,
+            "unit": "ns/op\t     680 B/op\t       7 allocs/op",
+            "extra": "88584 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - ns/op",
+            "value": 13334,
+            "unit": "ns/op",
+            "extra": "88584 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - B/op",
+            "value": 680,
+            "unit": "B/op",
+            "extra": "88584 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - allocs/op",
+            "value": 7,
+            "unit": "allocs/op",
+            "extra": "88584 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics)",
+            "value": 13192,
+            "unit": "ns/op\t     680 B/op\t       7 allocs/op",
+            "extra": "89937 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - ns/op",
+            "value": 13192,
+            "unit": "ns/op",
+            "extra": "89937 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - B/op",
+            "value": 680,
+            "unit": "B/op",
+            "extra": "89937 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - allocs/op",
+            "value": 7,
+            "unit": "allocs/op",
+            "extra": "89937 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics)",
+            "value": 13187,
+            "unit": "ns/op\t     680 B/op\t       7 allocs/op",
+            "extra": "90888 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - ns/op",
+            "value": 13187,
+            "unit": "ns/op",
+            "extra": "90888 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - B/op",
+            "value": 680,
+            "unit": "B/op",
+            "extra": "90888 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - allocs/op",
+            "value": 7,
+            "unit": "allocs/op",
+            "extra": "90888 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics)",
+            "value": 13184,
+            "unit": "ns/op\t     680 B/op\t       7 allocs/op",
+            "extra": "91929 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - ns/op",
+            "value": 13184,
+            "unit": "ns/op",
+            "extra": "91929 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - B/op",
+            "value": 680,
+            "unit": "B/op",
+            "extra": "91929 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRecord (github.com/alex60217101990/terse/internal/analytics) - allocs/op",
+            "value": 7,
+            "unit": "allocs/op",
+            "extra": "91929 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache)",
+            "value": 24772,
+            "unit": "ns/op\t   25363 B/op\t      13 allocs/op",
+            "extra": "48502 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 24772,
+            "unit": "ns/op",
+            "extra": "48502 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 25363,
+            "unit": "B/op",
+            "extra": "48502 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 13,
+            "unit": "allocs/op",
+            "extra": "48502 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache)",
+            "value": 24108,
+            "unit": "ns/op\t   25341 B/op\t      13 allocs/op",
+            "extra": "50007 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 24108,
+            "unit": "ns/op",
+            "extra": "50007 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 25341,
+            "unit": "B/op",
+            "extra": "50007 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 13,
+            "unit": "allocs/op",
+            "extra": "50007 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache)",
+            "value": 24098,
+            "unit": "ns/op\t   25341 B/op\t      13 allocs/op",
+            "extra": "49654 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 24098,
+            "unit": "ns/op",
+            "extra": "49654 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 25341,
+            "unit": "B/op",
+            "extra": "49654 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 13,
+            "unit": "allocs/op",
+            "extra": "49654 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache)",
+            "value": 24270,
+            "unit": "ns/op\t   25342 B/op\t      13 allocs/op",
+            "extra": "49672 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 24270,
+            "unit": "ns/op",
+            "extra": "49672 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 25342,
+            "unit": "B/op",
+            "extra": "49672 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 13,
+            "unit": "allocs/op",
+            "extra": "49672 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache)",
+            "value": 24466,
+            "unit": "ns/op\t   25342 B/op\t      13 allocs/op",
+            "extra": "49046 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 24466,
+            "unit": "ns/op",
+            "extra": "49046 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 25342,
+            "unit": "B/op",
+            "extra": "49046 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 13,
+            "unit": "allocs/op",
+            "extra": "49046 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache)",
+            "value": 24212,
+            "unit": "ns/op\t   25341 B/op\t      13 allocs/op",
+            "extra": "49534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 24212,
+            "unit": "ns/op",
+            "extra": "49534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 25341,
+            "unit": "B/op",
+            "extra": "49534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 13,
+            "unit": "allocs/op",
+            "extra": "49534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache)",
+            "value": 64.56,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18446055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 64.56,
+            "unit": "ns/op",
+            "extra": "18446055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18446055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18446055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache)",
+            "value": 64.6,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18548101 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 64.6,
+            "unit": "ns/op",
+            "extra": "18548101 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18548101 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18548101 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache)",
+            "value": 65.26,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18480631 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 65.26,
+            "unit": "ns/op",
+            "extra": "18480631 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18480631 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18480631 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache)",
+            "value": 65.88,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18537322 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 65.88,
+            "unit": "ns/op",
+            "extra": "18537322 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18537322 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18537322 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache)",
+            "value": 64.67,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18516069 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 64.67,
+            "unit": "ns/op",
+            "extra": "18516069 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18516069 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18516069 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache)",
+            "value": 64.83,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18473166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 64.83,
+            "unit": "ns/op",
+            "extra": "18473166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18473166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUtilityScore (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18473166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache)",
+            "value": 36270,
+            "unit": "ns/op\t    8193 B/op\t       1 allocs/op",
+            "extra": "32374 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 36270,
+            "unit": "ns/op",
+            "extra": "32374 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 8193,
+            "unit": "B/op",
+            "extra": "32374 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "32374 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache)",
+            "value": 35647,
+            "unit": "ns/op\t    8194 B/op\t       1 allocs/op",
+            "extra": "33045 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 35647,
+            "unit": "ns/op",
+            "extra": "33045 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 8194,
+            "unit": "B/op",
+            "extra": "33045 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "33045 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache)",
+            "value": 36296,
+            "unit": "ns/op\t    8194 B/op\t       1 allocs/op",
+            "extra": "32868 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 36296,
+            "unit": "ns/op",
+            "extra": "32868 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 8194,
+            "unit": "B/op",
+            "extra": "32868 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "32868 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache)",
+            "value": 36685,
+            "unit": "ns/op\t    8193 B/op\t       1 allocs/op",
+            "extra": "33034 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 36685,
+            "unit": "ns/op",
+            "extra": "33034 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 8193,
+            "unit": "B/op",
+            "extra": "33034 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "33034 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache)",
+            "value": 36244,
+            "unit": "ns/op\t    8193 B/op\t       1 allocs/op",
+            "extra": "33130 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 36244,
+            "unit": "ns/op",
+            "extra": "33130 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 8193,
+            "unit": "B/op",
+            "extra": "33130 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "33130 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache)",
+            "value": 35593,
+            "unit": "ns/op\t    8194 B/op\t       1 allocs/op",
+            "extra": "33699 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 35593,
+            "unit": "ns/op",
+            "extra": "33699 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 8194,
+            "unit": "B/op",
+            "extra": "33699 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkEvict_200Files (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "33699 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache)",
+            "value": 35234,
+            "unit": "ns/op\t    2522 B/op\t       9 allocs/op",
+            "extra": "34233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 35234,
+            "unit": "ns/op",
+            "extra": "34233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2522,
+            "unit": "B/op",
+            "extra": "34233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 9,
+            "unit": "allocs/op",
+            "extra": "34233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache)",
+            "value": 34954,
+            "unit": "ns/op\t    2520 B/op\t       9 allocs/op",
+            "extra": "34363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 34954,
+            "unit": "ns/op",
+            "extra": "34363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2520,
+            "unit": "B/op",
+            "extra": "34363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 9,
+            "unit": "allocs/op",
+            "extra": "34363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache)",
+            "value": 35125,
+            "unit": "ns/op\t    2505 B/op\t       9 allocs/op",
+            "extra": "34220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 35125,
+            "unit": "ns/op",
+            "extra": "34220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2505,
+            "unit": "B/op",
+            "extra": "34220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 9,
+            "unit": "allocs/op",
+            "extra": "34220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache)",
+            "value": 35551,
+            "unit": "ns/op\t    2522 B/op\t       9 allocs/op",
+            "extra": "33853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 35551,
+            "unit": "ns/op",
+            "extra": "33853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2522,
+            "unit": "B/op",
+            "extra": "33853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 9,
+            "unit": "allocs/op",
+            "extra": "33853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache)",
+            "value": 35481,
+            "unit": "ns/op\t    2506 B/op\t       9 allocs/op",
+            "extra": "33861 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 35481,
+            "unit": "ns/op",
+            "extra": "33861 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2506,
+            "unit": "B/op",
+            "extra": "33861 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 9,
+            "unit": "allocs/op",
+            "extra": "33861 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache)",
+            "value": 35065,
+            "unit": "ns/op\t    2524 B/op\t       9 allocs/op",
+            "extra": "34309 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 35065,
+            "unit": "ns/op",
+            "extra": "34309 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2524,
+            "unit": "B/op",
+            "extra": "34309 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefPut (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 9,
+            "unit": "allocs/op",
+            "extra": "34309 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache)",
+            "value": 12493,
+            "unit": "ns/op\t    2133 B/op\t      11 allocs/op",
+            "extra": "95726 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 12493,
+            "unit": "ns/op",
+            "extra": "95726 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2133,
+            "unit": "B/op",
+            "extra": "95726 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 11,
+            "unit": "allocs/op",
+            "extra": "95726 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache)",
+            "value": 12520,
+            "unit": "ns/op\t    2132 B/op\t      11 allocs/op",
+            "extra": "95935 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 12520,
+            "unit": "ns/op",
+            "extra": "95935 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2132,
+            "unit": "B/op",
+            "extra": "95935 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 11,
+            "unit": "allocs/op",
+            "extra": "95935 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache)",
+            "value": 12432,
+            "unit": "ns/op\t    2116 B/op\t      11 allocs/op",
+            "extra": "95263 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 12432,
+            "unit": "ns/op",
+            "extra": "95263 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2116,
+            "unit": "B/op",
+            "extra": "95263 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 11,
+            "unit": "allocs/op",
+            "extra": "95263 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache)",
+            "value": 12548,
+            "unit": "ns/op\t    2134 B/op\t      11 allocs/op",
+            "extra": "94786 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 12548,
+            "unit": "ns/op",
+            "extra": "94786 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2134,
+            "unit": "B/op",
+            "extra": "94786 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 11,
+            "unit": "allocs/op",
+            "extra": "94786 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache)",
+            "value": 12511,
+            "unit": "ns/op\t    2132 B/op\t      11 allocs/op",
+            "extra": "93856 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 12511,
+            "unit": "ns/op",
+            "extra": "93856 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2132,
+            "unit": "B/op",
+            "extra": "93856 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 11,
+            "unit": "allocs/op",
+            "extra": "93856 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache)",
+            "value": 12431,
+            "unit": "ns/op\t    2133 B/op\t      11 allocs/op",
+            "extra": "95461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 12431,
+            "unit": "ns/op",
+            "extra": "95461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 2133,
+            "unit": "B/op",
+            "extra": "95461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRefGet (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 11,
+            "unit": "allocs/op",
+            "extra": "95461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache)",
+            "value": 146532,
+            "unit": "ns/op\t   15691 B/op\t      24 allocs/op",
+            "extra": "8008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 146532,
+            "unit": "ns/op",
+            "extra": "8008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 15691,
+            "unit": "B/op",
+            "extra": "8008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "8008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache)",
+            "value": 143771,
+            "unit": "ns/op\t   15703 B/op\t      24 allocs/op",
+            "extra": "8227 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 143771,
+            "unit": "ns/op",
+            "extra": "8227 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 15703,
+            "unit": "B/op",
+            "extra": "8227 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "8227 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache)",
+            "value": 144265,
+            "unit": "ns/op\t   15708 B/op\t      24 allocs/op",
+            "extra": "7380 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 144265,
+            "unit": "ns/op",
+            "extra": "7380 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 15708,
+            "unit": "B/op",
+            "extra": "7380 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "7380 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache)",
+            "value": 144686,
+            "unit": "ns/op\t   15686 B/op\t      24 allocs/op",
+            "extra": "8936 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 144686,
+            "unit": "ns/op",
+            "extra": "8936 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 15686,
+            "unit": "B/op",
+            "extra": "8936 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "8936 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache)",
+            "value": 144114,
+            "unit": "ns/op\t   15715 B/op\t      24 allocs/op",
+            "extra": "8572 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 144114,
+            "unit": "ns/op",
+            "extra": "8572 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 15715,
+            "unit": "B/op",
+            "extra": "8572 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "8572 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache)",
+            "value": 142837,
+            "unit": "ns/op\t   15678 B/op\t      24 allocs/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 142837,
+            "unit": "ns/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 15678,
+            "unit": "B/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveLoad (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache)",
+            "value": 198342,
+            "unit": "ns/op\t  299261 B/op\t      17 allocs/op",
+            "extra": "6207 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 198342,
+            "unit": "ns/op",
+            "extra": "6207 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 299261,
+            "unit": "B/op",
+            "extra": "6207 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 17,
+            "unit": "allocs/op",
+            "extra": "6207 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache)",
+            "value": 190200,
+            "unit": "ns/op\t  299173 B/op\t      17 allocs/op",
+            "extra": "6669 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 190200,
+            "unit": "ns/op",
+            "extra": "6669 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 299173,
+            "unit": "B/op",
+            "extra": "6669 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 17,
+            "unit": "allocs/op",
+            "extra": "6669 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache)",
+            "value": 191964,
+            "unit": "ns/op\t  299172 B/op\t      17 allocs/op",
+            "extra": "5967 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 191964,
+            "unit": "ns/op",
+            "extra": "5967 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 299172,
+            "unit": "B/op",
+            "extra": "5967 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 17,
+            "unit": "allocs/op",
+            "extra": "5967 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache)",
+            "value": 225574,
+            "unit": "ns/op\t  299175 B/op\t      17 allocs/op",
+            "extra": "5257 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 225574,
+            "unit": "ns/op",
+            "extra": "5257 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 299175,
+            "unit": "B/op",
+            "extra": "5257 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 17,
+            "unit": "allocs/op",
+            "extra": "5257 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache)",
+            "value": 209256,
+            "unit": "ns/op\t  299174 B/op\t      17 allocs/op",
+            "extra": "5462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 209256,
+            "unit": "ns/op",
+            "extra": "5462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 299174,
+            "unit": "B/op",
+            "extra": "5462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 17,
+            "unit": "allocs/op",
+            "extra": "5462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache)",
+            "value": 207345,
+            "unit": "ns/op\t  299173 B/op\t      17 allocs/op",
+            "extra": "5982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - ns/op",
+            "value": 207345,
+            "unit": "ns/op",
+            "extra": "5982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - B/op",
+            "value": 299173,
+            "unit": "B/op",
+            "extra": "5982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkUnifiedDiff_LargeFileSmallChange (github.com/alex60217101990/terse/internal/cache) - allocs/op",
+            "value": 17,
+            "unit": "allocs/op",
+            "extra": "5982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 4835,
+            "unit": "ns/op\t   27824 B/op\t      12 allocs/op",
+            "extra": "236972 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 4835,
+            "unit": "ns/op",
+            "extra": "236972 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 27824,
+            "unit": "B/op",
+            "extra": "236972 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 12,
+            "unit": "allocs/op",
+            "extra": "236972 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 4963,
+            "unit": "ns/op\t   27824 B/op\t      12 allocs/op",
+            "extra": "261471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 4963,
+            "unit": "ns/op",
+            "extra": "261471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 27824,
+            "unit": "B/op",
+            "extra": "261471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 12,
+            "unit": "allocs/op",
+            "extra": "261471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 5440,
+            "unit": "ns/op\t   27824 B/op\t      12 allocs/op",
+            "extra": "235730 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 5440,
+            "unit": "ns/op",
+            "extra": "235730 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 27824,
+            "unit": "B/op",
+            "extra": "235730 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 12,
+            "unit": "allocs/op",
+            "extra": "235730 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 4863,
+            "unit": "ns/op\t   27824 B/op\t      12 allocs/op",
+            "extra": "242019 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 4863,
+            "unit": "ns/op",
+            "extra": "242019 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 27824,
+            "unit": "B/op",
+            "extra": "242019 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 12,
+            "unit": "allocs/op",
+            "extra": "242019 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 4801,
+            "unit": "ns/op\t   27824 B/op\t      12 allocs/op",
+            "extra": "243056 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 4801,
+            "unit": "ns/op",
+            "extra": "243056 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 27824,
+            "unit": "B/op",
+            "extra": "243056 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 12,
+            "unit": "allocs/op",
+            "extra": "243056 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 4995,
+            "unit": "ns/op\t   27824 B/op\t      12 allocs/op",
+            "extra": "241342 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 4995,
+            "unit": "ns/op",
+            "extra": "241342 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 27824,
+            "unit": "B/op",
+            "extra": "241342 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_ReadAll (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 12,
+            "unit": "allocs/op",
+            "extra": "241342 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 205.1,
+            "unit": "ns/op\t      48 B/op\t       1 allocs/op",
+            "extra": "5807466 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 205.1,
+            "unit": "ns/op",
+            "extra": "5807466 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 48,
+            "unit": "B/op",
+            "extra": "5807466 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "5807466 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 205.7,
+            "unit": "ns/op\t      48 B/op\t       1 allocs/op",
+            "extra": "5847607 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 205.7,
+            "unit": "ns/op",
+            "extra": "5847607 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 48,
+            "unit": "B/op",
+            "extra": "5847607 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "5847607 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 205.4,
+            "unit": "ns/op\t      48 B/op\t       1 allocs/op",
+            "extra": "5838357 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 205.4,
+            "unit": "ns/op",
+            "extra": "5838357 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 48,
+            "unit": "B/op",
+            "extra": "5838357 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "5838357 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 204.9,
+            "unit": "ns/op\t      48 B/op\t       1 allocs/op",
+            "extra": "5850940 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 204.9,
+            "unit": "ns/op",
+            "extra": "5850940 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 48,
+            "unit": "B/op",
+            "extra": "5850940 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "5850940 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 205.2,
+            "unit": "ns/op\t      48 B/op\t       1 allocs/op",
+            "extra": "5857003 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 205.2,
+            "unit": "ns/op",
+            "extra": "5857003 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 48,
+            "unit": "B/op",
+            "extra": "5857003 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "5857003 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 204.8,
+            "unit": "ns/op\t      48 B/op\t       1 allocs/op",
+            "extra": "5823253 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 204.8,
+            "unit": "ns/op",
+            "extra": "5823253 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 48,
+            "unit": "B/op",
+            "extra": "5823253 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadPath_Pooled (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "5823253 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 129985,
+            "unit": "ns/op\t    6326 B/op\t      55 allocs/op",
+            "extra": "8906 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 129985,
+            "unit": "ns/op",
+            "extra": "8906 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 6326,
+            "unit": "B/op",
+            "extra": "8906 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "8906 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 129373,
+            "unit": "ns/op\t    6322 B/op\t      55 allocs/op",
+            "extra": "9026 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 129373,
+            "unit": "ns/op",
+            "extra": "9026 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 6322,
+            "unit": "B/op",
+            "extra": "9026 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "9026 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 129672,
+            "unit": "ns/op\t    6318 B/op\t      55 allocs/op",
+            "extra": "8829 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 129672,
+            "unit": "ns/op",
+            "extra": "8829 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 6318,
+            "unit": "B/op",
+            "extra": "8829 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "8829 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 129191,
+            "unit": "ns/op\t    6321 B/op\t      55 allocs/op",
+            "extra": "9174 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 129191,
+            "unit": "ns/op",
+            "extra": "9174 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 6321,
+            "unit": "B/op",
+            "extra": "9174 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "9174 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 129258,
+            "unit": "ns/op\t    6327 B/op\t      55 allocs/op",
+            "extra": "9008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 129258,
+            "unit": "ns/op",
+            "extra": "9008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 6327,
+            "unit": "B/op",
+            "extra": "9008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "9008 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 127485,
+            "unit": "ns/op\t    6310 B/op\t      55 allocs/op",
+            "extra": "9166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 127485,
+            "unit": "ns/op",
+            "extra": "9166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 6310,
+            "unit": "B/op",
+            "extra": "9166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkDaemonRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "9166 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 3046017,
+            "unit": "ns/op\t    4192 B/op\t      55 allocs/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 3046017,
+            "unit": "ns/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 4192,
+            "unit": "B/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 3050928,
+            "unit": "ns/op\t    4085 B/op\t      55 allocs/op",
+            "extra": "396 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 3050928,
+            "unit": "ns/op",
+            "extra": "396 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 4085,
+            "unit": "B/op",
+            "extra": "396 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "396 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 3062417,
+            "unit": "ns/op\t    4175 B/op\t      55 allocs/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 3062417,
+            "unit": "ns/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 4175,
+            "unit": "B/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 3051525,
+            "unit": "ns/op\t    4132 B/op\t      55 allocs/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 3051525,
+            "unit": "ns/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 4132,
+            "unit": "B/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "392 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 3082843,
+            "unit": "ns/op\t    4086 B/op\t      55 allocs/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 3082843,
+            "unit": "ns/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 4086,
+            "unit": "B/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "387 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon)",
+            "value": 3176110,
+            "unit": "ns/op\t    4132 B/op\t      55 allocs/op",
+            "extra": "364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - ns/op",
+            "value": 3176110,
+            "unit": "ns/op",
+            "extra": "364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - B/op",
+            "value": 4132,
+            "unit": "B/op",
+            "extra": "364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCLIRoundtrip (github.com/alex60217101990/terse/internal/daemon) - allocs/op",
+            "value": 55,
+            "unit": "allocs/op",
+            "extra": "364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1051,
+            "unit": "ns/op\t 776.63 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1051,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 776.63,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1053,
+            "unit": "ns/op\t 774.70 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1053,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 774.7,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1052,
+            "unit": "ns/op\t 775.96 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1052,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 775.96,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1058,
+            "unit": "ns/op\t 771.13 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1058,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 771.13,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1062,
+            "unit": "ns/op\t 768.02 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1062,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 768.02,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1070,
+            "unit": "ns/op\t 762.82 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1070,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 762.82,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_NoDup (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1352,
+            "unit": "ns/op\t 849.24 MB/s\t    1152 B/op\t       1 allocs/op",
+            "extra": "856556 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1352,
+            "unit": "ns/op",
+            "extra": "856556 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 849.24,
+            "unit": "MB/s",
+            "extra": "856556 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1152,
+            "unit": "B/op",
+            "extra": "856556 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "856556 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1358,
+            "unit": "ns/op\t 845.14 MB/s\t    1152 B/op\t       1 allocs/op",
+            "extra": "788067 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1358,
+            "unit": "ns/op",
+            "extra": "788067 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 845.14,
+            "unit": "MB/s",
+            "extra": "788067 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1152,
+            "unit": "B/op",
+            "extra": "788067 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "788067 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1360,
+            "unit": "ns/op\t 844.02 MB/s\t    1152 B/op\t       1 allocs/op",
+            "extra": "872461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1360,
+            "unit": "ns/op",
+            "extra": "872461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 844.02,
+            "unit": "MB/s",
+            "extra": "872461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1152,
+            "unit": "B/op",
+            "extra": "872461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "872461 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1356,
+            "unit": "ns/op\t 846.42 MB/s\t    1152 B/op\t       1 allocs/op",
+            "extra": "908820 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1356,
+            "unit": "ns/op",
+            "extra": "908820 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 846.42,
+            "unit": "MB/s",
+            "extra": "908820 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1152,
+            "unit": "B/op",
+            "extra": "908820 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "908820 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1348,
+            "unit": "ns/op\t 851.73 MB/s\t    1152 B/op\t       1 allocs/op",
+            "extra": "863780 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1348,
+            "unit": "ns/op",
+            "extra": "863780 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 851.73,
+            "unit": "MB/s",
+            "extra": "863780 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1152,
+            "unit": "B/op",
+            "extra": "863780 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "863780 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1351,
+            "unit": "ns/op\t 849.44 MB/s\t    1152 B/op\t       1 allocs/op",
+            "extra": "824241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1351,
+            "unit": "ns/op",
+            "extra": "824241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 849.44,
+            "unit": "MB/s",
+            "extra": "824241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1152,
+            "unit": "B/op",
+            "extra": "824241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "824241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect)",
+            "value": 3638,
+            "unit": "ns/op\t  96.48 MB/s\t    1008 B/op\t       6 allocs/op",
+            "extra": "321471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 3638,
+            "unit": "ns/op",
+            "extra": "321471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 96.48,
+            "unit": "MB/s",
+            "extra": "321471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1008,
+            "unit": "B/op",
+            "extra": "321471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 6,
+            "unit": "allocs/op",
+            "extra": "321471 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect)",
+            "value": 3642,
+            "unit": "ns/op\t  96.38 MB/s\t    1008 B/op\t       6 allocs/op",
+            "extra": "314544 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 3642,
+            "unit": "ns/op",
+            "extra": "314544 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 96.38,
+            "unit": "MB/s",
+            "extra": "314544 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1008,
+            "unit": "B/op",
+            "extra": "314544 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 6,
+            "unit": "allocs/op",
+            "extra": "314544 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect)",
+            "value": 3663,
+            "unit": "ns/op\t  95.81 MB/s\t    1008 B/op\t       6 allocs/op",
+            "extra": "326229 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 3663,
+            "unit": "ns/op",
+            "extra": "326229 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 95.81,
+            "unit": "MB/s",
+            "extra": "326229 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1008,
+            "unit": "B/op",
+            "extra": "326229 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 6,
+            "unit": "allocs/op",
+            "extra": "326229 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect)",
+            "value": 3678,
+            "unit": "ns/op\t  95.43 MB/s\t    1008 B/op\t       6 allocs/op",
+            "extra": "327421 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 3678,
+            "unit": "ns/op",
+            "extra": "327421 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 95.43,
+            "unit": "MB/s",
+            "extra": "327421 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1008,
+            "unit": "B/op",
+            "extra": "327421 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 6,
+            "unit": "allocs/op",
+            "extra": "327421 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect)",
+            "value": 3650,
+            "unit": "ns/op\t  96.17 MB/s\t    1008 B/op\t       6 allocs/op",
+            "extra": "320366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 3650,
+            "unit": "ns/op",
+            "extra": "320366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 96.17,
+            "unit": "MB/s",
+            "extra": "320366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1008,
+            "unit": "B/op",
+            "extra": "320366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 6,
+            "unit": "allocs/op",
+            "extra": "320366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect)",
+            "value": 3634,
+            "unit": "ns/op\t  96.58 MB/s\t    1008 B/op\t       6 allocs/op",
+            "extra": "316188 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 3634,
+            "unit": "ns/op",
+            "extra": "316188 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 96.58,
+            "unit": "MB/s",
+            "extra": "316188 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1008,
+            "unit": "B/op",
+            "extra": "316188 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldRepeatedBlocks_Fuzzy (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 6,
+            "unit": "allocs/op",
+            "extra": "316188 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect)",
+            "value": 817.1,
+            "unit": "ns/op\t2097.54 MB/s\t    1792 B/op\t       1 allocs/op",
+            "extra": "1465328 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 817.1,
+            "unit": "ns/op",
+            "extra": "1465328 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2097.54,
+            "unit": "MB/s",
+            "extra": "1465328 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1792,
+            "unit": "B/op",
+            "extra": "1465328 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "1465328 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect)",
+            "value": 815.4,
+            "unit": "ns/op\t2102.10 MB/s\t    1792 B/op\t       1 allocs/op",
+            "extra": "1472268 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 815.4,
+            "unit": "ns/op",
+            "extra": "1472268 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2102.1,
+            "unit": "MB/s",
+            "extra": "1472268 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1792,
+            "unit": "B/op",
+            "extra": "1472268 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "1472268 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect)",
+            "value": 818.3,
+            "unit": "ns/op\t2094.49 MB/s\t    1792 B/op\t       1 allocs/op",
+            "extra": "1470079 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 818.3,
+            "unit": "ns/op",
+            "extra": "1470079 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2094.49,
+            "unit": "MB/s",
+            "extra": "1470079 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1792,
+            "unit": "B/op",
+            "extra": "1470079 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "1470079 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect)",
+            "value": 820.9,
+            "unit": "ns/op\t2087.91 MB/s\t    1792 B/op\t       1 allocs/op",
+            "extra": "1460623 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 820.9,
+            "unit": "ns/op",
+            "extra": "1460623 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2087.91,
+            "unit": "MB/s",
+            "extra": "1460623 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1792,
+            "unit": "B/op",
+            "extra": "1460623 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "1460623 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect)",
+            "value": 815,
+            "unit": "ns/op\t2103.17 MB/s\t    1792 B/op\t       1 allocs/op",
+            "extra": "1476577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 815,
+            "unit": "ns/op",
+            "extra": "1476577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2103.17,
+            "unit": "MB/s",
+            "extra": "1476577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1792,
+            "unit": "B/op",
+            "extra": "1476577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "1476577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect)",
+            "value": 820.9,
+            "unit": "ns/op\t2087.97 MB/s\t    1792 B/op\t       1 allocs/op",
+            "extra": "1462082 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 820.9,
+            "unit": "ns/op",
+            "extra": "1462082 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2087.97,
+            "unit": "MB/s",
+            "extra": "1462082 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1792,
+            "unit": "B/op",
+            "extra": "1462082 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "1462082 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 312.6,
+            "unit": "ns/op\t9596.04 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "3838671 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 312.6,
+            "unit": "ns/op",
+            "extra": "3838671 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 9596.04,
+            "unit": "MB/s",
+            "extra": "3838671 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "3838671 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "3838671 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 312.6,
+            "unit": "ns/op\t9597.86 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "3833355 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 312.6,
+            "unit": "ns/op",
+            "extra": "3833355 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 9597.86,
+            "unit": "MB/s",
+            "extra": "3833355 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "3833355 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "3833355 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 313.4,
+            "unit": "ns/op\t9571.55 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "3801912 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 313.4,
+            "unit": "ns/op",
+            "extra": "3801912 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 9571.55,
+            "unit": "MB/s",
+            "extra": "3801912 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "3801912 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "3801912 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 312.9,
+            "unit": "ns/op\t9589.13 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "3821445 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 312.9,
+            "unit": "ns/op",
+            "extra": "3821445 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 9589.13,
+            "unit": "MB/s",
+            "extra": "3821445 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "3821445 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "3821445 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 313.3,
+            "unit": "ns/op\t9574.53 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "3809197 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 313.3,
+            "unit": "ns/op",
+            "extra": "3809197 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 9574.53,
+            "unit": "MB/s",
+            "extra": "3809197 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "3809197 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "3809197 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 313.9,
+            "unit": "ns/op\t9555.84 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "3795740 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 313.9,
+            "unit": "ns/op",
+            "extra": "3795740 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 9555.84,
+            "unit": "MB/s",
+            "extra": "3795740 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "3795740 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeGitDiff_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "3795740 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect)",
+            "value": 525952,
+            "unit": "ns/op\t   18768 B/op\t      44 allocs/op",
+            "extra": "2248 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 525952,
+            "unit": "ns/op",
+            "extra": "2248 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 18768,
+            "unit": "B/op",
+            "extra": "2248 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 44,
+            "unit": "allocs/op",
+            "extra": "2248 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect)",
+            "value": 523405,
+            "unit": "ns/op\t   18768 B/op\t      44 allocs/op",
+            "extra": "2236 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 523405,
+            "unit": "ns/op",
+            "extra": "2236 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 18768,
+            "unit": "B/op",
+            "extra": "2236 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 44,
+            "unit": "allocs/op",
+            "extra": "2236 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect)",
+            "value": 520580,
+            "unit": "ns/op\t   18768 B/op\t      44 allocs/op",
+            "extra": "2311 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 520580,
+            "unit": "ns/op",
+            "extra": "2311 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 18768,
+            "unit": "B/op",
+            "extra": "2311 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 44,
+            "unit": "allocs/op",
+            "extra": "2311 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect)",
+            "value": 521373,
+            "unit": "ns/op\t   18768 B/op\t      44 allocs/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 521373,
+            "unit": "ns/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 18768,
+            "unit": "B/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 44,
+            "unit": "allocs/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect)",
+            "value": 522872,
+            "unit": "ns/op\t   18768 B/op\t      44 allocs/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 522872,
+            "unit": "ns/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 18768,
+            "unit": "B/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 44,
+            "unit": "allocs/op",
+            "extra": "2275 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect)",
+            "value": 522822,
+            "unit": "ns/op\t   18768 B/op\t      44 allocs/op",
+            "extra": "2247 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 522822,
+            "unit": "ns/op",
+            "extra": "2247 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 18768,
+            "unit": "B/op",
+            "extra": "2247 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkAnalyzeJSONArray (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 44,
+            "unit": "allocs/op",
+            "extra": "2247 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 37472,
+            "unit": "ns/op\t  58.68 MB/s\t   27760 B/op\t     412 allocs/op",
+            "extra": "31905 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 37472,
+            "unit": "ns/op",
+            "extra": "31905 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 58.68,
+            "unit": "MB/s",
+            "extra": "31905 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 27760,
+            "unit": "B/op",
+            "extra": "31905 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 412,
+            "unit": "allocs/op",
+            "extra": "31905 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 37222,
+            "unit": "ns/op\t  59.08 MB/s\t   27760 B/op\t     412 allocs/op",
+            "extra": "31917 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 37222,
+            "unit": "ns/op",
+            "extra": "31917 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 59.08,
+            "unit": "MB/s",
+            "extra": "31917 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 27760,
+            "unit": "B/op",
+            "extra": "31917 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 412,
+            "unit": "allocs/op",
+            "extra": "31917 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 37410,
+            "unit": "ns/op\t  58.78 MB/s\t   27760 B/op\t     412 allocs/op",
+            "extra": "32150 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 37410,
+            "unit": "ns/op",
+            "extra": "32150 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 58.78,
+            "unit": "MB/s",
+            "extra": "32150 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 27760,
+            "unit": "B/op",
+            "extra": "32150 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 412,
+            "unit": "allocs/op",
+            "extra": "32150 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 37725,
+            "unit": "ns/op\t  58.29 MB/s\t   27760 B/op\t     412 allocs/op",
+            "extra": "32217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 37725,
+            "unit": "ns/op",
+            "extra": "32217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 58.29,
+            "unit": "MB/s",
+            "extra": "32217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 27760,
+            "unit": "B/op",
+            "extra": "32217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 412,
+            "unit": "allocs/op",
+            "extra": "32217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 37552,
+            "unit": "ns/op\t  58.56 MB/s\t   27760 B/op\t     412 allocs/op",
+            "extra": "32233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 37552,
+            "unit": "ns/op",
+            "extra": "32233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 58.56,
+            "unit": "MB/s",
+            "extra": "32233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 27760,
+            "unit": "B/op",
+            "extra": "32233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 412,
+            "unit": "allocs/op",
+            "extra": "32233 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 37122,
+            "unit": "ns/op\t  59.24 MB/s\t   27760 B/op\t     412 allocs/op",
+            "extra": "32241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 37122,
+            "unit": "ns/op",
+            "extra": "32241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 59.24,
+            "unit": "MB/s",
+            "extra": "32241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 27760,
+            "unit": "B/op",
+            "extra": "32241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 412,
+            "unit": "allocs/op",
+            "extra": "32241 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 2.976,
+            "unit": "ns/op\t739233.87 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "422410510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 2.976,
+            "unit": "ns/op",
+            "extra": "422410510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 739233.87,
+            "unit": "MB/s",
+            "extra": "422410510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "422410510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "422410510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 2.827,
+            "unit": "ns/op\t778235.21 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "424967338 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 2.827,
+            "unit": "ns/op",
+            "extra": "424967338 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 778235.21,
+            "unit": "MB/s",
+            "extra": "424967338 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "424967338 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "424967338 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 2.833,
+            "unit": "ns/op\t776667.63 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "424752650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 2.833,
+            "unit": "ns/op",
+            "extra": "424752650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 776667.63,
+            "unit": "MB/s",
+            "extra": "424752650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "424752650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "424752650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 2.827,
+            "unit": "ns/op\t778114.33 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "425036850 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 2.827,
+            "unit": "ns/op",
+            "extra": "425036850 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 778114.33,
+            "unit": "MB/s",
+            "extra": "425036850 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "425036850 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "425036850 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 2.824,
+            "unit": "ns/op\t779051.62 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "425086267 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 2.824,
+            "unit": "ns/op",
+            "extra": "425086267 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 779051.62,
+            "unit": "MB/s",
+            "extra": "425086267 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "425086267 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "425086267 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 2.822,
+            "unit": "ns/op\t779505.92 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "423867970 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 2.822,
+            "unit": "ns/op",
+            "extra": "423867970 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 779505.92,
+            "unit": "MB/s",
+            "extra": "423867970 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "423867970 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeJSONObject_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "423867970 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect)",
+            "value": 6011,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "199243 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 6011,
+            "unit": "ns/op",
+            "extra": "199243 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "199243 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "199243 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect)",
+            "value": 6080,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "199443 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 6080,
+            "unit": "ns/op",
+            "extra": "199443 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "199443 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "199443 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect)",
+            "value": 6010,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "198925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 6010,
+            "unit": "ns/op",
+            "extra": "198925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "198925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "198925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect)",
+            "value": 6019,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "199684 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 6019,
+            "unit": "ns/op",
+            "extra": "199684 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "199684 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "199684 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect)",
+            "value": 6029,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "199245 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 6029,
+            "unit": "ns/op",
+            "extra": "199245 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "199245 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "199245 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect)",
+            "value": 6015,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "199458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 6015,
+            "unit": "ns/op",
+            "extra": "199458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "199458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Clean (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "199458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect)",
+            "value": 5665,
+            "unit": "ns/op\t    2688 B/op\t       1 allocs/op",
+            "extra": "203557 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 5665,
+            "unit": "ns/op",
+            "extra": "203557 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 2688,
+            "unit": "B/op",
+            "extra": "203557 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "203557 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect)",
+            "value": 5700,
+            "unit": "ns/op\t    2688 B/op\t       1 allocs/op",
+            "extra": "203586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 5700,
+            "unit": "ns/op",
+            "extra": "203586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 2688,
+            "unit": "B/op",
+            "extra": "203586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "203586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect)",
+            "value": 5790,
+            "unit": "ns/op\t    2688 B/op\t       1 allocs/op",
+            "extra": "206683 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 5790,
+            "unit": "ns/op",
+            "extra": "206683 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 2688,
+            "unit": "B/op",
+            "extra": "206683 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "206683 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect)",
+            "value": 5690,
+            "unit": "ns/op\t    2688 B/op\t       1 allocs/op",
+            "extra": "209510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 5690,
+            "unit": "ns/op",
+            "extra": "209510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 2688,
+            "unit": "B/op",
+            "extra": "209510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "209510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect)",
+            "value": 5623,
+            "unit": "ns/op\t    2688 B/op\t       1 allocs/op",
+            "extra": "215959 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 5623,
+            "unit": "ns/op",
+            "extra": "215959 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 2688,
+            "unit": "B/op",
+            "extra": "215959 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "215959 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect)",
+            "value": 5677,
+            "unit": "ns/op\t    2688 B/op\t       1 allocs/op",
+            "extra": "213804 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 5677,
+            "unit": "ns/op",
+            "extra": "213804 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 2688,
+            "unit": "B/op",
+            "extra": "213804 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkStripNoise_Dirty (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "213804 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 8332,
+            "unit": "ns/op\t 350.47 MB/s\t     512 B/op\t       1 allocs/op",
+            "extra": "142814 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 8332,
+            "unit": "ns/op",
+            "extra": "142814 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 350.47,
+            "unit": "MB/s",
+            "extra": "142814 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 512,
+            "unit": "B/op",
+            "extra": "142814 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "142814 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 8283,
+            "unit": "ns/op\t 352.54 MB/s\t     512 B/op\t       1 allocs/op",
+            "extra": "143577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 8283,
+            "unit": "ns/op",
+            "extra": "143577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 352.54,
+            "unit": "MB/s",
+            "extra": "143577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 512,
+            "unit": "B/op",
+            "extra": "143577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "143577 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 8265,
+            "unit": "ns/op\t 353.30 MB/s\t     512 B/op\t       1 allocs/op",
+            "extra": "144865 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 8265,
+            "unit": "ns/op",
+            "extra": "144865 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 353.3,
+            "unit": "MB/s",
+            "extra": "144865 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 512,
+            "unit": "B/op",
+            "extra": "144865 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "144865 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 8284,
+            "unit": "ns/op\t 352.47 MB/s\t     512 B/op\t       1 allocs/op",
+            "extra": "142510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 8284,
+            "unit": "ns/op",
+            "extra": "142510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 352.47,
+            "unit": "MB/s",
+            "extra": "142510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 512,
+            "unit": "B/op",
+            "extra": "142510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "142510 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 8290,
+            "unit": "ns/op\t 352.23 MB/s\t     512 B/op\t       1 allocs/op",
+            "extra": "142980 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 8290,
+            "unit": "ns/op",
+            "extra": "142980 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 352.23,
+            "unit": "MB/s",
+            "extra": "142980 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 512,
+            "unit": "B/op",
+            "extra": "142980 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "142980 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect)",
+            "value": 8284,
+            "unit": "ns/op\t 352.48 MB/s\t     512 B/op\t       1 allocs/op",
+            "extra": "143790 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 8284,
+            "unit": "ns/op",
+            "extra": "143790 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 352.48,
+            "unit": "MB/s",
+            "extra": "143790 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 512,
+            "unit": "B/op",
+            "extra": "143790 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_Match (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "143790 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 453.7,
+            "unit": "ns/op\t2380.24 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "2643745 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 453.7,
+            "unit": "ns/op",
+            "extra": "2643745 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2380.24,
+            "unit": "MB/s",
+            "extra": "2643745 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "2643745 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "2643745 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 454.1,
+            "unit": "ns/op\t2378.18 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "2642796 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 454.1,
+            "unit": "ns/op",
+            "extra": "2642796 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2378.18,
+            "unit": "MB/s",
+            "extra": "2642796 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "2642796 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "2642796 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 454.2,
+            "unit": "ns/op\t2378.00 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "2642643 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 454.2,
+            "unit": "ns/op",
+            "extra": "2642643 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2378,
+            "unit": "MB/s",
+            "extra": "2642643 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "2642643 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "2642643 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 453.9,
+            "unit": "ns/op\t2379.36 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "2641124 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 453.9,
+            "unit": "ns/op",
+            "extra": "2641124 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2379.36,
+            "unit": "MB/s",
+            "extra": "2641124 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "2641124 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "2641124 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 453.5,
+            "unit": "ns/op\t2381.60 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "2642397 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 453.5,
+            "unit": "ns/op",
+            "extra": "2642397 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2381.6,
+            "unit": "MB/s",
+            "extra": "2642397 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "2642397 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "2642397 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 454.1,
+            "unit": "ns/op\t2378.24 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "2641797 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 454.1,
+            "unit": "ns/op",
+            "extra": "2641797 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2378.24,
+            "unit": "MB/s",
+            "extra": "2641797 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "2641797 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFoldPathPrefix_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "2641797 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect)",
+            "value": 149279,
+            "unit": "ns/op\t   50812 B/op\t      18 allocs/op",
+            "extra": "7179 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 149279,
+            "unit": "ns/op",
+            "extra": "7179 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 50812,
+            "unit": "B/op",
+            "extra": "7179 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 18,
+            "unit": "allocs/op",
+            "extra": "7179 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect)",
+            "value": 149967,
+            "unit": "ns/op\t   50795 B/op\t      18 allocs/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 149967,
+            "unit": "ns/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 50795,
+            "unit": "B/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 18,
+            "unit": "allocs/op",
+            "extra": "8106 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect)",
+            "value": 150428,
+            "unit": "ns/op\t   50829 B/op\t      18 allocs/op",
+            "extra": "7656 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 150428,
+            "unit": "ns/op",
+            "extra": "7656 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 50829,
+            "unit": "B/op",
+            "extra": "7656 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 18,
+            "unit": "allocs/op",
+            "extra": "7656 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect)",
+            "value": 148613,
+            "unit": "ns/op\t   50785 B/op\t      18 allocs/op",
+            "extra": "8122 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 148613,
+            "unit": "ns/op",
+            "extra": "8122 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 50785,
+            "unit": "B/op",
+            "extra": "8122 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 18,
+            "unit": "allocs/op",
+            "extra": "8122 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect)",
+            "value": 149360,
+            "unit": "ns/op\t   50794 B/op\t      18 allocs/op",
+            "extra": "7794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 149360,
+            "unit": "ns/op",
+            "extra": "7794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 50794,
+            "unit": "B/op",
+            "extra": "7794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 18,
+            "unit": "allocs/op",
+            "extra": "7794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect)",
+            "value": 149304,
+            "unit": "ns/op\t   50864 B/op\t      18 allocs/op",
+            "extra": "7848 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 149304,
+            "unit": "ns/op",
+            "extra": "7848 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 50864,
+            "unit": "B/op",
+            "extra": "7848 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSqueezeOutput (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 18,
+            "unit": "allocs/op",
+            "extra": "7848 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1277,
+            "unit": "ns/op\t1895.78 MB/s\t    3040 B/op\t      10 allocs/op",
+            "extra": "904594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1277,
+            "unit": "ns/op",
+            "extra": "904594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1895.78,
+            "unit": "MB/s",
+            "extra": "904594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3040,
+            "unit": "B/op",
+            "extra": "904594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 10,
+            "unit": "allocs/op",
+            "extra": "904594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1307,
+            "unit": "ns/op\t1851.32 MB/s\t    3040 B/op\t      10 allocs/op",
+            "extra": "941707 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1307,
+            "unit": "ns/op",
+            "extra": "941707 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1851.32,
+            "unit": "MB/s",
+            "extra": "941707 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3040,
+            "unit": "B/op",
+            "extra": "941707 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 10,
+            "unit": "allocs/op",
+            "extra": "941707 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1289,
+            "unit": "ns/op\t1877.46 MB/s\t    3040 B/op\t      10 allocs/op",
+            "extra": "926586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1289,
+            "unit": "ns/op",
+            "extra": "926586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1877.46,
+            "unit": "MB/s",
+            "extra": "926586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3040,
+            "unit": "B/op",
+            "extra": "926586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 10,
+            "unit": "allocs/op",
+            "extra": "926586 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1272,
+            "unit": "ns/op\t1902.30 MB/s\t    3040 B/op\t      10 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1272,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1902.3,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3040,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 10,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1273,
+            "unit": "ns/op\t1900.91 MB/s\t    3040 B/op\t      10 allocs/op",
+            "extra": "906234 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1273,
+            "unit": "ns/op",
+            "extra": "906234 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1900.91,
+            "unit": "MB/s",
+            "extra": "906234 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3040,
+            "unit": "B/op",
+            "extra": "906234 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 10,
+            "unit": "allocs/op",
+            "extra": "906234 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1299,
+            "unit": "ns/op\t1863.02 MB/s\t    3040 B/op\t      10 allocs/op",
+            "extra": "935349 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1299,
+            "unit": "ns/op",
+            "extra": "935349 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1863.02,
+            "unit": "MB/s",
+            "extra": "935349 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3040,
+            "unit": "B/op",
+            "extra": "935349 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_Python (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 10,
+            "unit": "allocs/op",
+            "extra": "935349 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1390,
+            "unit": "ns/op\t1691.06 MB/s\t    3104 B/op\t       8 allocs/op",
+            "extra": "815115 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1390,
+            "unit": "ns/op",
+            "extra": "815115 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1691.06,
+            "unit": "MB/s",
+            "extra": "815115 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3104,
+            "unit": "B/op",
+            "extra": "815115 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "815115 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1418,
+            "unit": "ns/op\t1658.04 MB/s\t    3104 B/op\t       8 allocs/op",
+            "extra": "870748 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1418,
+            "unit": "ns/op",
+            "extra": "870748 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1658.04,
+            "unit": "MB/s",
+            "extra": "870748 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3104,
+            "unit": "B/op",
+            "extra": "870748 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "870748 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1415,
+            "unit": "ns/op\t1661.87 MB/s\t    3104 B/op\t       8 allocs/op",
+            "extra": "892849 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1415,
+            "unit": "ns/op",
+            "extra": "892849 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1661.87,
+            "unit": "MB/s",
+            "extra": "892849 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3104,
+            "unit": "B/op",
+            "extra": "892849 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "892849 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1408,
+            "unit": "ns/op\t1669.89 MB/s\t    3104 B/op\t       8 allocs/op",
+            "extra": "850366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1408,
+            "unit": "ns/op",
+            "extra": "850366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1669.89,
+            "unit": "MB/s",
+            "extra": "850366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3104,
+            "unit": "B/op",
+            "extra": "850366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "850366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1404,
+            "unit": "ns/op\t1674.75 MB/s\t    3104 B/op\t       8 allocs/op",
+            "extra": "884984 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1404,
+            "unit": "ns/op",
+            "extra": "884984 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1674.75,
+            "unit": "MB/s",
+            "extra": "884984 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3104,
+            "unit": "B/op",
+            "extra": "884984 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "884984 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1409,
+            "unit": "ns/op\t1668.49 MB/s\t    3104 B/op\t       8 allocs/op",
+            "extra": "828794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1409,
+            "unit": "ns/op",
+            "extra": "828794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 1668.49,
+            "unit": "MB/s",
+            "extra": "828794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 3104,
+            "unit": "B/op",
+            "extra": "828794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_GoPanic (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "828794 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 272.6,
+            "unit": "ns/op\t19810.14 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "4398090 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 272.6,
+            "unit": "ns/op",
+            "extra": "4398090 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 19810.14,
+            "unit": "MB/s",
+            "extra": "4398090 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "4398090 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "4398090 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 274.5,
+            "unit": "ns/op\t19671.87 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "4259468 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 274.5,
+            "unit": "ns/op",
+            "extra": "4259468 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 19671.87,
+            "unit": "MB/s",
+            "extra": "4259468 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "4259468 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "4259468 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 272.8,
+            "unit": "ns/op\t19798.08 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "4383992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 272.8,
+            "unit": "ns/op",
+            "extra": "4383992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 19798.08,
+            "unit": "MB/s",
+            "extra": "4383992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "4383992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "4383992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 272.9,
+            "unit": "ns/op\t19786.67 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "4399472 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 272.9,
+            "unit": "ns/op",
+            "extra": "4399472 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 19786.67,
+            "unit": "MB/s",
+            "extra": "4399472 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "4399472 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "4399472 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 272.8,
+            "unit": "ns/op\t19797.48 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "4401667 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 272.8,
+            "unit": "ns/op",
+            "extra": "4401667 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 19797.48,
+            "unit": "MB/s",
+            "extra": "4401667 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "4401667 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "4401667 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 272.6,
+            "unit": "ns/op\t19808.22 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "4404256 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 272.6,
+            "unit": "ns/op",
+            "extra": "4404256 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 19808.22,
+            "unit": "MB/s",
+            "extra": "4404256 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "4404256 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeStackTrace_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "4404256 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1079,
+            "unit": "ns/op\t2638.15 MB/s\t    1056 B/op\t       4 allocs/op",
+            "extra": "1109592 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1079,
+            "unit": "ns/op",
+            "extra": "1109592 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2638.15,
+            "unit": "MB/s",
+            "extra": "1109592 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1056,
+            "unit": "B/op",
+            "extra": "1109592 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 4,
+            "unit": "allocs/op",
+            "extra": "1109592 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1071,
+            "unit": "ns/op\t2657.74 MB/s\t    1056 B/op\t       4 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1071,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2657.74,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1056,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 4,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1063,
+            "unit": "ns/op\t2678.00 MB/s\t    1056 B/op\t       4 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1063,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2678,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1056,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 4,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1055,
+            "unit": "ns/op\t2697.62 MB/s\t    1056 B/op\t       4 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1055,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2697.62,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1056,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 4,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1059,
+            "unit": "ns/op\t2688.02 MB/s\t    1056 B/op\t       4 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1059,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2688.02,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1056,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 4,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect)",
+            "value": 1051,
+            "unit": "ns/op\t2707.11 MB/s\t    1056 B/op\t       4 allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 1051,
+            "unit": "ns/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 2707.11,
+            "unit": "MB/s",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 1056,
+            "unit": "B/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 4,
+            "unit": "allocs/op",
+            "extra": "1000000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 29.41,
+            "unit": "ns/op\t57118.92 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "40740879 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 29.41,
+            "unit": "ns/op",
+            "extra": "40740879 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 57118.92,
+            "unit": "MB/s",
+            "extra": "40740879 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "40740879 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "40740879 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 29.48,
+            "unit": "ns/op\t56995.07 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "40373793 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 29.48,
+            "unit": "ns/op",
+            "extra": "40373793 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 56995.07,
+            "unit": "MB/s",
+            "extra": "40373793 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "40373793 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "40373793 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 29.47,
+            "unit": "ns/op\t57002.43 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "40528774 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 29.47,
+            "unit": "ns/op",
+            "extra": "40528774 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 57002.43,
+            "unit": "MB/s",
+            "extra": "40528774 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "40528774 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "40528774 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 29.48,
+            "unit": "ns/op\t56987.37 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "40719154 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 29.48,
+            "unit": "ns/op",
+            "extra": "40719154 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 56987.37,
+            "unit": "MB/s",
+            "extra": "40719154 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "40719154 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "40719154 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 29.45,
+            "unit": "ns/op\t57047.90 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "40554295 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 29.45,
+            "unit": "ns/op",
+            "extra": "40554295 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 57047.9,
+            "unit": "MB/s",
+            "extra": "40554295 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "40554295 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "40554295 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect)",
+            "value": 29.48,
+            "unit": "ns/op\t56991.15 MB/s\t       0 B/op\t       0 allocs/op",
+            "extra": "40703587 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - ns/op",
+            "value": 29.48,
+            "unit": "ns/op",
+            "extra": "40703587 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - MB/s",
+            "value": 56991.15,
+            "unit": "MB/s",
+            "extra": "40703587 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "40703587 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSummarizeTable_NonMatch (github.com/alex60217101990/terse/internal/detect) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "40703587 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook)",
+            "value": 5188,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "230350 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 5188,
+            "unit": "ns/op",
+            "extra": "230350 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "230350 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "230350 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook)",
+            "value": 5190,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "230628 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 5190,
+            "unit": "ns/op",
+            "extra": "230628 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "230628 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "230628 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook)",
+            "value": 5194,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "230791 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 5194,
+            "unit": "ns/op",
+            "extra": "230791 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "230791 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "230791 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook)",
+            "value": 5188,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "231140 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 5188,
+            "unit": "ns/op",
+            "extra": "231140 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "231140 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "231140 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook)",
+            "value": 5185,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "231306 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 5185,
+            "unit": "ns/op",
+            "extra": "231306 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "231306 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "231306 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook)",
+            "value": 5185,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "231180 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 5185,
+            "unit": "ns/op",
+            "extra": "231180 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "231180 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSliceLines (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "231180 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 302497,
+            "unit": "ns/op\t   61978 B/op\t      70 allocs/op",
+            "extra": "4304 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 302497,
+            "unit": "ns/op",
+            "extra": "4304 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 61978,
+            "unit": "B/op",
+            "extra": "4304 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 70,
+            "unit": "allocs/op",
+            "extra": "4304 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 292451,
+            "unit": "ns/op\t   61991 B/op\t      70 allocs/op",
+            "extra": "3778 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 292451,
+            "unit": "ns/op",
+            "extra": "3778 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 61991,
+            "unit": "B/op",
+            "extra": "3778 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 70,
+            "unit": "allocs/op",
+            "extra": "3778 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 289562,
+            "unit": "ns/op\t   61916 B/op\t      70 allocs/op",
+            "extra": "3998 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 289562,
+            "unit": "ns/op",
+            "extra": "3998 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 61916,
+            "unit": "B/op",
+            "extra": "3998 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 70,
+            "unit": "allocs/op",
+            "extra": "3998 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 291443,
+            "unit": "ns/op\t   61974 B/op\t      70 allocs/op",
+            "extra": "4123 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 291443,
+            "unit": "ns/op",
+            "extra": "4123 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 61974,
+            "unit": "B/op",
+            "extra": "4123 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 70,
+            "unit": "allocs/op",
+            "extra": "4123 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 296962,
+            "unit": "ns/op\t   61945 B/op\t      70 allocs/op",
+            "extra": "3805 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 296962,
+            "unit": "ns/op",
+            "extra": "3805 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 61945,
+            "unit": "B/op",
+            "extra": "3805 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 70,
+            "unit": "allocs/op",
+            "extra": "3805 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 298166,
+            "unit": "ns/op\t   61924 B/op\t      70 allocs/op",
+            "extra": "3903 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 298166,
+            "unit": "ns/op",
+            "extra": "3903 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 61924,
+            "unit": "B/op",
+            "extra": "3903 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 70,
+            "unit": "allocs/op",
+            "extra": "3903 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook)",
+            "value": 267921,
+            "unit": "ns/op\t   82534 B/op\t      90 allocs/op",
+            "extra": "4364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 267921,
+            "unit": "ns/op",
+            "extra": "4364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 82534,
+            "unit": "B/op",
+            "extra": "4364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 90,
+            "unit": "allocs/op",
+            "extra": "4364 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook)",
+            "value": 267421,
+            "unit": "ns/op\t   82535 B/op\t      90 allocs/op",
+            "extra": "4488 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 267421,
+            "unit": "ns/op",
+            "extra": "4488 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 82535,
+            "unit": "B/op",
+            "extra": "4488 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 90,
+            "unit": "allocs/op",
+            "extra": "4488 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook)",
+            "value": 266270,
+            "unit": "ns/op\t   82542 B/op\t      90 allocs/op",
+            "extra": "4437 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 266270,
+            "unit": "ns/op",
+            "extra": "4437 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 82542,
+            "unit": "B/op",
+            "extra": "4437 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 90,
+            "unit": "allocs/op",
+            "extra": "4437 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook)",
+            "value": 263416,
+            "unit": "ns/op\t   82297 B/op\t      90 allocs/op",
+            "extra": "4414 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 263416,
+            "unit": "ns/op",
+            "extra": "4414 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 82297,
+            "unit": "B/op",
+            "extra": "4414 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 90,
+            "unit": "allocs/op",
+            "extra": "4414 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook)",
+            "value": 265121,
+            "unit": "ns/op\t   82654 B/op\t      90 allocs/op",
+            "extra": "4201 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 265121,
+            "unit": "ns/op",
+            "extra": "4201 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 82654,
+            "unit": "B/op",
+            "extra": "4201 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 90,
+            "unit": "allocs/op",
+            "extra": "4201 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook)",
+            "value": 265886,
+            "unit": "ns/op\t   82409 B/op\t      90 allocs/op",
+            "extra": "4027 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 265886,
+            "unit": "ns/op",
+            "extra": "4027 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 82409,
+            "unit": "B/op",
+            "extra": "4027 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_FirstRead (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 90,
+            "unit": "allocs/op",
+            "extra": "4027 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33224,
+            "unit": "ns/op\t    4970 B/op\t      45 allocs/op",
+            "extra": "35930 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33224,
+            "unit": "ns/op",
+            "extra": "35930 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 4970,
+            "unit": "B/op",
+            "extra": "35930 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "35930 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33248,
+            "unit": "ns/op\t    4970 B/op\t      45 allocs/op",
+            "extra": "36139 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33248,
+            "unit": "ns/op",
+            "extra": "36139 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 4970,
+            "unit": "B/op",
+            "extra": "36139 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "36139 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33549,
+            "unit": "ns/op\t    4954 B/op\t      45 allocs/op",
+            "extra": "36055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33549,
+            "unit": "ns/op",
+            "extra": "36055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 4954,
+            "unit": "B/op",
+            "extra": "36055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "36055 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33195,
+            "unit": "ns/op\t    4970 B/op\t      45 allocs/op",
+            "extra": "35946 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33195,
+            "unit": "ns/op",
+            "extra": "35946 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 4970,
+            "unit": "B/op",
+            "extra": "35946 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "35946 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33273,
+            "unit": "ns/op\t    4954 B/op\t      45 allocs/op",
+            "extra": "36182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33273,
+            "unit": "ns/op",
+            "extra": "36182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 4954,
+            "unit": "B/op",
+            "extra": "36182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "36182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33362,
+            "unit": "ns/op\t    4970 B/op\t      45 allocs/op",
+            "extra": "36194 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33362,
+            "unit": "ns/op",
+            "extra": "36194 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 4970,
+            "unit": "B/op",
+            "extra": "36194 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Unchanged (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "36194 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook)",
+            "value": 3307036,
+            "unit": "ns/op\t  817925 B/op\t     133 allocs/op",
+            "extra": "360 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 3307036,
+            "unit": "ns/op",
+            "extra": "360 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 817925,
+            "unit": "B/op",
+            "extra": "360 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 133,
+            "unit": "allocs/op",
+            "extra": "360 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook)",
+            "value": 3292621,
+            "unit": "ns/op\t  817861 B/op\t     133 allocs/op",
+            "extra": "361 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 3292621,
+            "unit": "ns/op",
+            "extra": "361 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 817861,
+            "unit": "B/op",
+            "extra": "361 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 133,
+            "unit": "allocs/op",
+            "extra": "361 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook)",
+            "value": 3295281,
+            "unit": "ns/op\t  817896 B/op\t     133 allocs/op",
+            "extra": "362 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 3295281,
+            "unit": "ns/op",
+            "extra": "362 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 817896,
+            "unit": "B/op",
+            "extra": "362 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 133,
+            "unit": "allocs/op",
+            "extra": "362 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook)",
+            "value": 3324709,
+            "unit": "ns/op\t  817920 B/op\t     133 allocs/op",
+            "extra": "358 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 3324709,
+            "unit": "ns/op",
+            "extra": "358 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 817920,
+            "unit": "B/op",
+            "extra": "358 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 133,
+            "unit": "allocs/op",
+            "extra": "358 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook)",
+            "value": 3323293,
+            "unit": "ns/op\t  817891 B/op\t     133 allocs/op",
+            "extra": "363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 3323293,
+            "unit": "ns/op",
+            "extra": "363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 817891,
+            "unit": "B/op",
+            "extra": "363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 133,
+            "unit": "allocs/op",
+            "extra": "363 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook)",
+            "value": 3276967,
+            "unit": "ns/op\t  817894 B/op\t     133 allocs/op",
+            "extra": "366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 3276967,
+            "unit": "ns/op",
+            "extra": "366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 817894,
+            "unit": "B/op",
+            "extra": "366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBashHook_JSONArray (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 133,
+            "unit": "allocs/op",
+            "extra": "366 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook)",
+            "value": 22610,
+            "unit": "ns/op\t    2960 B/op\t      38 allocs/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 22610,
+            "unit": "ns/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 2960,
+            "unit": "B/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 38,
+            "unit": "allocs/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook)",
+            "value": 22657,
+            "unit": "ns/op\t    2960 B/op\t      38 allocs/op",
+            "extra": "52617 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 22657,
+            "unit": "ns/op",
+            "extra": "52617 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 2960,
+            "unit": "B/op",
+            "extra": "52617 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 38,
+            "unit": "allocs/op",
+            "extra": "52617 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook)",
+            "value": 22516,
+            "unit": "ns/op\t    2960 B/op\t      38 allocs/op",
+            "extra": "52992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 22516,
+            "unit": "ns/op",
+            "extra": "52992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 2960,
+            "unit": "B/op",
+            "extra": "52992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 38,
+            "unit": "allocs/op",
+            "extra": "52992 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook)",
+            "value": 22617,
+            "unit": "ns/op\t    2960 B/op\t      38 allocs/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 22617,
+            "unit": "ns/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 2960,
+            "unit": "B/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 38,
+            "unit": "allocs/op",
+            "extra": "53246 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook)",
+            "value": 22713,
+            "unit": "ns/op\t    2960 B/op\t      38 allocs/op",
+            "extra": "52292 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 22713,
+            "unit": "ns/op",
+            "extra": "52292 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 2960,
+            "unit": "B/op",
+            "extra": "52292 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 38,
+            "unit": "allocs/op",
+            "extra": "52292 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook)",
+            "value": 22783,
+            "unit": "ns/op\t    2960 B/op\t      38 allocs/op",
+            "extra": "52555 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 22783,
+            "unit": "ns/op",
+            "extra": "52555 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 2960,
+            "unit": "B/op",
+            "extra": "52555 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkPreToolUse_Allow (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 38,
+            "unit": "allocs/op",
+            "extra": "52555 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook)",
+            "value": 54012,
+            "unit": "ns/op\t   12357 B/op\t     152 allocs/op",
+            "extra": "22462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 54012,
+            "unit": "ns/op",
+            "extra": "22462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 12357,
+            "unit": "B/op",
+            "extra": "22462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 152,
+            "unit": "allocs/op",
+            "extra": "22462 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook)",
+            "value": 54044,
+            "unit": "ns/op\t   12357 B/op\t     152 allocs/op",
+            "extra": "21853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 54044,
+            "unit": "ns/op",
+            "extra": "21853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 12357,
+            "unit": "B/op",
+            "extra": "21853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 152,
+            "unit": "allocs/op",
+            "extra": "21853 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook)",
+            "value": 54025,
+            "unit": "ns/op\t   12357 B/op\t     152 allocs/op",
+            "extra": "21925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 54025,
+            "unit": "ns/op",
+            "extra": "21925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 12357,
+            "unit": "B/op",
+            "extra": "21925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 152,
+            "unit": "allocs/op",
+            "extra": "21925 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook)",
+            "value": 53898,
+            "unit": "ns/op\t   12357 B/op\t     152 allocs/op",
+            "extra": "22490 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 53898,
+            "unit": "ns/op",
+            "extra": "22490 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 12357,
+            "unit": "B/op",
+            "extra": "22490 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 152,
+            "unit": "allocs/op",
+            "extra": "22490 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook)",
+            "value": 53844,
+            "unit": "ns/op\t   12358 B/op\t     152 allocs/op",
+            "extra": "22131 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 53844,
+            "unit": "ns/op",
+            "extra": "22131 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 12358,
+            "unit": "B/op",
+            "extra": "22131 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 152,
+            "unit": "allocs/op",
+            "extra": "22131 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook)",
+            "value": 54296,
+            "unit": "ns/op\t   12358 B/op\t     152 allocs/op",
+            "extra": "22057 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 54296,
+            "unit": "ns/op",
+            "extra": "22057 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 12358,
+            "unit": "B/op",
+            "extra": "22057 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGlob_Tree (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 152,
+            "unit": "allocs/op",
+            "extra": "22057 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook)",
+            "value": 28590,
+            "unit": "ns/op\t    5353 B/op\t      36 allocs/op",
+            "extra": "41636 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 28590,
+            "unit": "ns/op",
+            "extra": "41636 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5353,
+            "unit": "B/op",
+            "extra": "41636 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 36,
+            "unit": "allocs/op",
+            "extra": "41636 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook)",
+            "value": 28613,
+            "unit": "ns/op\t    5353 B/op\t      36 allocs/op",
+            "extra": "41982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 28613,
+            "unit": "ns/op",
+            "extra": "41982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5353,
+            "unit": "B/op",
+            "extra": "41982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 36,
+            "unit": "allocs/op",
+            "extra": "41982 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook)",
+            "value": 28305,
+            "unit": "ns/op\t    5353 B/op\t      36 allocs/op",
+            "extra": "42200 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 28305,
+            "unit": "ns/op",
+            "extra": "42200 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5353,
+            "unit": "B/op",
+            "extra": "42200 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 36,
+            "unit": "allocs/op",
+            "extra": "42200 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook)",
+            "value": 28458,
+            "unit": "ns/op\t    5353 B/op\t      36 allocs/op",
+            "extra": "41565 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 28458,
+            "unit": "ns/op",
+            "extra": "41565 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5353,
+            "unit": "B/op",
+            "extra": "41565 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 36,
+            "unit": "allocs/op",
+            "extra": "41565 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook)",
+            "value": 28048,
+            "unit": "ns/op\t    5353 B/op\t      36 allocs/op",
+            "extra": "43009 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 28048,
+            "unit": "ns/op",
+            "extra": "43009 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5353,
+            "unit": "B/op",
+            "extra": "43009 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 36,
+            "unit": "allocs/op",
+            "extra": "43009 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook)",
+            "value": 28212,
+            "unit": "ns/op\t    5353 B/op\t      36 allocs/op",
+            "extra": "42337 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 28212,
+            "unit": "ns/op",
+            "extra": "42337 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5353,
+            "unit": "B/op",
+            "extra": "42337 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkWrite_Compress (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 36,
+            "unit": "allocs/op",
+            "extra": "42337 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33351,
+            "unit": "ns/op\t    5026 B/op\t      45 allocs/op",
+            "extra": "36298 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33351,
+            "unit": "ns/op",
+            "extra": "36298 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5026,
+            "unit": "B/op",
+            "extra": "36298 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "36298 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33536,
+            "unit": "ns/op\t    5026 B/op\t      45 allocs/op",
+            "extra": "35379 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33536,
+            "unit": "ns/op",
+            "extra": "35379 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5026,
+            "unit": "B/op",
+            "extra": "35379 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "35379 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33205,
+            "unit": "ns/op\t    5026 B/op\t      45 allocs/op",
+            "extra": "36165 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33205,
+            "unit": "ns/op",
+            "extra": "36165 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5026,
+            "unit": "B/op",
+            "extra": "36165 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "36165 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33561,
+            "unit": "ns/op\t    5026 B/op\t      45 allocs/op",
+            "extra": "35650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33561,
+            "unit": "ns/op",
+            "extra": "35650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5026,
+            "unit": "B/op",
+            "extra": "35650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "35650 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33636,
+            "unit": "ns/op\t    5026 B/op\t      45 allocs/op",
+            "extra": "35391 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33636,
+            "unit": "ns/op",
+            "extra": "35391 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5026,
+            "unit": "B/op",
+            "extra": "35391 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "35391 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook)",
+            "value": 33484,
+            "unit": "ns/op\t    5026 B/op\t      45 allocs/op",
+            "extra": "35764 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 33484,
+            "unit": "ns/op",
+            "extra": "35764 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 5026,
+            "unit": "B/op",
+            "extra": "35764 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkReadHook_PreToolIntercept (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 45,
+            "unit": "allocs/op",
+            "extra": "35764 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook)",
+            "value": 543869,
+            "unit": "ns/op\t  170749 B/op\t     155 allocs/op",
+            "extra": "2182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 543869,
+            "unit": "ns/op",
+            "extra": "2182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 170749,
+            "unit": "B/op",
+            "extra": "2182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 155,
+            "unit": "allocs/op",
+            "extra": "2182 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook)",
+            "value": 536090,
+            "unit": "ns/op\t  170713 B/op\t     155 allocs/op",
+            "extra": "2186 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 536090,
+            "unit": "ns/op",
+            "extra": "2186 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 170713,
+            "unit": "B/op",
+            "extra": "2186 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 155,
+            "unit": "allocs/op",
+            "extra": "2186 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook)",
+            "value": 537735,
+            "unit": "ns/op\t  170670 B/op\t     154 allocs/op",
+            "extra": "2168 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 537735,
+            "unit": "ns/op",
+            "extra": "2168 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 170670,
+            "unit": "B/op",
+            "extra": "2168 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 154,
+            "unit": "allocs/op",
+            "extra": "2168 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook)",
+            "value": 534681,
+            "unit": "ns/op\t  170651 B/op\t     154 allocs/op",
+            "extra": "2244 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 534681,
+            "unit": "ns/op",
+            "extra": "2244 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 170651,
+            "unit": "B/op",
+            "extra": "2244 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 154,
+            "unit": "allocs/op",
+            "extra": "2244 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook)",
+            "value": 536341,
+            "unit": "ns/op\t  170720 B/op\t     155 allocs/op",
+            "extra": "2157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 536341,
+            "unit": "ns/op",
+            "extra": "2157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 170720,
+            "unit": "B/op",
+            "extra": "2157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 155,
+            "unit": "allocs/op",
+            "extra": "2157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook)",
+            "value": 535729,
+            "unit": "ns/op\t  170655 B/op\t     154 allocs/op",
+            "extra": "2220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - ns/op",
+            "value": 535729,
+            "unit": "ns/op",
+            "extra": "2220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - B/op",
+            "value": 170655,
+            "unit": "B/op",
+            "extra": "2220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkGrep_Grouped (github.com/alex60217101990/terse/internal/hook) - allocs/op",
+            "value": 154,
+            "unit": "allocs/op",
+            "extra": "2220 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 4864674,
+            "unit": "ns/op\t   15786 B/op\t     227 allocs/op",
+            "extra": "458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 4864674,
+            "unit": "ns/op",
+            "extra": "458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 15786,
+            "unit": "B/op",
+            "extra": "458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 227,
+            "unit": "allocs/op",
+            "extra": "458 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 5339748,
+            "unit": "ns/op\t   17453 B/op\t     228 allocs/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 5339748,
+            "unit": "ns/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 17453,
+            "unit": "B/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 228,
+            "unit": "allocs/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 5431253,
+            "unit": "ns/op\t   17474 B/op\t     228 allocs/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 5431253,
+            "unit": "ns/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 17474,
+            "unit": "B/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 228,
+            "unit": "allocs/op",
+            "extra": "226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 5459869,
+            "unit": "ns/op\t   14194 B/op\t     228 allocs/op",
+            "extra": "218 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 5459869,
+            "unit": "ns/op",
+            "extra": "218 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 14194,
+            "unit": "B/op",
+            "extra": "218 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 228,
+            "unit": "allocs/op",
+            "extra": "218 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 5421453,
+            "unit": "ns/op\t   17339 B/op\t     228 allocs/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 5421453,
+            "unit": "ns/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 17339,
+            "unit": "B/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 228,
+            "unit": "allocs/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 5375363,
+            "unit": "ns/op\t   17393 B/op\t     228 allocs/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 5375363,
+            "unit": "ns/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 17393,
+            "unit": "B/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkFlushDirty (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 228,
+            "unit": "allocs/op",
+            "extra": "230 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 2489,
+            "unit": "ns/op\t    8304 B/op\t       5 allocs/op",
+            "extra": "464158 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 2489,
+            "unit": "ns/op",
+            "extra": "464158 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 8304,
+            "unit": "B/op",
+            "extra": "464158 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 5,
+            "unit": "allocs/op",
+            "extra": "464158 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 2486,
+            "unit": "ns/op\t    8304 B/op\t       5 allocs/op",
+            "extra": "470734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 2486,
+            "unit": "ns/op",
+            "extra": "470734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 8304,
+            "unit": "B/op",
+            "extra": "470734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 5,
+            "unit": "allocs/op",
+            "extra": "470734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 2921,
+            "unit": "ns/op\t    8304 B/op\t       5 allocs/op",
+            "extra": "477157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 2921,
+            "unit": "ns/op",
+            "extra": "477157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 8304,
+            "unit": "B/op",
+            "extra": "477157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 5,
+            "unit": "allocs/op",
+            "extra": "477157 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 2478,
+            "unit": "ns/op\t    8304 B/op\t       5 allocs/op",
+            "extra": "483678 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 2478,
+            "unit": "ns/op",
+            "extra": "483678 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 8304,
+            "unit": "B/op",
+            "extra": "483678 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 5,
+            "unit": "allocs/op",
+            "extra": "483678 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 2478,
+            "unit": "ns/op\t    8304 B/op\t       5 allocs/op",
+            "extra": "488534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 2478,
+            "unit": "ns/op",
+            "extra": "488534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 8304,
+            "unit": "B/op",
+            "extra": "488534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 5,
+            "unit": "allocs/op",
+            "extra": "488534 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 2507,
+            "unit": "ns/op\t    8304 B/op\t       5 allocs/op",
+            "extra": "474626 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 2507,
+            "unit": "ns/op",
+            "extra": "474626 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 8304,
+            "unit": "B/op",
+            "extra": "474626 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 5,
+            "unit": "allocs/op",
+            "extra": "474626 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 63.8,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18430694 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 63.8,
+            "unit": "ns/op",
+            "extra": "18430694 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18430694 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18430694 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 63.17,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18950614 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 63.17,
+            "unit": "ns/op",
+            "extra": "18950614 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18950614 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18950614 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 63.55,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18935560 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 63.55,
+            "unit": "ns/op",
+            "extra": "18935560 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18935560 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18935560 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 63.84,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18622486 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 63.84,
+            "unit": "ns/op",
+            "extra": "18622486 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18622486 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18622486 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 63.33,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18919270 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 63.33,
+            "unit": "ns/op",
+            "extra": "18919270 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18919270 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18919270 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 63.34,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "18441594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 63.34,
+            "unit": "ns/op",
+            "extra": "18441594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "18441594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkSaveSession (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "18441594 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 72088,
+            "unit": "ns/op\t  108113 B/op\t      24 allocs/op",
+            "extra": "16621 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 72088,
+            "unit": "ns/op",
+            "extra": "16621 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 108113,
+            "unit": "B/op",
+            "extra": "16621 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "16621 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 71467,
+            "unit": "ns/op\t  108114 B/op\t      24 allocs/op",
+            "extra": "16766 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 71467,
+            "unit": "ns/op",
+            "extra": "16766 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 108114,
+            "unit": "B/op",
+            "extra": "16766 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "16766 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 71297,
+            "unit": "ns/op\t  108114 B/op\t      24 allocs/op",
+            "extra": "16839 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 71297,
+            "unit": "ns/op",
+            "extra": "16839 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 108114,
+            "unit": "B/op",
+            "extra": "16839 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "16839 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 71614,
+            "unit": "ns/op\t  108114 B/op\t      24 allocs/op",
+            "extra": "16738 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 71614,
+            "unit": "ns/op",
+            "extra": "16738 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 108114,
+            "unit": "B/op",
+            "extra": "16738 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "16738 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 71715,
+            "unit": "ns/op\t  108114 B/op\t      24 allocs/op",
+            "extra": "16734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 71715,
+            "unit": "ns/op",
+            "extra": "16734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 108114,
+            "unit": "B/op",
+            "extra": "16734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "16734 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore)",
+            "value": 70901,
+            "unit": "ns/op\t  108115 B/op\t      24 allocs/op",
+            "extra": "16873 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - ns/op",
+            "value": 70901,
+            "unit": "ns/op",
+            "extra": "16873 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - B/op",
+            "value": 108115,
+            "unit": "B/op",
+            "extra": "16873 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkLoadSessionReloadMiss (github.com/alex60217101990/terse/internal/hookcore) - allocs/op",
+            "value": 24,
+            "unit": "allocs/op",
+            "extra": "16873 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol)",
+            "value": 118144,
+            "unit": "ns/op\t   23609 B/op\t       8 allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - ns/op",
+            "value": 118144,
+            "unit": "ns/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - B/op",
+            "value": 23609,
+            "unit": "B/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol)",
+            "value": 119551,
+            "unit": "ns/op\t   23608 B/op\t       8 allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - ns/op",
+            "value": 119551,
+            "unit": "ns/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - B/op",
+            "value": 23608,
+            "unit": "B/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol)",
+            "value": 121057,
+            "unit": "ns/op\t   23608 B/op\t       8 allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - ns/op",
+            "value": 121057,
+            "unit": "ns/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - B/op",
+            "value": 23608,
+            "unit": "B/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol)",
+            "value": 119386,
+            "unit": "ns/op\t   23608 B/op\t       8 allocs/op",
+            "extra": "8529 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - ns/op",
+            "value": 119386,
+            "unit": "ns/op",
+            "extra": "8529 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - B/op",
+            "value": 23608,
+            "unit": "B/op",
+            "extra": "8529 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "8529 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol)",
+            "value": 119393,
+            "unit": "ns/op\t   23608 B/op\t       8 allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - ns/op",
+            "value": 119393,
+            "unit": "ns/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - B/op",
+            "value": 23608,
+            "unit": "B/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol)",
+            "value": 116197,
+            "unit": "ns/op\t   23608 B/op\t       8 allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - ns/op",
+            "value": 116197,
+            "unit": "ns/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - B/op",
+            "value": 23608,
+            "unit": "B/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkToolResponseUnmarshalContent10KB (github.com/alex60217101990/terse/internal/protocol) - allocs/op",
+            "value": 8,
+            "unit": "allocs/op",
+            "extra": "10000 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens)",
+            "value": 29475192,
+            "unit": "ns/op\t   2.25 MB/s\t11458832 B/op\t  130282 allocs/op",
+            "extra": "37 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - ns/op",
+            "value": 29475192,
+            "unit": "ns/op",
+            "extra": "37 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - MB/s",
+            "value": 2.25,
+            "unit": "MB/s",
+            "extra": "37 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - B/op",
+            "value": 11458832,
+            "unit": "B/op",
+            "extra": "37 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - allocs/op",
+            "value": 130282,
+            "unit": "allocs/op",
+            "extra": "37 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens)",
+            "value": 29123970,
+            "unit": "ns/op\t   2.28 MB/s\t11458796 B/op\t  130282 allocs/op",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - ns/op",
+            "value": 29123970,
+            "unit": "ns/op",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - MB/s",
+            "value": 2.28,
+            "unit": "MB/s",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - B/op",
+            "value": 11458796,
+            "unit": "B/op",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - allocs/op",
+            "value": 130282,
+            "unit": "allocs/op",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens)",
+            "value": 29788453,
+            "unit": "ns/op\t   2.23 MB/s\t11458796 B/op\t  130282 allocs/op",
+            "extra": "40 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - ns/op",
+            "value": 29788453,
+            "unit": "ns/op",
+            "extra": "40 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - MB/s",
+            "value": 2.23,
+            "unit": "MB/s",
+            "extra": "40 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - B/op",
+            "value": 11458796,
+            "unit": "B/op",
+            "extra": "40 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - allocs/op",
+            "value": 130282,
+            "unit": "allocs/op",
+            "extra": "40 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens)",
+            "value": 29393316,
+            "unit": "ns/op\t   2.26 MB/s\t11458796 B/op\t  130282 allocs/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - ns/op",
+            "value": 29393316,
+            "unit": "ns/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - MB/s",
+            "value": 2.26,
+            "unit": "MB/s",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - B/op",
+            "value": 11458796,
+            "unit": "B/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - allocs/op",
+            "value": 130282,
+            "unit": "allocs/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens)",
+            "value": 30259232,
+            "unit": "ns/op\t   2.19 MB/s\t11458796 B/op\t  130282 allocs/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - ns/op",
+            "value": 30259232,
+            "unit": "ns/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - MB/s",
+            "value": 2.19,
+            "unit": "MB/s",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - B/op",
+            "value": 11458796,
+            "unit": "B/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - allocs/op",
+            "value": 130282,
+            "unit": "allocs/op",
+            "extra": "42 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens)",
+            "value": 29415549,
+            "unit": "ns/op\t   2.26 MB/s\t11458802 B/op\t  130282 allocs/op",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - ns/op",
+            "value": 29415549,
+            "unit": "ns/op",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - MB/s",
+            "value": 2.26,
+            "unit": "MB/s",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - B/op",
+            "value": 11458802,
+            "unit": "B/op",
+            "extra": "43 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkCount (github.com/alex60217101990/terse/internal/tokens) - allocs/op",
+            "value": 130282,
+            "unit": "allocs/op",
+            "extra": "43 times\n4 procs"
           }
         ]
       }
