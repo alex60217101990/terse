@@ -289,13 +289,18 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 			src = replacement
 		}
 		if folded := detect.FoldLinePrefixes(src); folded != "" {
-			srcTokens := countContent()
-			if replacement != "" {
+			// Count the text actually being folded, and only it. Measuring the
+			// original content when the fold is applied to a thinned intermediate
+			// is a whole wasted pass — and the memoised count is reused when they
+			// are the same string, which is the common case.
+			var srcTokens int
+			if src == content {
+				srcTokens = countContent()
+			} else {
 				srcTokens = tokens.Count(src)
 			}
 			if n := tokens.Count(folded); n < srcTokens*(100-prefixFoldMarginPct)/100 {
 				action, replacement, replacementTokens = "prefix-folded", folded, n
-				contentTokens = countContent()
 			}
 		}
 	}
