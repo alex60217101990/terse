@@ -4076,11 +4076,11 @@ func Evict(state *SessionState, maxFiles int) <span class="cov7" title="7">{
         }</span>
         // Sort ascending by score; break ties by ReadCount ascending so
         // zero-read entries are always evicted before frequently-read ones.
-        <span class="cov1" title="1">slices.SortFunc(entries, func(a, b scored) int </span><span class="cov7" title="7">{
+        <span class="cov1" title="1">slices.SortFunc(entries, func(a, b scored) int </span><span class="cov6" title="6">{
                 if c := cmp.Compare(a.score, b.score); c != 0 </span><span class="cov0" title="0">{
                         return c
                 }</span>
-                <span class="cov7" title="7">return cmp.Compare(a.readCount, b.readCount)</span>
+                <span class="cov6" title="6">return cmp.Compare(a.readCount, b.readCount)</span>
         })
         // Drop lowest-scoring entries until we're at 80% of maxFiles.
         <span class="cov1" title="1">target := maxFiles * 4 / 5
@@ -4702,7 +4702,7 @@ const MaxSessionFiles = 200
 // AppendEncodeState a nil dst on every call, forcing qdf's geometric
 // grow-chain to reallocate from scratch each time. Pooling means the backing
 // array only grows on the first few calls and is reused after that.
-var savePool = sync.Pool{New: func() any <span class="cov3" title="2">{ b := make([]byte, 0, 4096); return &amp;b }</span>}
+var savePool = sync.Pool{New: func() any <span class="cov1" title="1">{ b := make([]byte, 0, 4096); return &amp;b }</span>}
 
 // MaxPooledBufSize caps the buffer size a scratch-buffer sync.Pool will
 // accept back. A one-off encode that grows a buffer past this is exceptional;
@@ -5611,8 +5611,8 @@ import (
 // map is clear()ed before it goes back so no entry (whose keys alias the prior
 // call's content) survives into the next call.
 var (
-        seenPool     = sync.Pool{New: func() any <span class="cov3" title="39">{ return make(map[string]struct{}) }</span>}
-        seenNormPool = sync.Pool{New: func() any <span class="cov2" title="11">{ return make(map[string]string) }</span>}
+        seenPool     = sync.Pool{New: func() any <span class="cov5" title="966">{ return make(map[string]struct{}) }</span>}
+        seenNormPool = sync.Pool{New: func() any <span class="cov2" title="7">{ return make(map[string]string) }</span>}
 )
 
 // maxPooledDedupMapLen caps how large a map FoldRepeatedBlocks will return to
@@ -6812,11 +6812,11 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) <span class
                         for k, v := range acc.strFreq </span><span class="cov5" title="114">{
                                 top = append(top, kv{k, v})
                         }</span>
-                        <span class="cov4" title="27">slices.SortFunc(top, func(a, b kv) int </span><span class="cov5" title="176">{
-                                if a.v != b.v </span><span class="cov2" title="6">{
+                        <span class="cov4" title="27">slices.SortFunc(top, func(a, b kv) int </span><span class="cov5" title="172">{
+                                if a.v != b.v </span><span class="cov2" title="7">{
                                         return b.v - a.v
                                 }</span>
-                                <span class="cov5" title="170">return strings.Compare(a.k, b.k)</span>
+                                <span class="cov5" title="165">return strings.Compare(a.k, b.k)</span>
                         })
                         <span class="cov4" title="27">limit := min(5, len(top))
                         // Build "%q×%d" without fmt (interface boxing + format parse) —
@@ -9175,7 +9175,7 @@ const grepFileCap = 8
 // grew past maxPooledGrepGroups — clear() empties entries but does not shrink
 // the bucket array, so a one-off huge-file grep must not pin an oversized map
 // in the pool. Mirrors detect's seenPool/shouldPoolDedupMap pattern.
-var grepGroupsPool = sync.Pool{New: func() any <span class="cov2" title="4">{ return make(map[string][]grepMatch) }</span>}
+var grepGroupsPool = sync.Pool{New: func() any <span class="cov2" title="3">{ return make(map[string][]grepMatch) }</span>}
 
 const maxPooledGrepGroups = 4096
 
