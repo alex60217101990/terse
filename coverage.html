@@ -171,7 +171,7 @@
 				
 				<option value="file57">github.com/alex60217101990/terse/internal/hookcore/diskstore.go (50.0%)</option>
 				
-				<option value="file58">github.com/alex60217101990/terse/internal/hookcore/memstore.go (89.0%)</option>
+				<option value="file58">github.com/alex60217101990/terse/internal/hookcore/memstore.go (89.7%)</option>
 				
 				<option value="file59">github.com/alex60217101990/terse/internal/protocol/protocol.go (70.6%)</option>
 				
@@ -3390,7 +3390,7 @@ func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) <span class="c
                                 continue</span>
                         }
                         <span class="cov3" title="6">comp = append(comp, h)
-                        if sv := a.BytesIn - a.BytesOut; sv &gt; maxSaved </span><span class="cov1" title="2">{
+                        if sv := a.BytesIn - a.BytesOut; sv &gt; maxSaved </span><span class="cov2" title="3">{
                                 maxSaved = sv
                         }</span>
                 }
@@ -4076,11 +4076,11 @@ func Evict(state *SessionState, maxFiles int) <span class="cov7" title="7">{
         }</span>
         // Sort ascending by score; break ties by ReadCount ascending so
         // zero-read entries are always evicted before frequently-read ones.
-        <span class="cov1" title="1">slices.SortFunc(entries, func(a, b scored) int </span><span class="cov5" title="4">{
+        <span class="cov1" title="1">slices.SortFunc(entries, func(a, b scored) int </span><span class="cov6" title="6">{
                 if c := cmp.Compare(a.score, b.score); c != 0 </span><span class="cov0" title="0">{
                         return c
                 }</span>
-                <span class="cov5" title="4">return cmp.Compare(a.readCount, b.readCount)</span>
+                <span class="cov6" title="6">return cmp.Compare(a.readCount, b.readCount)</span>
         })
         // Drop lowest-scoring entries until we're at 80% of maxFiles.
         <span class="cov1" title="1">target := maxFiles * 4 / 5
@@ -5440,7 +5440,7 @@ const (
 )
 
 var reqBufPool = sync.Pool{
-        New: func() any <span class="cov3" title="4">{
+        New: func() any <span class="cov4" title="5">{
                 b := new(bytes.Buffer)
                 b.Grow(reqBufInit)
                 return b
@@ -5611,8 +5611,8 @@ import (
 // map is clear()ed before it goes back so no entry (whose keys alias the prior
 // call's content) survives into the next call.
 var (
-        seenPool     = sync.Pool{New: func() any <span class="cov2" title="18">{ return make(map[string]struct{}) }</span>}
-        seenNormPool = sync.Pool{New: func() any <span class="cov2" title="6">{ return make(map[string]string) }</span>}
+        seenPool     = sync.Pool{New: func() any <span class="cov5" title="849">{ return make(map[string]struct{}) }</span>}
+        seenNormPool = sync.Pool{New: func() any <span class="cov2" title="8">{ return make(map[string]string) }</span>}
 )
 
 // maxPooledDedupMapLen caps how large a map FoldRepeatedBlocks will return to
@@ -6812,11 +6812,11 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) <span class
                         for k, v := range acc.strFreq </span><span class="cov5" title="114">{
                                 top = append(top, kv{k, v})
                         }</span>
-                        <span class="cov4" title="27">slices.SortFunc(top, func(a, b kv) int </span><span class="cov5" title="184">{
+                        <span class="cov4" title="27">slices.SortFunc(top, func(a, b kv) int </span><span class="cov5" title="168">{
                                 if a.v != b.v </span><span class="cov2" title="7">{
                                         return b.v - a.v
                                 }</span>
-                                <span class="cov5" title="177">return strings.Compare(a.k, b.k)</span>
+                                <span class="cov5" title="161">return strings.Compare(a.k, b.k)</span>
                         })
                         <span class="cov4" title="27">limit := min(5, len(top))
                         // Build "%q×%d" without fmt (interface boxing + format parse) —
@@ -9175,7 +9175,7 @@ const grepFileCap = 8
 // grew past maxPooledGrepGroups — clear() empties entries but does not shrink
 // the bucket array, so a one-off huge-file grep must not pin an oversized map
 // in the pool. Mirrors detect's seenPool/shouldPoolDedupMap pattern.
-var grepGroupsPool = sync.Pool{New: func() any <span class="cov1" title="2">{ return make(map[string][]grepMatch) }</span>}
+var grepGroupsPool = sync.Pool{New: func() any <span class="cov2" title="3">{ return make(map[string][]grepMatch) }</span>}
 
 const maxPooledGrepGroups = 4096
 
@@ -10176,13 +10176,13 @@ func NewMemStore() *MemStore <span class="cov3" title="16">{
 func (m *MemStore) StateStore() StateStore <span class="cov2" title="14">{ return m }</span>
 
 // shardIndex picks a session's shard by FNV-1a hash of its id.
-func shardIndex(id string) int <span class="cov10" title="155018">{
+func shardIndex(id string) int <span class="cov10" title="163356">{
         h := fnv.New32a()
         _, _ = h.Write([]byte(id))
         return int(h.Sum32() % shardCount)
 }</span>
 
-func (m *MemStore) shardFor(id string) *sessionShard <span class="cov10" title="155018">{
+func (m *MemStore) shardFor(id string) *sessionShard <span class="cov10" title="163356">{
         return m.shards[shardIndex(id)]
 }</span>
 
@@ -10246,17 +10246,17 @@ func (m *MemStore) loadFromDisk() <span class="cov3" title="16">{
 // concern (real callers currently only drive one hook invocation per session
 // id at a time); LoadSession/SaveSession themselves never panic or corrupt
 // state no matter how many goroutines race on the same id.
-func (m *MemStore) LoadSession(id string) *cache.SessionState <span class="cov9" title="77361">{
+func (m *MemStore) LoadSession(id string) *cache.SessionState <span class="cov9" title="81530">{
         sh := m.shardFor(id)
         sh.mu.RLock()
-        if wp, ok := sh.sessions[id]; ok </span><span class="cov9" title="77356">{
-                if st := wp.Value(); st != nil </span><span class="cov9" title="77355">{
+        if wp, ok := sh.sessions[id]; ok </span><span class="cov9" title="81511">{
+                if st := wp.Value(); st != nil </span><span class="cov9" title="81510">{
                         cp := copySession(st)
                         sh.mu.RUnlock()
                         return cp
                 }</span>
         }
-        <span class="cov2" title="6">sh.mu.RUnlock()
+        <span class="cov3" title="20">sh.mu.RUnlock()
 
         // Miss: never cached, or the weak pointer was collected. Reload from disk
         // (the source of truth) without holding the shard lock — the read can be
@@ -10270,19 +10270,19 @@ func (m *MemStore) LoadSession(id string) *cache.SessionState <span class="cov9"
                 return cache.NewSessionState()
         }</span>
 
-        <span class="cov2" title="6">sh.mu.Lock()
+        <span class="cov3" title="20">sh.mu.Lock()
         // Re-check under the write lock: a concurrent LoadSession/SaveSession may
         // have installed a live pointer while we were reading disk. Prefer it so
         // concurrent callers converge on one cached instance and a just-saved
         // (possibly dirty) state is never clobbered by our disk snapshot.
-        if wp, ok := sh.sessions[id]; ok </span><span class="cov1" title="2">{
-                if cur := wp.Value(); cur != nil </span><span class="cov1" title="1">{
+        if wp, ok := sh.sessions[id]; ok </span><span class="cov3" title="15">{
+                if cur := wp.Value(); cur != nil </span><span class="cov2" title="14">{
                         cp := copySession(cur)
                         sh.mu.Unlock()
                         return cp
                 }</span>
         }
-        <span class="cov2" title="5">sh.sessions[id] = weak.Make(st)
+        <span class="cov2" title="6">sh.sessions[id] = weak.Make(st)
         cp := copySession(st)
         sh.mu.Unlock()
         return cp</span>
@@ -10296,7 +10296,7 @@ func (m *MemStore) LoadSession(id string) *cache.SessionState <span class="cov9"
 // FileEntry values (including Content []byte) are shared by the copy, which is
 // safe because nothing mutates a FileEntry in place — entries are only added,
 // replaced, or deleted at the map level.
-func copySession(st *cache.SessionState) *cache.SessionState <span class="cov9" title="79515">{
+func copySession(st *cache.SessionState) *cache.SessionState <span class="cov9" title="83668">{
         cp := &amp;cache.SessionState{
                 Turn:        st.Turn,
                 CompactedAt: st.CompactedAt,
@@ -10312,7 +10312,7 @@ func copySession(st *cache.SessionState) *cache.SessionState <span class="cov9" 
 // pointer to the same s until FlushDirty persists it — the strong ref is what
 // prevents a not-yet-flushed session from being collected out from under the
 // weak pointer (see the dirtySessions field comment).
-func (m *MemStore) SaveSession(id string, s *cache.SessionState) <span class="cov9" title="77657">{
+func (m *MemStore) SaveSession(id string, s *cache.SessionState) <span class="cov9" title="81826">{
         sh := m.shardFor(id)
         sh.mu.Lock()
         sh.sessions[id] = weak.Make(s)
@@ -10428,7 +10428,7 @@ func (m *MemStore) PruneUsage(maxAge time.Duration) <span class="cov1" title="2"
 // buffer's backing array only grows on the first few flushes and is reused
 // for every session/flush after that, instead of being allocated fresh per
 // session per flush.
-var flushBufPool = sync.Pool{New: func() any <span class="cov6" title="1722">{ b := make([]byte, 0, 4096); return &amp;b }</span>}
+var flushBufPool = sync.Pool{New: func() any <span class="cov6" title="1709">{ b := make([]byte, 0, 4096); return &amp;b }</span>}
 
 // FlushDirty persists every dirty session to disk, then flushes the in-RAM
 // usage indices (ref/last dedup-hit and access stats) to their sidecars.
@@ -10470,7 +10470,7 @@ var flushBufPool = sync.Pool{New: func() any <span class="cov6" title="1722">{ b
 // maps are cloned under usageMu for the same reason: SaveUsage's JSON
 // marshaling happens outside the lock so a concurrent RefHit/usage bump never
 // blocks on disk I/O.
-func (m *MemStore) FlushDirty() <span class="cov6" title="2288">{
+func (m *MemStore) FlushDirty() <span class="cov6" title="2302">{
         m.dirtyMu.Lock()
         sessions := m.dirtySessions
         m.dirtySessions = make(map[string]*cache.SessionState)
@@ -10480,23 +10480,23 @@ func (m *MemStore) FlushDirty() <span class="cov6" title="2288">{
         buf := *bufPtr
 
         var failed map[string]*cache.SessionState
-        for id, st := range sessions </span><span class="cov6" title="2775">{
+        for id, st := range sessions </span><span class="cov6" title="2798">{
                 var err error
-                if len(st.Files) &gt; cache.MaxSessionFiles </span><span class="cov6" title="2154">{
+                if len(st.Files) &gt; cache.MaxSessionFiles </span><span class="cov6" title="2138">{
                         // Slow path: eviction will actually delete entries, so it must
                         // not run against the shared pointer's map (a concurrent
                         // LoadSession may be reading it). Copy first.
                         cp := copySession(st)
                         err = cache.Save(id, cp)
-                }</span> else<span class="cov5" title="621"> {
+                }</span> else<span class="cov5" title="660"> {
                         // Fast path: encode the strong-ref pointer directly (read-only,
                         // no copy) into the pooled buffer, then write to disk.
                         buf, err = cache.AppendEncodeState(buf[:0], st)
-                        if err == nil </span><span class="cov5" title="621">{
+                        if err == nil </span><span class="cov5" title="660">{
                                 err = cache.WriteState(id, buf)
                         }</span>
                 }
-                <span class="cov6" title="2775">if err != nil </span><span class="cov0" title="0">{
+                <span class="cov6" title="2798">if err != nil </span><span class="cov0" title="0">{
                         // Persist failed: keep the strong ref so this unpersisted state
                         // is neither lost nor weak-collected before a later retry.
                         if failed == nil </span><span class="cov0" title="0">{
@@ -10511,14 +10511,14 @@ func (m *MemStore) FlushDirty() <span class="cov6" title="2288">{
         // in flushBufPool for every later small-session flush. Mirrors
         // cache.Save's savePool/cache.MaxPooledBufSize pattern exactly, since both
         // pools encode the same kind of payload (a qdf-marshaled SessionState).
-        <span class="cov6" title="2288">if cap(buf) &lt;= cache.MaxPooledBufSize </span><span class="cov6" title="2287">{
+        <span class="cov6" title="2302">if cap(buf) &lt;= cache.MaxPooledBufSize </span><span class="cov6" title="2301">{
                 *bufPtr = buf
                 flushBufPool.Put(bufPtr)
         }</span>
 
         // Re-arm strong refs for sessions that failed to persist, unless a newer
         // SaveSession already re-marked the id dirty (its pointer supersedes ours).
-        <span class="cov6" title="2288">if failed != nil </span><span class="cov0" title="0">{
+        <span class="cov6" title="2302">if failed != nil </span><span class="cov0" title="0">{
                 m.dirtyMu.Lock()
                 for id, st := range failed </span><span class="cov0" title="0">{
                         if _, superseded := m.dirtySessions[id]; !superseded </span><span class="cov0" title="0">{
@@ -10530,17 +10530,17 @@ func (m *MemStore) FlushDirty() <span class="cov6" title="2288">{
 
         // Sweep collected weak pointers so the shard maps do not accumulate dead
         // entries for every session that has ever been seen and since reclaimed.
-        <span class="cov6" title="2288">for _, sh := range m.shards </span><span class="cov8" title="36608">{
+        <span class="cov6" title="2302">for _, sh := range m.shards </span><span class="cov8" title="36832">{
                 sh.mu.Lock()
-                for id, wp := range sh.sessions </span><span class="cov6" title="2783">{
-                        if wp.Value() == nil </span><span class="cov0" title="0">{
+                for id, wp := range sh.sessions </span><span class="cov6" title="2798">{
+                        if wp.Value() == nil </span><span class="cov1" title="1">{
                                 delete(sh.sessions, id)
                         }</span>
                 }
-                <span class="cov8" title="36608">sh.mu.Unlock()</span>
+                <span class="cov8" title="36832">sh.mu.Unlock()</span>
         }
 
-        <span class="cov6" title="2288">m.usageMu.Lock()
+        <span class="cov6" title="2302">m.usageMu.Lock()
         ur := maps.Clone(m.usageRefs)
         ul := maps.Clone(m.usageLast)
         m.usageMu.Unlock()
