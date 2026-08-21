@@ -159,14 +159,32 @@ func TestReplace_CarriesHookEventName(t *testing.T) {
 	}
 }
 
-// TestPassthrough_EmitsNoHookSpecificOutput keeps the pass-through path empty:
-// an empty hookSpecificOutput would itself fail validation.
-func TestPassthrough_EmitsNoHookSpecificOutput(t *testing.T) {
+// TestPassthrough_WritesNothing pins the cheapest hook response there is:
+// silence. Claude Code records a hook_success attachment for every hook that
+// writes anything at all — even "{}" — and that record then rides the prefix for
+// the rest of the session. Measured across 2,070 local transcripts: 26,517 such
+// empty records cost 6.01% of the entire token bill. A hook that writes nothing
+// produces no record, and means exactly what "{}" meant: do nothing.
+//
+// This matches what the daemon already does when dispatch fails — it closes the
+// connection with no reply and calls that a safe passthrough.
+func TestPassthrough_WritesNothing(t *testing.T) {
 	var b strings.Builder
 	if err := protocol.EncodeOutput(&b, protocol.Passthrough()); err != nil {
 		t.Fatalf("EncodeOutput: %v", err)
 	}
-	if got := strings.TrimSpace(b.String()); got != "{}" {
-		t.Errorf("Passthrough must emit {}, got %s", got)
+	if got := b.String(); got != "" {
+		t.Errorf("Passthrough must write nothing, wrote %q", got)
+	}
+}
+
+// TestEncodeOutput_NilIsSilent covers the nil handle the daemon can reach.
+func TestEncodeOutput_NilIsSilent(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodeOutput(&b, nil); err != nil {
+		t.Fatalf("EncodeOutput(nil): %v", err)
+	}
+	if got := b.String(); got != "" {
+		t.Errorf("nil output must write nothing, wrote %q", got)
 	}
 }

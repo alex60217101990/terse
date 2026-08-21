@@ -153,8 +153,12 @@ func TestWrite_CheapEcho_PassesThroughAndStillCaches(t *testing.T) {
 		t.Fatalf("HandleWrite returned error: %v", err)
 	}
 	var resp protocol.HookOutput
-	if jsonErr := json.Unmarshal([]byte(out.String()), &resp); jsonErr != nil {
-		t.Fatalf("output is not valid JSON: %v", jsonErr)
+	// An empty response is the pass-through contract: a hook that has nothing to
+	// say writes nothing, so no hook_success record is made.
+	if raw := out.String(); raw != "" {
+		if jsonErr := json.Unmarshal([]byte(raw), &resp); jsonErr != nil {
+			t.Fatalf("output is not valid JSON: %v", jsonErr)
+		}
 	}
 	if resp.HookSpecificOutput != nil {
 		t.Fatalf("a marker costlier than the echo must not be emitted, got: %s",

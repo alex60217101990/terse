@@ -46,8 +46,12 @@ func dispatchReadEvent(t *testing.T, store hookcore.StateStore, path, content st
 		t.Fatalf("Dispatch: %v", err)
 	}
 	var resp protocol.HookOutput
-	if err := json.Unmarshal([]byte(out.String()), &resp); err != nil {
-		t.Fatalf("invalid JSON output: %v / raw: %s", err, out.String())
+	// An empty response is the pass-through contract: a hook that has
+	// nothing to say writes nothing, so no hook_success record is made.
+	if raw := out.String(); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+			t.Fatalf("invalid JSON output: %v / raw: %s", err, out.String())
+		}
 	}
 	return resp
 }

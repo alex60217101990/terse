@@ -222,6 +222,12 @@ func toolResponse(tr Triple) (json.RawMessage, error) {
 // would read as a 100% saving on every payload the tool declined to touch,
 // which is the single easiest way to make this harness lie.
 func emittedOutput(raw []byte, original string) (string, error) {
+	// Silence is the pass-through contract: a hook with nothing to say writes
+	// nothing at all, so that Claude Code records no hook_success attachment for
+	// it. An empty reply therefore means "the model saw the original".
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return original, nil
+	}
 	var out protocol.HookOutput
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", err

@@ -250,8 +250,20 @@ func DecodeInputBytes(data []byte) (*HookInput, error) {
 	return &inp, nil
 }
 
-// EncodeOutput writes HookOutput as JSON to w followed by a newline.
+// EncodeOutput writes HookOutput as JSON to w followed by a newline, and writes
+// NOTHING when there is nothing to say.
+//
+// Silence is not cosmetic. Claude Code records a hook_success attachment for
+// every hook that writes anything at all, "{}" included, and that record then
+// rides the conversation prefix and is re-billed on every later turn. Measured
+// across 2,070 local transcripts: 26,517 empty records cost 6.01% of the entire
+// token bill. Writing nothing produces no record and carries exactly the meaning
+// "{}" carried — take no action — which is also what the daemon already falls
+// back to when dispatch fails.
 func EncodeOutput(w io.Writer, out *HookOutput) error {
+	if out == nil || out.HookSpecificOutput == nil {
+		return nil
+	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	return enc.Encode(out)
