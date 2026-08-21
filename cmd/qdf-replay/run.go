@@ -26,10 +26,10 @@ type Cell struct {
 
 // Saved is the token difference. Negative means the hook made the output more
 // expensive than the raw tool result.
-func (c Cell) Saved() int { return c.TokensIn - c.TokensOut }
+func (c *Cell) Saved() int { return c.TokensIn - c.TokensOut }
 
 // SavedPct is Saved as a percentage of TokensIn.
-func (c Cell) SavedPct() float64 {
+func (c *Cell) SavedPct() float64 {
 	if c.TokensIn == 0 {
 		return 0
 	}

@@ -71,7 +71,7 @@ type Corpus struct {
 }
 
 // Triples returns the total number of triples across every session.
-func (c Corpus) Triples() int {
+func (c *Corpus) Triples() int {
 	n := 0
 	for _, s := range c.Sessions {
 		n += len(s.Triples)
