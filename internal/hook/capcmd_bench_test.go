@@ -17,10 +17,10 @@ func BenchmarkCappable(b *testing.B) {
 }
 
 // BenchmarkWrapCommand measures the cost of rewriting a Bash command to add
-// output capping scaffolding. This includes building the wrapped shell syntax
-// and invoking strconv.Itoa for the cap size. Measured (M5 Pro, count=10):
-// ~44.4 ns/op, 8 B/op, 2 allocs/op. The 2 allocations are from strconv.Itoa
-// calls for the cap size (inherent to string conversion, not buffer undersizing).
+// output capping scaffolding. The cap size is written straight into the
+// buffer via strconv.AppendInt rather than through an intermediate
+// strconv.Itoa string, so this path allocates nothing. Measured (M5 Pro,
+// count=10): ~36.4 ns/op, 0 B/op, 0 allocs/op.
 // Well under the 5 µs budget; no further optimization warranted.
 func BenchmarkWrapCommand(b *testing.B) {
 	buf := make([]byte, 0, 1024)

@@ -118,8 +118,7 @@ func wrapCommand(dst []byte, cmd, capturePath, id string, capBytes int) []byte {
 		return nil
 	}
 
-	half := strconv.Itoa(capBytes / 2)
-	cb := strconv.Itoa(capBytes)
+	half := int64(capBytes / 2)
 
 	dst = append(dst, "if : 2>/dev/null > '"...)
 	dst = append(dst, capturePath...)
@@ -130,17 +129,17 @@ func wrapCommand(dst []byte, cmd, capturePath, id string, capBytes int) []byte {
 	dst = append(dst, "' 2>&1\n(__qrc=$?; __qn=$(wc -c < '"...)
 	dst = append(dst, capturePath...)
 	dst = append(dst, "'); if [ \"$__qn\" -le "...)
-	dst = append(dst, cb...)
+	dst = strconv.AppendInt(dst, int64(capBytes), 10)
 	dst = append(dst, " ]; then cat '"...)
 	dst = append(dst, capturePath...)
 	dst = append(dst, "'; else head -c "...)
-	dst = append(dst, half...)
+	dst = strconv.AppendInt(dst, half, 10)
 	dst = append(dst, " '"...)
 	dst = append(dst, capturePath...)
 	dst = append(dst, "'; printf '\\n... %s bytes elided, full output: qdf-hook expand "...)
 	dst = append(dst, id...)
 	dst = append(dst, "\\n' \"$__qn\"; tail -c "...)
-	dst = append(dst, half...)
+	dst = strconv.AppendInt(dst, half, 10)
 	dst = append(dst, " '"...)
 	dst = append(dst, capturePath...)
 	dst = append(dst, "'; fi; exit \"$__qrc\")\nelse { "...)
