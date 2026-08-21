@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -314,7 +315,8 @@ func runPreToolUse() error {
 // hook.Dispatch to consume. A dial success that then fails mid-stream is not
 // retried inline, since stdin may already be partially consumed.
 func socketFirst() error {
-	c, derr := net.DialTimeout("unix", daemon.SockPath(), socketDialTimeout)
+	d := net.Dialer{Timeout: socketDialTimeout}
+	c, derr := d.DialContext(context.Background(), "unix", daemon.SockPath())
 	if derr != nil {
 		// Daemon down: stdin untouched, dispatch inline.
 		return hook.Dispatch(hookcore.NewDiskStore(), os.Stdin, os.Stdout)

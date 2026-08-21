@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,7 +79,11 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 		url = fmt.Sprintf("%s?seconds=%d", url, int(dur.Seconds()))
 	}
 
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("profile: build request for %s: %w", url, err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("profile: fetch %s: %w (is the daemon running with --pprof %s?)", url, err, addr)
 	}
@@ -114,7 +119,7 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 		return fmt.Errorf("profile: write %s: %w", outPath, cerr)
 	}
 
-	pprofCmd := exec.Command("go", "tool", "pprof", outPath)
+	pprofCmd := exec.CommandContext(context.Background(), "go", "tool", "pprof", outPath)
 	pprofCmd.Stdin = os.Stdin
 	pprofCmd.Stdout = os.Stdout
 	pprofCmd.Stderr = os.Stderr
