@@ -139,3 +139,34 @@ func TestDecode_PlainStringContent(t *testing.T) {
 		t.Fatalf("Text() = %q, want %q", inp.ToolResponse.Text(), "hello world")
 	}
 }
+
+// TestReplace_CarriesHookEventName locks the PostToolUse response contract:
+// Claude Code validates hookSpecificOutput and requires hookEventName. Without
+// it the whole object is rejected, the compressed replacement is dropped, and
+// a validation error is injected into the context instead — costing far more
+// than the compression saved.
+func TestReplace_CarriesHookEventName(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodeOutput(&b, protocol.Replace("§ref:abc§")); err != nil {
+		t.Fatalf("EncodeOutput: %v", err)
+	}
+	got := b.String()
+	if !strings.Contains(got, `"hookEventName":"PostToolUse"`) {
+		t.Errorf("Replace output missing hookEventName: %s", got)
+	}
+	if !strings.Contains(got, `"updatedToolOutput":"§ref:abc§"`) {
+		t.Errorf("Replace output missing updatedToolOutput: %s", got)
+	}
+}
+
+// TestPassthrough_EmitsNoHookSpecificOutput keeps the pass-through path empty:
+// an empty hookSpecificOutput would itself fail validation.
+func TestPassthrough_EmitsNoHookSpecificOutput(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodeOutput(&b, protocol.Passthrough()); err != nil {
+		t.Fatalf("EncodeOutput: %v", err)
+	}
+	if got := strings.TrimSpace(b.String()); got != "{}" {
+		t.Errorf("Passthrough must emit {}, got %s", got)
+	}
+}

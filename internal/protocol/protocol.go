@@ -209,13 +209,23 @@ type BashInput struct {
 	Cwd     string `json:"working_directory,omitempty"`
 }
 
+// EventPostToolUse is the hookEventName Claude Code expects on every
+// PostToolUse hookSpecificOutput object.
+const EventPostToolUse = "PostToolUse"
+
 // HookOutput is the JSON written to stdout. Nil HookSpecificOutput = pass-through.
 type HookOutput struct {
 	HookSpecificOutput *HookSpecificOutput `json:"hookSpecificOutput,omitempty"`
 }
 
 // HookSpecificOutput carries the replacement for what Claude sees.
+//
+// HookEventName is mandatory: Claude Code validates hookSpecificOutput and
+// rejects the whole object when it is absent. A rejected object drops the
+// replacement (the original, uncompressed output reaches the model) and injects
+// a validation error into the context on top — the opposite of the intent.
 type HookSpecificOutput struct {
+	HookEventName     string `json:"hookEventName"`
 	UpdatedToolOutput string `json:"updatedToolOutput,omitempty"`
 }
 
@@ -271,5 +281,8 @@ func Passthrough() *HookOutput { return &HookOutput{} }
 
 // Replace returns a HookOutput that substitutes the tool output with s.
 func Replace(s string) *HookOutput {
-	return &HookOutput{HookSpecificOutput: &HookSpecificOutput{UpdatedToolOutput: s}}
+	return &HookOutput{HookSpecificOutput: &HookSpecificOutput{
+		HookEventName:     EventPostToolUse,
+		UpdatedToolOutput: s,
+	}}
 }
