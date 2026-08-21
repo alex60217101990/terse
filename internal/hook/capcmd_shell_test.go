@@ -89,7 +89,7 @@ func TestWrapped_CdSurvives(t *testing.T) {
 func TestWrapped_NoticeFitsBudget(t *testing.T) {
 	out, _ := runWrapped(t, "seq 1 500", 200)
 	var notice string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if strings.Contains(line, "qdf-hook expand") {
 			notice = line
 			break
