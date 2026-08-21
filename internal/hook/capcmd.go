@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/alex60217101990/terse/internal/bytesconv"
 	"github.com/alex60217101990/terse/internal/cache"
@@ -164,6 +165,18 @@ const capBytes = 1600
 
 var wrapBuf = sync.Pool{New: func() any { b := make([]byte, 0, 1024); return &b }}
 
+// captureSeq disambiguates same-session, same-command captures. The daemon
+// keeps handling requests in one long-lived process, so two runs of the exact
+// same command text in the same session are common (a retry, a loop body) —
+// hashing session+cmd alone would give them the same id and the same capture
+// file. The second run would then either clobber the first mid-write or, run
+// concurrently, race on it, and a recovery hint already printed for the first
+// run would silently start pointing at the second run's content. Folding in a
+// counter that only ever increases makes every invocation's id unique without
+// a syscall or an allocation of its own — atomic.Uint64.Add is one bus-locked
+// instruction.
+var captureSeq atomic.Uint64
+
 // decodeCappableCommand extracts the Bash command from raw tool_input and
 // reports whether it both decoded and passed the cappable scan. Malformed or
 // uncappable input just means the command runs untouched, not an error to
@@ -193,7 +206,8 @@ func handleBashPreToolUse(inp *protocol.HookInput, w io.Writer) error {
 	if !ok {
 		return nil
 	}
-	id := cache.RefHashOf(inp.SessionID + cmd)
+	seq := strconv.FormatUint(captureSeq.Add(1), 10)
+	id := cache.RefHashOf(inp.SessionID + cmd + seq)
 	path := cache.CapturePath(id)
 	// The path is single-quoted into a shell command. The id is hex and the
 	// directory is fixed, but $HOME is not ours — a quote in it would break out
