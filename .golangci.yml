@@ -304,6 +304,15 @@ linters:
       - common-false-positives
 
     rules:
+      # A unix socket path is capped at 104 bytes on darwin, and t.TempDir builds
+      # its directory name out of the test's own name — measured here at 134
+      # bytes for this package's longer test names, where net.Listen then fails
+      # with "bind: invalid argument". These tests use os.MkdirTemp with a short
+      # fixed prefix for exactly that reason.
+      - path: internal/daemon/.*_test\.go
+        linters:
+          - usetesting
+
       # A test may repeat itself, ignore a return, reach for unsafe fixtures and
       # hold a context in a struct. It may not skip the checks that make a
       # passing test mean something — thelper and usetesting stay on.
