@@ -109,12 +109,12 @@ func TestLooksLikeGrep_TimestampCorpus(t *testing.T) {
 		t.Error("colon-delimited config dump must not classify as grep")
 	}
 
-	real := "internal/pkg/file.go:123:\tcode line\n" +
+	realGrepHits := "internal/pkg/file.go:123:\tcode line\n" +
 		"path/with-dash/x_test.go:9:text\n" +
 		"README.md:5:# Title\n" +
 		"a/b.c:1:x\n" +
 		strings.Repeat("internal/hook/bash.go:10:package hook\n", 6)
-	if !looksLikeGrep(real) {
+	if !looksLikeGrep(realGrepHits) {
 		t.Error("real grep output must classify as grep")
 	}
 }

@@ -40,7 +40,7 @@ func FuzzDecodeInputBytes(f *testing.F) {
 	for _, s := range seeds {
 		f.Add([]byte(s))
 	}
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		inp, err := protocol.DecodeInputBytes(data)
 		if err != nil {
 			return // rejecting malformed input is correct; it must not panic

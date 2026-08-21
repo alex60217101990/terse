@@ -94,7 +94,7 @@ func sockInode(t *testing.T, path string) uint64 {
 	}
 	st, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
-		t.Fatalf("sockInode: unsupported platform (no *syscall.Stat_t)")
+		t.Fatal("sockInode: unsupported platform (no *syscall.Stat_t)")
 	}
 	return st.Ino
 }

@@ -14,8 +14,8 @@ import (
 func runWrapped(t *testing.T, cmd string, capBytes int) (string, int) {
 	t.Helper()
 	dir := t.TempDir()
-	cap := filepath.Join(dir, "x.out")
-	wrapped := string(wrapCommand(nil, cmd, cap, "x", capBytes))
+	capPath := filepath.Join(dir, "x.out")
+	wrapped := string(wrapCommand(nil, cmd, capPath, "x", capBytes))
 	c := exec.Command("/bin/sh", "-c", wrapped)
 	c.Dir = dir
 	out, err := c.Output()
@@ -68,8 +68,8 @@ func TestWrapped_CdSurvives(t *testing.T) {
 	if err := os.Mkdir(sub, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cap := filepath.Join(dir, "x.out")
-	wrapped := string(wrapCommand(nil, "cd sub", cap, "x", 1600))
+	capPath := filepath.Join(dir, "x.out")
+	wrapped := string(wrapCommand(nil, "cd sub", capPath, "x", 1600))
 	// The agent's shell is persistent: a cd inside the wrapper must still apply
 	// to the next command, which brace grouping guarantees and a subshell breaks.
 	c := exec.Command("/bin/sh", "-c", wrapped+"; pwd")
@@ -123,8 +123,8 @@ func TestWrapped_TrailingCommentDoesNotBreakSyntax(t *testing.T) {
 // all and reports a false failure for a command that was never broken.
 func TestWrapped_UnwritableCapturePathFallsBackUnwrapped(t *testing.T) {
 	dir := t.TempDir()
-	cap := filepath.Join(dir, "nonexistent-subdir", "x.out")
-	wrapped := string(wrapCommand(nil, "echo SHOULD-RUN; exit 3", cap, "x", 1600))
+	capPath := filepath.Join(dir, "nonexistent-subdir", "x.out")
+	wrapped := string(wrapCommand(nil, "echo SHOULD-RUN; exit 3", capPath, "x", 1600))
 	c := exec.Command("/bin/sh", "-c", wrapped)
 	c.Dir = dir
 	out, err := c.Output()
@@ -150,8 +150,8 @@ func TestWrapped_UnwritableCapturePathFallsBackUnwrapped(t *testing.T) {
 // they must not still be set once the wrapped command has finished.
 func TestWrapped_NoLingeringBookkeepingVars(t *testing.T) {
 	dir := t.TempDir()
-	cap := filepath.Join(dir, "x.out")
-	wrapped := string(wrapCommand(nil, "echo hi", cap, "x", 1600))
+	capPath := filepath.Join(dir, "x.out")
+	wrapped := string(wrapCommand(nil, "echo hi", capPath, "x", 1600))
 	c := exec.Command("/bin/sh", "-c", wrapped+`; printf 'qrc=%s qn=%s\n' "${__qrc:-GONE}" "${__qn:-GONE}"`)
 	c.Dir = dir
 	out, err := c.Output()

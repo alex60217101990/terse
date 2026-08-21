@@ -94,7 +94,7 @@ func TestBashHook_PlainText_Passthrough(t *testing.T) {
 	// Plain text: either pass-through (nil) or unchanged output.
 	if resp.HookSpecificOutput != nil {
 		if resp.HookSpecificOutput.UpdatedToolOutput != "hello world\n" {
-			t.Errorf("plain text should pass through unchanged")
+			t.Error("plain text should pass through unchanged")
 		}
 	}
 }

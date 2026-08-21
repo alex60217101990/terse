@@ -46,7 +46,7 @@ func cmdProfile() *cobra.Command {
 
   qdf-hook daemon --serve --pprof 127.0.0.1:6060`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if addr == "" {
 				addr = os.Getenv("QDF_PPROF")
 			}
@@ -89,18 +89,7 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 	}
 
 	wroteTemp := outPath == ""
-	if wroteTemp {
-		f, err := os.CreateTemp("", "qdf-hook-profile-*.pb.gz")
-		if err != nil {
-			return fmt.Errorf("profile: create temp file: %w", err)
-		}
-		outPath = f.Name()
-		_, cerr := io.Copy(f, resp.Body)
-		_ = f.Close()
-		if cerr != nil {
-			return fmt.Errorf("profile: write %s: %w", outPath, cerr)
-		}
-	} else {
+	if !wroteTemp {
 		f, err := os.Create(outPath)
 		if err != nil {
 			return fmt.Errorf("profile: create %s: %w", outPath, err)
@@ -112,6 +101,17 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 		}
 		fmt.Printf("wrote %s profile to %s\n", kind, outPath)
 		return nil
+	}
+
+	f, err := os.CreateTemp("", "qdf-hook-profile-*.pb.gz")
+	if err != nil {
+		return fmt.Errorf("profile: create temp file: %w", err)
+	}
+	outPath = f.Name()
+	_, cerr := io.Copy(f, resp.Body)
+	_ = f.Close()
+	if cerr != nil {
+		return fmt.Errorf("profile: write %s: %w", outPath, cerr)
 	}
 
 	pprofCmd := exec.Command("go", "tool", "pprof", outPath)

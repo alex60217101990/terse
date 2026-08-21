@@ -37,7 +37,7 @@ func TestLoadSaveRoundtrip(t *testing.T) {
 		t.Fatal("Files[encoder.go] missing after round-trip")
 	}
 	if entry.Hash != [32]byte{1, 2, 3} {
-		t.Errorf("Hash mismatch")
+		t.Error("Hash mismatch")
 	}
 	if string(entry.Content) != "package main\n" {
 		t.Errorf("Content = %q, want %q", entry.Content, "package main\n")

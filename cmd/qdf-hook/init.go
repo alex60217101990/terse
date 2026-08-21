@@ -10,8 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/alex60217101990/terse/internal/daemon"
 	"github.com/spf13/cobra"
+
+	"github.com/alex60217101990/terse/internal/daemon"
 )
 
 // hookSpec is one hook entry qdf-hook installs into Claude Code settings.
@@ -66,7 +67,7 @@ By default it edits the global ~/.claude/settings.json. Use --project to edit
 .claude/settings.json in the current directory instead. It is idempotent:
 existing hooks (qdf-hook's or anyone else's) are preserved, and re-running
 never duplicates entries. Restart Claude Code afterwards for the hooks to load.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return runInit(project, dir, printOnly)
 		},
 	}

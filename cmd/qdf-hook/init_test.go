@@ -282,7 +282,8 @@ func TestHookCommand_UsesNativeClientNotNc(t *testing.T) {
 func TestMergeHooks_UpgradesLegacyNcToNativeClient(t *testing.T) {
 	exe := "/Users/x/.local/bin/qdf-hook"
 	hb := hooksBlock{"PostToolUse": []hookEntry{{Matcher: ".*", Hooks: []hookCmd{
-		{Type: "command", Command: "nc -U ~/.qdf-hook/d.sock 2>/dev/null || " + exe + " post"}}}}}
+		{Type: "command", Command: "nc -U ~/.qdf-hook/d.sock 2>/dev/null || " + exe + " post"},
+	}}}}
 	if changed := mergeHooks(hb, exe); changed == 0 {
 		t.Fatal("expected legacy nc entry to be upgraded")
 	}
@@ -311,7 +312,7 @@ func TestHookCommand_SpacedPathQuotedAndIdempotent(t *testing.T) {
 	}
 	// A foreign tool sharing the subword must still not match.
 	if isQdfHookCommand("/opt/sqz hook post", "post") {
-		t.Fatalf("must not match a foreign tool's command")
+		t.Fatal("must not match a foreign tool's command")
 	}
 }
 

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/spf13/cobra"
+
+	"github.com/alex60217101990/terse/internal/cache"
 )
 
 func cmdExpand() *cobra.Command {
@@ -13,7 +14,7 @@ func cmdExpand() *cobra.Command {
 		Use:   "expand <hash>",
 		Short: "Print the full content behind a §ref:HASH§ token",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return runExpand(args[0])
 		},
 	}

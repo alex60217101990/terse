@@ -404,11 +404,10 @@ func writeHunks(buf *bytes.Buffer, a, b []string, edits []edit, ctx int) {
 			// 2*ctx. Using ctx alone left runs of ctx<G<=2*ctx as separate hunks
 			// whose ranges (prev hi=j+ctx, next lo=i-ctx) overlapped — duplicating
 			// context and emitting @@ headers that overran the file.
-			if k-j <= 2*ctx && k < n {
-				j = k
-			} else {
+			if k-j > 2*ctx || k >= n {
 				break
 			}
+			j = k
 		}
 		hi := min(j+ctx, n)
 		hunks = append(hunks, hunkRange{lo, hi})
