@@ -12,19 +12,19 @@ func TestCappable(t *testing.T) {
 	}{
 		{"ls -la", true},
 		{"go build ./...", true},
-		{"cd /tmp && ls", true},          // && is safe under brace grouping
-		{"make a || make b", true},       // so is ||
-		{"cd /tmp; ls", true},            // and ;
-		{"ls | head -20", false},         // agent already bounded its output
-		{"cat f > out.txt", false},       // routes its own stdout
-		{"sort < in.txt", false},         // routes its own stdin
-		{"cat <<'EOF'\nx\nEOF", false},   // heredoc
-		{"sleep 5 &", false},             // backgrounds; capture would race
-		{"echo $(date)", false},          // substitution consumed by the caller
-		{"echo `date`", false},           // same, backtick form
-		{"sleep 5\\&&", false},           // \& is a literal; the second & backgrounds
-		{"echo a\\||wc -l", false},       // \| is a literal; the second | is a real pipe
-		{"", false},                      // nothing to wrap
+		{"cd /tmp && ls", true},        // && is safe under brace grouping
+		{"make a || make b", true},     // so is ||
+		{"cd /tmp; ls", true},          // and ;
+		{"ls | head -20", false},       // agent already bounded its output
+		{"cat f > out.txt", false},     // routes its own stdout
+		{"sort < in.txt", false},       // routes its own stdin
+		{"cat <<'EOF'\nx\nEOF", false}, // heredoc
+		{"sleep 5 &", false},           // backgrounds; capture would race
+		{"echo $(date)", false},        // substitution consumed by the caller
+		{"echo `date`", false},         // same, backtick form
+		{"sleep 5\\&&", false},         // \& is a literal; the second & backgrounds
+		{"echo a\\||wc -l", false},     // \| is a literal; the second | is a real pipe
+		{"", false},                    // nothing to wrap
 	}
 	for _, c := range cases {
 		if got := cappable(c.cmd); got != c.want {

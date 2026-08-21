@@ -32,7 +32,7 @@ func ContextKey(inp *protocol.HookInput) string {
 		return inp.SessionID + "/" + id
 	}
 	// Main thread, or a Claude Code build sending neither field. Falling back to
-	// the session id preserves the existing behaviour rather than disabling the
+	// the session id preserves the existing behavior rather than disabling the
 	// cache outright.
 	return inp.SessionID
 }

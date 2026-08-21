@@ -42,7 +42,7 @@ func BenchmarkReadHook_FirstRead(b *testing.B) {
 func BenchmarkPreToolUse_Unchanged(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
 	// Create a real file and populate cache.
-	f, _ := os.CreateTemp("", "bench-pre-*.go")
+	f, _ := os.CreateTemp(b.TempDir(), "bench-pre-*.go")
 	content := []byte("package main\n")
 	f.Write(content)
 	f.Close()

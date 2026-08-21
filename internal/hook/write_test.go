@@ -3,8 +3,8 @@ package hook_test
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,7 +60,7 @@ func TestWrite_LargeContent_Compressed(t *testing.T) {
 	}
 	// Hash prefix must match first 8 bytes of sha256(the file bytes).
 	hash := sha256.Sum256([]byte(content))
-	hashHex := fmt.Sprintf("%x", hash[:8])
+	hashHex := hex.EncodeToString(hash[:8])
 	if !strings.Contains(compressed, hashHex) {
 		t.Errorf("compressed output should contain hash %s: %s", hashHex, compressed)
 	}

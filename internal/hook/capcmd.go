@@ -64,7 +64,7 @@ func cappable(cmd string) bool {
 // corrupt the command. Refusing is always safe here — the command simply runs
 // unwrapped.
 func shellSafeArg(s string) bool {
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if c := s[i]; c == '\'' || c < 0x20 {
 			return false
 		}

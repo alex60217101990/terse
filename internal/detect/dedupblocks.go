@@ -76,7 +76,7 @@ const maxFuzzyDiffs = 4
 // on every folded block. "[" and "]" cost one each, and the marker prefix goes
 // from seven tokens to four. Nothing parses these markers back, so the change
 // is one-way and safe; only IsHookOutput in cmd/qdf-replay has to keep
-// recognising the old form, because an archive spans both.
+// recognizing the old form, because an archive spans both.
 const (
 	markerPre = "[repeat: \""
 	markerSuf = "\"]"

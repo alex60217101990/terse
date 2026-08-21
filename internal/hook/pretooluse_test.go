@@ -26,7 +26,7 @@ func makePreToolInput(t *testing.T, sessionID, path string) string {
 func TestPreToolUse_AllowsOnFirstRead(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	// Create a real temp file.
-	f, _ := os.CreateTemp("", "qdf-pre-*.go")
+	f, _ := os.CreateTemp(t.TempDir(), "qdf-pre-*.go")
 	f.WriteString("package main\n")
 	f.Close()
 	defer os.Remove(f.Name())
@@ -68,7 +68,7 @@ func TestPreToolUse_DeniesUnchanged(t *testing.T) {
 
 func TestPreToolUse_AllowsAfterModtime(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	f, _ := os.CreateTemp("", "qdf-pre-*.go")
+	f, _ := os.CreateTemp(t.TempDir(), "qdf-pre-*.go")
 	f.WriteString("package main\n")
 	f.Close()
 	defer os.Remove(f.Name())
@@ -121,7 +121,7 @@ func seedCachedFile(t *testing.T, content string) (store hookcore.StateStore, si
 	t.Setenv("HOME", t.TempDir())
 	store = hookcore.NewDiskStore()
 
-	f, err := os.CreateTemp("", "qdf-pre-ctime-*.go")
+	f, err := os.CreateTemp(t.TempDir(), "qdf-pre-ctime-*.go")
 	if err != nil {
 		t.Fatalf("CreateTemp: %v", err)
 	}

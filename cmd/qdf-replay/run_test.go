@@ -15,9 +15,11 @@ import (
 func TestReplayIsolatesSessions(t *testing.T) {
 	payload := "alpha bravo charlie delta echo foxtrot golf hotel india juliet\n"
 	big := ""
+	var bigSb18 strings.Builder
 	for range 40 {
-		big += payload
+		bigSb18.WriteString(payload)
 	}
+	big += bigSb18.String()
 	tr := Triple{Tool: "Bash", Input: []byte(`{"command":"echo hi"}`), Result: big}
 
 	two := []Session{
@@ -147,7 +149,7 @@ func TestCompareBaselineFlagsRegressions(t *testing.T) {
 		t.Fatalf("an improvement was reported as a regression: %v", err)
 	}
 
-	// A category that vanishes is a behaviour change, not an improvement: the
+	// A category that vanishes is a behavior change, not an improvement: the
 	// corpus is fixed, so those triples went somewhere else.
 	gone := Report{Fingerprint: fp, ByHookAction: map[string]Cell{}, Total: base.Total}
 	if err := compareBaseline(&bytes.Buffer{}, base, gone); err == nil {

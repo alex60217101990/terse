@@ -51,7 +51,7 @@ func SummarizeTable(content string) string {
 // allocation strings.Count(s, string(c)) can incur.
 func countByte(s string, c byte) int {
 	n := 0
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] == c {
 			n++
 		}

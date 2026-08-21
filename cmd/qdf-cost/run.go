@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -91,7 +92,7 @@ type opts struct {
 
 func runCmd(tasksPath string, o opts) error {
 	if o.runs < 1 {
-		return fmt.Errorf("--runs must be at least 1")
+		return errors.New("--runs must be at least 1")
 	}
 	tasks, err := loadTasks(tasksPath)
 	if err != nil {
@@ -282,7 +283,7 @@ func parseResult(stream []byte) (Result, error) {
 		return Result{}, fmt.Errorf("scan stream: %w", err)
 	}
 	if !ok {
-		return Result{}, fmt.Errorf("no result line with usage in the transcript")
+		return Result{}, errors.New("no result line with usage in the transcript")
 	}
 	return found, nil
 }

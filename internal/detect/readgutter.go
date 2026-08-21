@@ -24,7 +24,7 @@ const gutterKeepEvery = 10
 // line number. It returns "" when content is not gutter-bearing, so callers can
 // skip it without a second scan.
 //
-// The rule for recognising a gutter is deliberately strict: EVERY non-empty
+// The rule for recognizing a gutter is deliberately strict: EVERY non-empty
 // line must carry one, and the numbers must run consecutively. Anything looser
 // risks mangling a file whose own content happens to start with digits and a
 // tab (a TSV, a numbered list), and content is what this tool must never

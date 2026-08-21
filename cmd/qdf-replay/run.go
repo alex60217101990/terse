@@ -45,7 +45,6 @@ func (c *Cell) add(in, out int) {
 // Report is one replay's result: what corpus it ran over, what the walk had to
 // throw away, and the per-category token ledger.
 type Report struct {
-
 	// ByHookAction is keyed "<tool>/<action>", e.g. "Bash/summary".
 	//
 	// A per-category ledger rather than a single total, because the total hides

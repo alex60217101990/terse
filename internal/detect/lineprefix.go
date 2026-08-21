@@ -2,7 +2,7 @@ package detect
 
 import "strings"
 
-// Command output is line-oriented and its lines are usually near-neighbours of
+// Command output is line-oriented and its lines are usually near-neighbors of
 // each other: paths under one directory, stack frames in one package, log lines
 // with one timestamp shape, indented code at one depth. That shared head is
 // paid for once per line.
