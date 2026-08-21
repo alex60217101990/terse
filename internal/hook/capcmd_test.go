@@ -19,6 +19,8 @@ func TestCappable(t *testing.T) {
 		{"sleep 5 &", false},             // backgrounds; capture would race
 		{"echo $(date)", false},          // substitution consumed by the caller
 		{"echo `date`", false},           // same, backtick form
+		{"sleep 5\\&&", false},           // \& is a literal; the second & backgrounds
+		{"echo a\\||wc -l", false},       // \| is a literal; the second | is a real pipe
 		{"", false},                      // nothing to wrap
 	}
 	for _, c := range cases {

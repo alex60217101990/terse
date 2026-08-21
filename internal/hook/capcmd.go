@@ -26,6 +26,10 @@ func cappable(cmd string) bool {
 	}
 	for i := 0; i < len(b); i++ {
 		c := b[i]
+		if c == '\\' {
+			i++ // the next byte is escaped: it is data, not shell syntax
+			continue
+		}
 		if cmdClass[c] == 0 {
 			continue
 		}
