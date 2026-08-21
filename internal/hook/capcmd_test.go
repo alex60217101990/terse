@@ -1,6 +1,9 @@
 package hook
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCappable(t *testing.T) {
 	cases := []struct {
@@ -27,5 +30,21 @@ func TestCappable(t *testing.T) {
 		if got := cappable(c.cmd); got != c.want {
 			t.Errorf("cappable(%q) = %v, want %v", c.cmd, got, c.want)
 		}
+	}
+}
+
+func TestWrapCommand_Shape(t *testing.T) {
+	got := string(wrapCommand(nil, "ls -la", "/tmp/cap/x.out", "x", 1600))
+	for _, want := range []string{
+		"{ ls -la ; } > '/tmp/cap/x.out' 2>&1",
+		"exit \"$__qrc\"",
+		"qdf-hook expand x",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("wrapper missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "( ls -la )") {
+		t.Error("wrapper must use brace grouping, not a subshell: cd must survive")
 	}
 }

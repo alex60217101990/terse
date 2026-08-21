@@ -1,6 +1,10 @@
 package hook
 
-import "github.com/alex60217101990/terse/internal/bytesconv"
+import (
+	"strconv"
+
+	"github.com/alex60217101990/terse/internal/bytesconv"
+)
 
 // classDisqualify marks bytes that make a command unsafe or pointless to wrap.
 // A table lookup keeps the scan branchless per byte; the two-character forms
@@ -53,3 +57,51 @@ func cappable(cmd string) bool {
 	}
 	return true
 }
+
+// wrapCommand appends to dst a rewrite of cmd that captures the command's full
+// output and prints a bounded view of it.
+//
+// Under capBytes the capture is printed verbatim, so the transcript is
+// byte-identical to an unwrapped run. Over it, both ends are kept — a file's
+// header and a build's first error live at the top, summaries and failure counts
+// at the bottom — with one elision line between them carrying the recovery
+// handle.
+//
+// dst is appended to, never reallocated by the caller's convention: pass a
+// pooled buffer with enough capacity and this does no allocation at all.
+func wrapCommand(dst []byte, cmd, capturePath, id string, capBytes int) []byte {
+	half := strconv.Itoa(capBytes / 2)
+	cb := strconv.Itoa(capBytes)
+
+	dst = append(dst, "{ "...)
+	dst = append(dst, cmd...)
+	dst = append(dst, " ; } > '"...)
+	dst = append(dst, capturePath...)
+	dst = append(dst, "' 2>&1; __qrc=$?; __qn=$(wc -c < '"...)
+	dst = append(dst, capturePath...)
+	dst = append(dst, "'); if [ \"$__qn\" -le "...)
+	dst = append(dst, cb...)
+	dst = append(dst, " ]; then cat '"...)
+	dst = append(dst, capturePath...)
+	dst = append(dst, "'; else head -c "...)
+	dst = append(dst, half...)
+	dst = append(dst, " '"...)
+	dst = append(dst, capturePath...)
+	dst = append(dst, "'; printf '\\n... %s bytes elided, full output: qdf-hook expand "...)
+	dst = append(dst, id...)
+	dst = append(dst, "\\n' \"$__qn\"; tail -c "...)
+	dst = append(dst, half...)
+	dst = append(dst, " '"...)
+	dst = append(dst, capturePath...)
+	// The exit status must become the original command's, not cat/head/tail's.
+	// Running it inside a subshell sets $? without an unqualified "exit", which
+	// would terminate the caller's shell process before anything after this
+	// wrapper on the same line gets to run.
+	dst = append(dst, "'; fi; (exit \"$__qrc\")"...)
+	return dst
+}
+
+// wrapOverhead is the fixed byte cost of wrapCommand's scaffolding, used to size
+// a buffer exactly once. Deliberately generous: a few spare bytes cost nothing,
+// a reallocation costs an allocation on every Bash call.
+const wrapOverhead = 320
