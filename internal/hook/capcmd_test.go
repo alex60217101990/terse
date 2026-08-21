@@ -59,3 +59,31 @@ func TestWrapCommand_RefusesUnsafeCapturePath(t *testing.T) {
 		t.Errorf("wrapCommand with a quote in capturePath = %q, want nil", got)
 	}
 }
+
+func TestPreToolUse_Bash_RewritesWhenCappable(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	in := `{"session_id":"s","hook_event_name":"PreToolUse","tool_name":"Bash",` +
+		`"tool_input":{"command":"ls -la"}}`
+	var out strings.Builder
+	if err := HandlePreToolUse(strings.NewReader(in), &out); err != nil {
+		t.Fatalf("HandlePreToolUse: %v", err)
+	}
+	if !strings.Contains(out.String(), `"updatedInput"`) {
+		t.Errorf("a cappable Bash command must be rewritten, got: %s", out.String())
+	}
+}
+
+func TestPreToolUse_Bash_LeavesPipedCommandAlone(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	in := `{"session_id":"s","hook_event_name":"PreToolUse","tool_name":"Bash",` +
+		`"tool_input":{"command":"ls | head -5"}}`
+	var out strings.Builder
+	if err := HandlePreToolUse(strings.NewReader(in), &out); err != nil {
+		t.Fatalf("HandlePreToolUse: %v", err)
+	}
+	// Silence, not "{}": any output at all makes Claude Code record a
+	// hook_success attachment that then rides the prefix all session.
+	if got := out.String(); got != "" {
+		t.Errorf("a skipped command must produce no output at all, got: %s", got)
+	}
+}
