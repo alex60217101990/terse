@@ -528,7 +528,7 @@ func TestMemStore_ColdSessionsAreGCReclaimable(t *testing.T) {
 
 	// Drop the last strong references. The shard maps hold only weak pointers,
 	// so every session is now GC-reclaimable.
-	states = nil //nolint:ineffassign // deliberately drops the strong refs so the GC test can reclaim the sessions
+	states = nil //nolint:ineffassign,wastedassign // deliberately drops the strong refs so the GC test can reclaim the sessions
 	runtime.GC()
 	runtime.GC()
 	var after runtime.MemStats
@@ -568,7 +568,7 @@ func TestMemStore_DirtySessionSurvivesGC(t *testing.T) {
 	st.Turn = 99
 	st.Files["/x"] = cache.FileEntry{Content: []byte("dirty-unflushed"), Turn: 99}
 	s.SaveSession("dirty", st)
-	st = nil // drop the caller's strong ref; only the store's dirty ref remains
+	st = nil //nolint:wastedassign // drop the caller's strong ref; only the store's dirty ref remains
 
 	// Deliberately do NOT flush. Force GC hard.
 	for range 3 {

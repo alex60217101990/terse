@@ -237,6 +237,8 @@ func TestUnifiedDiff_DeterministicRepeated(t *testing.T) {
 // If pooled scratch buffers ever leaked between goroutines, this would
 // surface as one goroutine's diff contaminated by another's data.
 func TestUnifiedDiff_ParallelDistinctInputs(t *testing.T) {
+	t.Parallel()
+
 	const goroutines = 8
 
 	type input struct{ old, newer []byte }

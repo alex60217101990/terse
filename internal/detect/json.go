@@ -177,10 +177,11 @@ func AnalyzeJSONArray(data []byte, maxRows int) (*ArrayStats, error) {
 					}
 					acc.nums = append(acc.nums, f)
 				}
+			default:
+				// Object/Array/NotExist/Unknown values: counted as observed
+				// above, left untyped (matches the old behavior, where a
+				// nested value failed the scalar Unmarshal and was dropped).
 			}
-			// Object/Array values: counted as observed above, left untyped
-			// (matches the old behavior, where a nested value failed the scalar
-			// Unmarshal and was dropped).
 			return nil
 		})
 	})

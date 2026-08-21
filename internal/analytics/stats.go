@@ -324,7 +324,12 @@ func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) {
 	if jsonOut {
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(s)
+		if err := enc.Encode(s); err != nil {
+			// A NaN/Inf percentage (e.g. TotalBytesIn == 0) is the only way
+			// this can fail; report it rather than leaving the caller with
+			// silently truncated JSON.
+			fmt.Fprintf(os.Stderr, "qdf-hook: stats: encode json: %v\n", err)
+		}
 		return
 	}
 
