@@ -18,7 +18,7 @@ func cmdGC() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gc",
 		Short: "Remove stale session state files by utility score",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if maxSize != "" {
 				_ = os.Setenv("QDF_CACHE_MAX_SIZE", maxSize)
 			}

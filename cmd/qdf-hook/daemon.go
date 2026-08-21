@@ -69,7 +69,7 @@ trip.
   --ping    probe a running daemon and exit 0/1 (for a container HEALTHCHECK)
   --pprof   (with --serve) also serve net/http/pprof on a loopback-only
             addr, e.g. 127.0.0.1:6060 (or $QDF_PPROF)`,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			switch {
 			case ping:
 				// Exit 0/1 explicitly (rather than returning an error for

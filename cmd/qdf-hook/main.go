@@ -73,7 +73,7 @@ It intercepts tool output and compresses it to reduce token consumption.`,
 	// and writing the heap profile happens back in main() after Execute()
 	// returns — not in a PersistentPostRunE, which cobra skips when the
 	// command's RunE returns an error (we still want the profile then).
-	PersistentPreRunE: func(_ *cobra.Command, args []string) error {
+	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 		if cpuprofile == "" {
 			return nil
 		}
@@ -140,7 +140,7 @@ func cmdVersion() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runVersion()
 		},
 	}
@@ -150,7 +150,7 @@ func cmdRead() *cobra.Command {
 	return &cobra.Command{
 		Use:   "read",
 		Short: "Handle PostToolUse hook for the Read tool",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runRead()
 		},
 	}
@@ -160,7 +160,7 @@ func cmdBash() *cobra.Command {
 	return &cobra.Command{
 		Use:   "bash",
 		Short: "Handle PostToolUse hook for the Bash tool",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runBash()
 		},
 	}
@@ -170,7 +170,7 @@ func cmdPreToolUse() *cobra.Command {
 	return &cobra.Command{
 		Use:   "pretooluse",
 		Short: "Handle PreToolUse hook for the Read tool (mtime fast-path)",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runPreToolUse()
 		},
 	}
@@ -180,7 +180,7 @@ func cmdPreCompact() *cobra.Command {
 	return &cobra.Command{
 		Use:   "precompact",
 		Short: "Handle PreCompact hook",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runPreCompact()
 		},
 	}
@@ -190,7 +190,7 @@ func cmdPostCompact() *cobra.Command {
 	return &cobra.Command{
 		Use:   "postcompact",
 		Short: "Handle PostCompact hook",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runPostCompact()
 		},
 	}
@@ -200,7 +200,7 @@ func cmdGlob() *cobra.Command {
 	return &cobra.Command{
 		Use:   "glob",
 		Short: "Handle PostToolUse hook for Glob tool — compress file list to tree",
-		RunE:  func(_ *cobra.Command, args []string) error { return hook.HandleGlob(os.Stdin, os.Stdout) },
+		RunE:  func(_ *cobra.Command, _ []string) error { return hook.HandleGlob(os.Stdin, os.Stdout) },
 	}
 }
 
@@ -208,7 +208,7 @@ func cmdPost() *cobra.Command {
 	return &cobra.Command{
 		Use:   "post",
 		Short: "Universal PostToolUse hook — routes any tool through the pipeline",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runPost()
 		},
 	}
@@ -218,7 +218,7 @@ func cmdGrep() *cobra.Command {
 	return &cobra.Command{
 		Use:   "grep",
 		Short: "Handle PostToolUse hook for Grep tool — group matches by file",
-		RunE:  func(_ *cobra.Command, args []string) error { return hook.HandleGrep(os.Stdin, os.Stdout) },
+		RunE:  func(_ *cobra.Command, _ []string) error { return hook.HandleGrep(os.Stdin, os.Stdout) },
 	}
 }
 
@@ -226,7 +226,7 @@ func cmdWrite() *cobra.Command {
 	return &cobra.Command{
 		Use:   "write",
 		Short: "Handle PostToolUse hook for Write/Edit/MultiEdit — suppress content echo",
-		RunE:  func(_ *cobra.Command, args []string) error { return hook.HandleWrite(os.Stdin, os.Stdout) },
+		RunE:  func(_ *cobra.Command, _ []string) error { return hook.HandleWrite(os.Stdin, os.Stdout) },
 	}
 }
 
@@ -234,7 +234,7 @@ func cmdSessionStart() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sessionstart",
 		Short: "Handle session start hook",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runSessionStart()
 		},
 	}

@@ -16,7 +16,7 @@ func cmdStats() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats",
 		Short: "Show token savings analytics",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			events, err := analytics.LoadEvents(days)
 			if err != nil {
 				return fmt.Errorf("load events: %w", err)

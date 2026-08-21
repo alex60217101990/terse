@@ -67,7 +67,7 @@ By default it edits the global ~/.claude/settings.json. Use --project to edit
 .claude/settings.json in the current directory instead. It is idempotent:
 existing hooks (qdf-hook's or anyone else's) are preserved, and re-running
 never duplicates entries. Restart Claude Code afterwards for the hooks to load.`,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runInit(project, dir, printOnly)
 		},
 	}
