@@ -50,8 +50,13 @@ type LatStat struct {
 	P99 float64 `json:"p99"`
 }
 
-func (s Stats) SavedBytes() int     { return s.TotalBytesIn - s.TotalBytesOut }
-func (s Stats) SavedTokens() int    { return s.TotalTokensIn - s.TotalTokensOut }
+// SavedBytes reports how many bytes the compression avoided sending over the wire.
+func (s Stats) SavedBytes() int { return s.TotalBytesIn - s.TotalBytesOut }
+
+// SavedTokens reports how many tokens the compression avoided billing the model for.
+func (s Stats) SavedTokens() int { return s.TotalTokensIn - s.TotalTokensOut }
+
+// OriginalTokens reports the token count the window would have cost with no compression at all.
 func (s Stats) OriginalTokens() int { return s.TotalTokensIn }
 
 // eventTokens returns an events token counts, falling back to the old bytes/4
@@ -77,6 +82,7 @@ func humanTokens(n int) string {
 	}
 }
 
+// SavingsPercent reports the fraction of the original byte count that compression removed, as 0-100.
 func (s Stats) SavingsPercent() float64 {
 	if s.TotalBytesIn == 0 {
 		return 0
@@ -110,6 +116,7 @@ func normalizeHook(h string) string {
 	return h
 }
 
+// ComputeStats aggregates a session's recorded events into the summary numbers reports display.
 func ComputeStats(events []Event) Stats {
 	s := Stats{
 		ByHookAction: make(map[string]map[string]int),

@@ -37,6 +37,8 @@ func DialAndProxy(sockPath string, in io.Reader, out io.Writer, timeout time.Dur
 // out first keeps the reply all-or-nothing.
 const minExchangeDeadline = 15 * time.Second
 
+// ProxyConn copies in to the connection and the connection's reply to out,
+// bounding the whole exchange by timeout (raised to minExchangeDeadline).
 func ProxyConn(c net.Conn, in io.Reader, out io.Writer, timeout time.Duration) error {
 	defer c.Close()
 	// timeout is a dial-scale bound; give the exchange at least

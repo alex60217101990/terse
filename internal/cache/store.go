@@ -108,6 +108,8 @@ const MaxPooledBufSize = 4 << 20 // 4MB
 // maxPooledSaveBuf is savePool's local name for MaxPooledBufSize.
 const maxPooledSaveBuf = MaxPooledBufSize
 
+// Save persists a session's state to disk, encoding it and evicting the
+// oldest sessions first if the on-disk cache is over its file-count cap.
 func Save(sessionID string, s *SessionState) error {
 	Evict(s, MaxSessionFiles) // auto-evict when over the cap
 

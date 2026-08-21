@@ -32,6 +32,7 @@ func UsageRefsPath() string {
 	return filepath.Join(home, ".qdf-hook", "usage-refs.qdf")
 }
 
+// UsageLastPath is the usage index's last-key sidecar file (see UsageRefsPath).
 func UsageLastPath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".qdf-hook", "usage-last.qdf")
