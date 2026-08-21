@@ -11,8 +11,8 @@ import (
 )
 
 // makeReadInput marshals a PostToolUse Read hook payload as JSON.
-func makeReadInput(t testing.TB, sessionID, path, content string) string {
-	t.Helper()
+func makeReadInput(tb testing.TB, sessionID, path, content string) string {
+	tb.Helper()
 	inp := map[string]any{
 		"session_id":    sessionID,
 		"tool_name":     "Read",

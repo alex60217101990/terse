@@ -51,6 +51,7 @@ func TestVocabularyLoadsLazily(t *testing.T) {
 }
 
 func lazyChild(t *testing.T) {
+	t.Helper()
 	const (
 		// The vocabulary is 200k entries; a map that size cannot fit in less.
 		// Set well below the observed ~30 MB so the bound survives a Go map or
