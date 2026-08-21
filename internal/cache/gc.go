@@ -104,6 +104,7 @@ func SweepBlobs(nowSec int64) {
 	ttl := CacheTTL()
 	PruneDir(RefsDir(), UsageRefsPath(), half, ttl, nowSec, false)
 	PruneDir(LastOutDir(), UsageLastPath(), half, ttl, nowSec, false)
+	GCCaptures(24 * time.Hour)
 }
 
 // AutoSweep runs a throttled blob prune: it calls SweepBlobs at most once per
@@ -115,5 +116,23 @@ func SweepBlobs(nowSec int64) {
 func AutoSweep(nowSec int64) {
 	if ShouldRunGC(nowSec) {
 		SweepBlobs(nowSec)
+	}
+}
+
+// GCCaptures deletes capture files older than maxAge. A capture only exists so a
+// capped view stays recoverable; once the session that produced it is gone,
+// nothing can ask for it again.
+func GCCaptures(maxAge time.Duration) {
+	entries, err := os.ReadDir(CaptureDir())
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-maxAge)
+	for _, e := range entries {
+		info, err := e.Info()
+		if err != nil || info.ModTime().After(cutoff) {
+			continue
+		}
+		_ = os.Remove(filepath.Join(CaptureDir(), e.Name()))
 	}
 }
