@@ -43,7 +43,10 @@ var reqBufPool = sync.Pool{
 // request bytes. Switching to a zero-copy JSON decoder would break this
 // invariant and this pooling with it.
 func readRequest(r io.Reader) *bytes.Buffer {
-	buf := reqBufPool.Get().(*bytes.Buffer)
+	buf, ok := reqBufPool.Get().(*bytes.Buffer)
+	if !ok {
+		panic("reqBufPool: unexpected type")
+	}
 	buf.Reset()
 	_, _ = buf.ReadFrom(r)
 	return buf

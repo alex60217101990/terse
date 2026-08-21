@@ -155,7 +155,10 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 		}
 	}
 	defer func() { _ = ln.Close() }()
-	ul := ln.(*net.UnixListener)
+	ul, ok := ln.(*net.UnixListener)
+	if !ok {
+		return fmt.Errorf("daemon: listener for %q is not a *net.UnixListener", sockPath)
+	}
 
 	// Open one long-lived analytics appender fd for the whole daemon
 	// lifetime and route every hook handler's analytics.Record through it

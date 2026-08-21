@@ -113,7 +113,10 @@ const maxPooledSaveBuf = MaxPooledBufSize
 func Save(sessionID string, s *SessionState) error {
 	Evict(s, MaxSessionFiles) // auto-evict when over the cap
 
-	bufPtr := savePool.Get().(*[]byte)
+	bufPtr, ok := savePool.Get().(*[]byte)
+	if !ok {
+		panic("savePool: unexpected type")
+	}
 	buf, err := AppendEncodeState((*bufPtr)[:0], s)
 	if err != nil {
 		*bufPtr = buf

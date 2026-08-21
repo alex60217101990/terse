@@ -44,7 +44,10 @@ func UnifiedDiff(old, newer []byte, contextLines int) string {
 		return ""
 	}
 
-	buf := bufPool.Get().(*bytes.Buffer)
+	buf, ok := bufPool.Get().(*bytes.Buffer)
+	if !ok {
+		panic("bufPool: unexpected type")
+	}
 	buf.Reset()
 	defer bufPool.Put(buf)
 

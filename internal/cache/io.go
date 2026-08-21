@@ -40,7 +40,10 @@ var blobEncPool = sync.Pool{New: func() any { b := make([]byte, 0, 4096); return
 // rationale as savePool). Returns the encode/write error for the caller to
 // handle (both blob stores are rebuildable caches and ignore it).
 func marshalBlobPooled(path string, v any) error {
-	bufPtr := blobEncPool.Get().(*[]byte)
+	bufPtr, ok := blobEncPool.Get().(*[]byte)
+	if !ok {
+		panic("blobEncPool: unexpected type")
+	}
 	data, err := qdf.AppendMarshal((*bufPtr)[:0], v, qdf.OptBalanced)
 	if err != nil {
 		if cap(data) <= MaxPooledBufSize {
