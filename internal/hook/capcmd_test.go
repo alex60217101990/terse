@@ -36,7 +36,9 @@ func TestCappable(t *testing.T) {
 func TestWrapCommand_Shape(t *testing.T) {
 	got := string(wrapCommand(nil, "ls -la", "/tmp/cap/x.out", "x", 1600))
 	for _, want := range []string{
-		"{ ls -la ; } > '/tmp/cap/x.out' 2>&1",
+		// The group ends in a newline, not " ; ", so a trailing "# comment" on
+		// cmd can't swallow the closing brace.
+		"{ ls -la\n} > '/tmp/cap/x.out' 2>&1",
 		"exit \"$__qrc\"",
 		"qdf-hook expand x",
 	} {
@@ -46,5 +48,14 @@ func TestWrapCommand_Shape(t *testing.T) {
 	}
 	if strings.Contains(got, "( ls -la )") {
 		t.Error("wrapper must use brace grouping, not a subshell: cd must survive")
+	}
+}
+
+func TestWrapCommand_RefusesUnsafeCapturePath(t *testing.T) {
+	// A quote inside capturePath would close the shell's single-quoting early
+	// and hand the rest of the wrapper to the shell as syntax, so wrapCommand
+	// must refuse to emit anything rather than produce a broken command.
+	if got := wrapCommand(nil, "ls -la", "/tmp/o'brien/x.out", "x", 1600); got != nil {
+		t.Errorf("wrapCommand with a quote in capturePath = %q, want nil", got)
 	}
 }

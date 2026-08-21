@@ -58,6 +58,20 @@ func cappable(cmd string) bool {
 	return true
 }
 
+// shellSafeArg reports whether s can be embedded inside a single-quoted shell
+// word without escaping. A quote would close the quoting and hand the rest of
+// the wrapper to the shell as syntax; a newline or control byte would split or
+// corrupt the command. Refusing is always safe here — the command simply runs
+// unwrapped.
+func shellSafeArg(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c == '\'' || c < 0x20 {
+			return false
+		}
+	}
+	return true
+}
+
 // wrapCommand appends to dst a rewrite of cmd that captures the command's full
 // output and prints a bounded view of it.
 //
@@ -67,17 +81,45 @@ func cappable(cmd string) bool {
 // at the bottom — with one elision line between them carrying the recovery
 // handle.
 //
+// The command group ends with a newline, not a semicolon, before its closing
+// brace: cmd may carry a trailing "# comment", and a semicolon on that same
+// line would fall inside the comment and vanish along with the brace that was
+// supposed to close the group.
+//
+// The capture path is probed for writability before cmd ever runs. An
+// unwritable path (a missing directory, a read-only filesystem) falls back to
+// running cmd completely unwrapped, so a bad path never costs the agent its
+// command's real output or exit code.
+//
+// The bookkeeping that decides what to print — exit code, capture size, both
+// ends versus the full capture — runs inside its own subshell. That keeps two
+// promises at once: the subshell's own "exit" reports cmd's real exit code as
+// the wrapper's exit code without terminating the caller's persistent shell,
+// and the bookkeeping variables it uses are local to that subshell and never
+// touch the caller's shell, so there is nothing left over to clean up there.
+//
+// capturePath and id are embedded inside single-quoted shell words; either
+// containing a quote or a control byte would let the rest of the wrapper be
+// reinterpreted as shell syntax, so wrapCommand refuses and returns nil rather
+// than emit a broken command. A nil result means cmd must be run untouched.
+//
 // dst is appended to, never reallocated by the caller's convention: pass a
 // pooled buffer with enough capacity and this does no allocation at all.
 func wrapCommand(dst []byte, cmd, capturePath, id string, capBytes int) []byte {
+	if !shellSafeArg(capturePath) || !shellSafeArg(id) {
+		return nil
+	}
+
 	half := strconv.Itoa(capBytes / 2)
 	cb := strconv.Itoa(capBytes)
 
-	dst = append(dst, "{ "...)
-	dst = append(dst, cmd...)
-	dst = append(dst, " ; } > '"...)
+	dst = append(dst, "if : 2>/dev/null > '"...)
 	dst = append(dst, capturePath...)
-	dst = append(dst, "' 2>&1; __qrc=$?; __qn=$(wc -c < '"...)
+	dst = append(dst, "'; then { "...)
+	dst = append(dst, cmd...)
+	dst = append(dst, "\n} > '"...)
+	dst = append(dst, capturePath...)
+	dst = append(dst, "' 2>&1\n(__qrc=$?; __qn=$(wc -c < '"...)
 	dst = append(dst, capturePath...)
 	dst = append(dst, "'); if [ \"$__qn\" -le "...)
 	dst = append(dst, cb...)
@@ -93,15 +135,16 @@ func wrapCommand(dst []byte, cmd, capturePath, id string, capBytes int) []byte {
 	dst = append(dst, half...)
 	dst = append(dst, " '"...)
 	dst = append(dst, capturePath...)
-	// The exit status must become the original command's, not cat/head/tail's.
-	// Running it inside a subshell sets $? without an unqualified "exit", which
-	// would terminate the caller's shell process before anything after this
-	// wrapper on the same line gets to run.
-	dst = append(dst, "'; fi; (exit \"$__qrc\")"...)
+	dst = append(dst, "'; fi; exit \"$__qrc\")\nelse { "...)
+	dst = append(dst, cmd...)
+	dst = append(dst, "\n}\nfi"...)
 	return dst
 }
 
 // wrapOverhead is the fixed byte cost of wrapCommand's scaffolding, used to size
-// a buffer exactly once. Deliberately generous: a few spare bytes cost nothing,
-// a reallocation costs an allocation on every Bash call.
-const wrapOverhead = 320
+// a buffer exactly once. cmd is embedded twice (the writable and fallback
+// branches) and capturePath six times, so a caller sizing a buffer should add
+// those in on top of this constant, not fold them into it. Deliberately
+// generous: a few spare bytes cost nothing, a reallocation costs an
+// allocation on every Bash call.
+const wrapOverhead = 420

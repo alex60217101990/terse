@@ -103,3 +103,62 @@ func TestWrapped_NoticeFitsBudget(t *testing.T) {
 		t.Errorf("notice is ~%d tokens, budget is 20: %q", tokens, notice)
 	}
 }
+
+// TestWrapped_TrailingCommentDoesNotBreakSyntax protects against a "#" in the
+// agent's own command swallowing the closing brace: `echo hi  # list files` is
+// ordinary output, not shell syntax the wrapper is allowed to choke on.
+func TestWrapped_TrailingCommentDoesNotBreakSyntax(t *testing.T) {
+	out, code := runWrapped(t, "echo hi  # list files", 1600)
+	if out != "hi\n" {
+		t.Errorf("output = %q, want %q", out, "hi\n")
+	}
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+}
+
+// TestWrapped_UnwritableCapturePathFallsBackUnwrapped protects against a
+// missing capture directory silently eating the agent's command: without the
+// writability probe, the failing redirect stops the command before it runs at
+// all and reports a false failure for a command that was never broken.
+func TestWrapped_UnwritableCapturePathFallsBackUnwrapped(t *testing.T) {
+	dir := t.TempDir()
+	cap := filepath.Join(dir, "nonexistent-subdir", "x.out")
+	wrapped := string(wrapCommand(nil, "echo SHOULD-RUN; exit 3", cap, "x", 1600))
+	c := exec.Command("/bin/sh", "-c", wrapped)
+	c.Dir = dir
+	out, err := c.Output()
+	code := 0
+	var ee *exec.ExitError
+	if err != nil {
+		if !errors.As(err, &ee) {
+			t.Fatalf("run %q: %v", wrapped, err)
+		}
+		code = ee.ExitCode()
+	}
+	if string(out) != "SHOULD-RUN\n" {
+		t.Errorf("output = %q, want %q — the command must still run and print", out, "SHOULD-RUN\n")
+	}
+	if code != 3 {
+		t.Errorf("exit code = %d, want 3 — the command's own exit code, not a redirect failure", code)
+	}
+}
+
+// TestWrapped_NoLingeringBookkeepingVars protects the feature's promise that
+// nothing changes except where output goes: __qrc and __qn are bookkeeping
+// this wrapper introduces, and the agent's shell persists across calls, so
+// they must not still be set once the wrapped command has finished.
+func TestWrapped_NoLingeringBookkeepingVars(t *testing.T) {
+	dir := t.TempDir()
+	cap := filepath.Join(dir, "x.out")
+	wrapped := string(wrapCommand(nil, "echo hi", cap, "x", 1600))
+	c := exec.Command("/bin/sh", "-c", wrapped+`; printf 'qrc=%s qn=%s\n' "${__qrc:-GONE}" "${__qn:-GONE}"`)
+	c.Dir = dir
+	out, err := c.Output()
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if !strings.Contains(string(out), "qrc=GONE qn=GONE") {
+		t.Errorf("bookkeeping vars leaked into the caller's shell: %q", out)
+	}
+}
