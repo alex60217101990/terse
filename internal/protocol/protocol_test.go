@@ -188,3 +188,23 @@ func TestEncodeOutput_NilIsSilent(t *testing.T) {
 		t.Errorf("nil output must write nothing, wrote %q", got)
 	}
 }
+
+// TestEncodePreInput_RewritesCommand pins the one field Claude Code honors for
+// input rewriting. Probed against Claude Code 2.1.238: of updatedInput,
+// updatedToolInput, modifiedInput and toolInput, only updatedInput takes effect.
+func TestEncodePreInput_RewritesCommand(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodePreInput(&b, "{ ls ; } > /tmp/c 2>&1"); err != nil {
+		t.Fatalf("EncodePreInput: %v", err)
+	}
+	got := b.String()
+	for _, want := range []string{
+		`"hookEventName":"PreToolUse"`,
+		`"permissionDecision":"allow"`,
+		`"updatedInput":{"command":"{ ls ; } > /tmp/c 2>&1"}`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("response missing %s: %s", want, got)
+		}
+	}
+}

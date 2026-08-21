@@ -288,6 +288,32 @@ func EncodePre(w io.Writer, decision, reason string) error {
 	return enc.Encode(out)
 }
 
+// EncodePreInput writes a PreToolUse response that allows the call and replaces
+// the Bash tool's command with cmd.
+//
+// updatedInput is the only field Claude Code honors for input rewriting; the
+// transcript still records the model's ORIGINAL command, so the replacement text
+// costs no context tokens however long it is. Only the command's OUTPUT changes.
+func EncodePreInput(w io.Writer, cmd string) error {
+	type bashInput struct {
+		Command string `json:"command"`
+	}
+	type preOut struct {
+		HookSpecificOutput struct {
+			HookEventName      string    `json:"hookEventName"`
+			PermissionDecision string    `json:"permissionDecision"`
+			UpdatedInput       bashInput `json:"updatedInput"`
+		} `json:"hookSpecificOutput"`
+	}
+	var out preOut
+	out.HookSpecificOutput.HookEventName = "PreToolUse"
+	out.HookSpecificOutput.PermissionDecision = "allow"
+	out.HookSpecificOutput.UpdatedInput.Command = cmd
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(out)
+}
+
 // Passthrough returns an empty HookOutput that tells Claude Code to use the original output.
 func Passthrough() *HookOutput { return &HookOutput{} }
 
