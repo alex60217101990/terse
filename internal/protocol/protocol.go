@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+
+	"github.com/alex60217101990/terse/internal/bytesconv"
 )
 
 // HookInput is the JSON Claude Code sends to any PostToolUse hook on stdin.
@@ -233,24 +235,76 @@ type HookSpecificOutput struct {
 
 // DecodeInput reads exactly one JSON object from r.
 func DecodeInput(r io.Reader) (*HookInput, error) {
-	var inp HookInput
-	if err := json.NewDecoder(r).Decode(&inp); err != nil {
+	// Read the whole request first: it is one small JSON object, and the byte
+	// path below hands out values that alias this buffer, which a streaming
+	// decoder's rotating buffer could not promise. The buffer is not pooled for
+	// the same reason — the HookInput outlives this call.
+	data, err := io.ReadAll(r)
+	if err != nil {
 		return nil, err
 	}
-	return &inp, nil
+	return DecodeInputBytes(data)
 }
 
-// DecodeInputBytes decodes one HookInput from a fully-buffered request via
-// json.Unmarshal, avoiding the json.Decoder buffering that DecodeInput's
-// io.Reader path pays. For callers (the daemon) that already hold the whole
-// request slice.
+// DecodeInputBytes decodes one HookInput from a fully-buffered request.
+//
+// The scan is zero-copy where it can be: tool_input and tool_response are
+// sliced straight out of data instead of being copied, and only the handful of
+// string fields the pipeline keeps are allocated. data must stay valid and
+// unmodified for as long as the returned HookInput is used.
 func DecodeInputBytes(data []byte) (*HookInput, error) {
-	var inp HookInput
-	if err := json.Unmarshal(data, &inp); err != nil {
+	inp := &HookInput{}
+	// The five string fields are gathered raw and materialized together, so a
+	// request costs one string allocation instead of one per field.
+	var raw [numStrFields][]byte
+	err := scanObject(data, func(key, val []byte) error {
+		switch bytesconv.B2S(key) {
+		case "session_id":
+			raw[fieldSessionID] = val
+		case "tool_name":
+			raw[fieldToolName] = val
+		case "hook_event_name":
+			raw[fieldEventName] = val
+		case "agent_id":
+			raw[fieldAgentID] = val
+		case "transcript_path":
+			raw[fieldTranscript] = val
+		case "tool_input":
+			inp.ToolInput = val
+		case "tool_response":
+			if len(val) == 0 || bytesconv.B2S(val) == "null" {
+				return nil
+			}
+			tr := &ToolResponse{}
+			if err := tr.UnmarshalJSON(val); err != nil {
+				return err
+			}
+			inp.ToolResponse = tr
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	return &inp, nil
+	var out [numStrFields]string
+	joinStrings(&out, &raw)
+	inp.SessionID = out[fieldSessionID]
+	inp.ToolName = out[fieldToolName]
+	inp.HookEventName = out[fieldEventName]
+	inp.AgentID = out[fieldAgentID]
+	inp.TranscriptPath = out[fieldTranscript]
+	return inp, nil
 }
+
+// The string fields of a request, in the order they are packed.
+const (
+	fieldSessionID = iota
+	fieldToolName
+	fieldEventName
+	fieldAgentID
+	fieldTranscript
+	numStrFields
+)
 
 // EncodeOutput writes HookOutput as JSON to w followed by a newline, and writes
 // NOTHING when there is nothing to say.
