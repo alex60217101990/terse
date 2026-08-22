@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"os"
@@ -63,7 +64,67 @@ func cappable(cmd string) bool {
 			return false
 		}
 	}
-	return true
+	return !denied(b)
+}
+
+// denied reports whether the command is on spec §6's interactive/streaming
+// deny list: an editor, a pager, a REPL, a remote shell, or a watcher.
+//
+// Wrapping redirects the program's stdout into a file, which is wrong twice
+// over for these — a program the caller drives loses the terminal it expects,
+// and a watcher that never returns loses the partial output the agent would
+// otherwise see when the call times out. A false positive here costs only a
+// missed capping opportunity, which is exactly today's behavior, so the scan
+// errs toward refusing.
+//
+// The scan walks words in place: no split, no allocation, and the switches are
+// over compile-time constants so comparing a subslice never copies it.
+func denied(b []byte) bool {
+	prog := true // the next word is a program name, not an argument
+	for i := 0; i < len(b); {
+		for i < len(b) && (b[i] == ' ' || b[i] == '\t' || b[i] == '\n') {
+			i++
+		}
+		start := i
+		for i < len(b) && b[i] != ' ' && b[i] != '\t' && b[i] != '\n' {
+			i++
+		}
+		w := b[start:i]
+		if len(w) == 0 {
+			break
+		}
+		switch bytesconv.B2S(w) {
+		case "-w", "--watch", "watch":
+			return true
+		}
+		// A separator hands the next word back to the program position, so
+		// "cd /tmp && vim x" is caught as surely as "vim x".
+		if w[len(w)-1] == ';' || bytesconv.B2S(w) == "&&" || bytesconv.B2S(w) == "||" {
+			prog = true
+			continue
+		}
+		if !prog {
+			continue
+		}
+		if bytes.IndexByte(w, '=') >= 0 {
+			continue // an env assignment: the program name is still ahead
+		}
+		prog = false
+		if j := bytes.LastIndexByte(w, '/'); j >= 0 {
+			w = w[j+1:] // match on the basename, so /usr/bin/vi counts as vi
+		}
+		switch bytesconv.B2S(w) {
+		case "vi", "vim", "nvim", "emacs", "nano",
+			"less", "more", "man",
+			"top", "htop",
+			"ssh", "telnet", "ftp", "sftp",
+			"tmux", "screen",
+			"python", "python3", "node", "irb", "psql", "mysql", "redis-cli", "sqlite3",
+			"gdb", "lldb":
+			return true
+		}
+	}
+	return false
 }
 
 // shellSafeArg reports whether s can be embedded inside a single-quoted shell

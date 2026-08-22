@@ -33,6 +33,36 @@ func TestCappable(t *testing.T) {
 	}
 }
 
+// TestCappable_Interactive covers spec §6's interactive/streaming deny list:
+// wrapping sends the program's stdout to a file, which is wrong for anything
+// the caller drives or streams from.
+func TestCappable_Interactive(t *testing.T) {
+	cases := []struct {
+		cmd  string
+		want bool
+	}{
+		{"vim foo", false},
+		{"ssh host uptime", false},
+		{"less README.md", false},
+		{"top -l 1", false},
+		{"python", false},
+		{"/usr/bin/vi notes.txt", false}, // matched on the basename
+		{"GOWORK=off vim foo", false},    // env assignments are skipped
+		{"cargo watch -x test", false},   // watch anywhere in the words
+		{"go test --watch ./...", false}, // long flag form
+		{"tsc -w", false},                // short flag form
+		{"vimdiff-report --list", true},  // prefix of a denied name only
+		{"git commit -m 'ssh'", true},    // denied name only as a word
+		{"grep -w pattern file", false},  // spec §6 denies a bare -w word
+		{"grep -we pattern file", true},  // only the exact word, not a prefix
+	}
+	for _, c := range cases {
+		if got := cappable(c.cmd); got != c.want {
+			t.Errorf("cappable(%q) = %v, want %v", c.cmd, got, c.want)
+		}
+	}
+}
+
 func TestWrapCommand_Shape(t *testing.T) {
 	got := string(wrapCommand(nil, "ls -la", "/tmp/cap/x.out", "x", 1600))
 	for _, want := range []string{
