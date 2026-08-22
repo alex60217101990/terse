@@ -25,9 +25,6 @@ func TestCoverageProbe(t *testing.T) {
 		if cappable(cmd) {
 			return "cappable"
 		}
-		if denied([]byte(cmd)) {
-			return "interactive"
-		}
 		onlyMerge := true // every redirect seen so far is a harmless 2>&1
 		for i := 0; i < len(cmd); i++ {
 			switch c := cmd[i]; c {

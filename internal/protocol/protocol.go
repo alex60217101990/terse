@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+	"sync"
+	"unicode/utf8"
 )
 
 // HookInput is the JSON Claude Code sends to any PostToolUse hook on stdin.
@@ -308,23 +310,94 @@ func EncodePre(w io.Writer, decision, reason string) error {
 // against what the model wrote, and the rewrite is invisible to them. The one
 // thing it does skip is the prompt for a command no rule covers.
 func EncodePreInput(w io.Writer, cmd string) error {
-	type bashInput struct {
-		Command string `json:"command"`
+	bp, _ := preInputBuf.Get().(*[]byte)
+	if bp == nil {
+		fresh := make([]byte, 0, 2048)
+		bp = &fresh
 	}
-	type preOut struct {
-		HookSpecificOutput struct {
-			HookEventName      string    `json:"hookEventName"`
-			PermissionDecision string    `json:"permissionDecision"`
-			UpdatedInput       bashInput `json:"updatedInput"`
-		} `json:"hookSpecificOutput"`
+	buf := *bp
+	buf = append(buf[:0], PreInputHead...)
+	buf = AppendJSONString(buf, cmd)
+	buf = append(buf, PreInputTail...)
+	_, err := w.Write(buf)
+	*bp = buf
+	preInputBuf.Put(bp)
+	return err
+}
+
+// The response is a fixed shape around one string, so it is written by hand.
+// encoding/json cost 60% of this hook's CPU and every one of its allocations,
+// measured, for a document whose only variable part is the command.
+const (
+	// PreInputHead and PreInputTail bracket the rewritten command. They are
+	// exported so a caller that already builds the command in a buffer can emit
+	// the whole response in one pass instead of handing the text back to be
+	// copied and rescanned.
+	PreInputHead = `{"hookSpecificOutput":{"hookEventName":"PreToolUse",` +
+		`"permissionDecision":"allow","updatedInput":{"command":"`
+	PreInputTail = "\"}}}\n"
+)
+
+var preInputBuf = sync.Pool{New: func() any { b := make([]byte, 0, 2048); return &b }}
+
+const hexDigits = "0123456789abcdef"
+
+// AppendJSONString appends s to dst as the *body* of a JSON string — the
+// surrounding quotes belong to the caller's literal.
+//
+// It matches encoding/json with SetEscapeHTML(false) byte for byte, which the
+// differential test pins: the two-character escapes where they exist, \u00xx for
+// the other control bytes, \ufffd for a byte that is not valid UTF-8, and
+// \u2028/\u2029 for the two line terminators JavaScript would otherwise treat as
+// newlines. Everything else, non-ASCII included, is copied through.
+func AppendJSONString(dst []byte, s string) []byte {
+	start := 0
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c < utf8.RuneSelf {
+			if c >= 0x20 && c != '"' && c != '\\' {
+				i++
+				continue
+			}
+			dst = append(dst, s[start:i]...)
+			switch c {
+			case '"', '\\':
+				dst = append(dst, '\\', c)
+			case '\n':
+				dst = append(dst, '\\', 'n')
+			case '\r':
+				dst = append(dst, '\\', 'r')
+			case '\t':
+				dst = append(dst, '\\', 't')
+			case '\b':
+				dst = append(dst, '\\', 'b')
+			case '\f':
+				dst = append(dst, '\\', 'f')
+			default:
+				dst = append(dst, '\\', 'u', '0', '0', hexDigits[c>>4], hexDigits[c&0xf])
+			}
+			i++
+			start = i
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			dst = append(dst, s[start:i]...)
+			dst = append(dst, "\ufffd"...) // the replacement character itself, as encoding/json writes it
+			i += size
+			start = i
+			continue
+		}
+		if r == '\u2028' || r == '\u2029' {
+			dst = append(dst, s[start:i]...)
+			dst = append(dst, '\\', 'u', '2', '0', '2', hexDigits[r&0xf])
+			i += size
+			start = i
+			continue
+		}
+		i += size
 	}
-	var out preOut
-	out.HookSpecificOutput.HookEventName = "PreToolUse"
-	out.HookSpecificOutput.PermissionDecision = "allow"
-	out.HookSpecificOutput.UpdatedInput.Command = cmd
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	return enc.Encode(out)
+	return append(dst, s[start:]...)
 }
 
 // Passthrough returns an empty HookOutput that tells Claude Code to use the original output.

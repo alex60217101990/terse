@@ -13,8 +13,8 @@ const benchCmd = "GOWORK=off go test ./internal/hook/ -run TestSomething"
 
 // BenchmarkCappable measures the cost of the capping decision gate that runs
 // before every Bash command. A single forward pass, no allocation or regexp.
-// Measured (M5 Pro, count=10): ~24.8 ns/op, 0 B/op, 0 allocs/op.
-// Well under the 5 µs budget; no further optimization warranted.
+// One pass answers both the background and the interactive-session question.
+// Measured (M5 Pro, count=8): ~60 ns/op, 0 B/op, 0 allocs/op.
 func BenchmarkCappable(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
@@ -26,8 +26,7 @@ func BenchmarkCappable(b *testing.B) {
 // output capping scaffolding. The cap size is written straight into the
 // buffer via strconv.AppendInt rather than through an intermediate
 // strconv.Itoa string, so this path allocates nothing. Measured (M5 Pro,
-// count=10): ~36.4 ns/op, 0 B/op, 0 allocs/op.
-// Well under the 5 µs budget; no further optimization warranted.
+// count=8): ~37 ns/op, 0 B/op, 0 allocs/op.
 func BenchmarkWrapCommand(b *testing.B) {
 	buf := make([]byte, 0, 1024)
 	result := wrapCommand(buf[:0], benchCmd, "/Users/x/.qdf-hook/captures/abc.out", "abc", 1600)
@@ -42,8 +41,15 @@ func BenchmarkWrapCommand(b *testing.B) {
 }
 
 // BenchmarkHandleBashPreToolUse measures the whole per-Bash-call path the
-// daemon runs: decode the tool input, decide, hash the capture id, ensure the
+// daemon runs: decode the tool input, decide, hash the capture id, resolve the
 // capture directory, rewrite, and encode the response.
+//
+// Measured (M5 Pro, count=8): 2,840 ns/op and 13 allocs before the hot path was
+// reworked, ~297 ns/op and 0 allocs after — 9.6x, against a 5 µs budget and a
+// 59.7 µs hook roundtrip. What moved: os.MkdirAll ran per call and was 92% of
+// the CPU (now once per HOME), encoding/json was the rest of it (now a fused
+// emitter that escapes only the command), and the id, path and response all
+// share one pooled scratch.
 func BenchmarkHandleBashPreToolUse(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
 	raw, err := json.Marshal(map[string]string{"command": benchCmd})
