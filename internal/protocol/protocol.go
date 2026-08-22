@@ -415,12 +415,27 @@ var preInputBuf = sync.Pool{New: func() any { b := make([]byte, 0, 2048); return
 // Returns nil if the encoder refuses the string, which leaves the caller to
 // skip whatever it was building rather than emit a broken document.
 func AppendJSONString(dst []byte, s string) []byte {
+	return appendEscaped(dst, s, utf8Lenient)
+}
+
+// AppendJSONStringStrict is AppendJSONString for a string whose bytes must
+// survive unchanged. It refuses (returns nil) a string that is not valid
+// UTF-8, where the lenient form would substitute U+FFFD.
+//
+// The difference matters when the escaped string is a command: substituting a
+// byte would hand the shell something other than what the model wrote, and a
+// command that cannot be represented is better run unwrapped than altered.
+func AppendJSONStringStrict(dst []byte, s string) []byte {
+	return appendEscaped(dst, s, utf8Strict)
+}
+
+func appendEscaped(dst []byte, s string, utf8Opt jsontext.Options) []byte {
 	e, _ := escaperPool.Get().(*escaper)
 	if e == nil {
 		e = newEscaper()
 	}
 	e.out.b = dst
-	e.enc.Reset(&e.out, escapeOpts, utf8Opts)
+	e.enc.Reset(&e.out, escapeOpts, utf8Opt)
 	err := e.enc.WriteToken(jsontext.String(s))
 	b := e.out.b
 	e.out.b = nil
@@ -450,13 +465,14 @@ func (w *sliceWriter) Write(p []byte) (int, error) {
 
 var (
 	escapeOpts  = jsontext.EscapeForJS(true)
-	utf8Opts    = jsontext.AllowInvalidUTF8(true)
+	utf8Lenient = jsontext.AllowInvalidUTF8(true)
+	utf8Strict  = jsontext.AllowInvalidUTF8(false)
 	escaperPool = sync.Pool{New: func() any { return newEscaper() }}
 )
 
 func newEscaper() *escaper {
 	e := &escaper{}
-	e.enc = jsontext.NewEncoder(&e.out, escapeOpts, utf8Opts)
+	e.enc = jsontext.NewEncoder(&e.out, escapeOpts, utf8Lenient)
 	return e
 }
 

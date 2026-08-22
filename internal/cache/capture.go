@@ -18,3 +18,14 @@ func CaptureDir() string {
 func CapturePath(id string) string {
 	return filepath.Join(CaptureDir(), filepath.Base(id)+".out")
 }
+
+// CaptureGet returns the full output parked under id, if the capture is still
+// on disk. A capture is deleted by GCCaptures once it ages out, and a capped
+// view older than that simply cannot be recovered any more.
+func CaptureGet(id string) (string, bool) {
+	data, err := os.ReadFile(CapturePath(id))
+	if err != nil {
+		return "", false
+	}
+	return string(data), true
+}

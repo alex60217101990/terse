@@ -263,6 +263,10 @@ func wrapCommand(dst []byte, cmd, capturePath, id string, capBytes int) []byte {
 // escapedPath must be the JSON-escaped form of capturePath. The id is hex and
 // the two numbers are decimal, so neither can contain a byte JSON escapes.
 //
+// Returns nil if the command cannot be encoded as a JSON string, so a refusal
+// discards the half-built document instead of shipping one with the envelope
+// missing.
+//
 // Unlike wrapCommand this does not re-validate the path's shell safety: the
 // only untrusted part of it is $HOME, which captureDirReady checks once per
 // process. Callers that build a path some other way must call shellSafeArg
@@ -279,7 +283,15 @@ func appendWrappedJSON(dst []byte, cmd, escapedPath, id string, capBytes int) []
 		case partPath:
 			dst = append(dst, escapedPath...)
 		case partCmd:
-			dst = protocol.AppendJSONString(dst, cmd)
+			// Strict: a command that is not valid UTF-8 would come out of the
+			// lenient escaper with U+FFFD in place of those bytes, and the
+			// shell would then run something the model did not write. Refusing
+			// leaves it to run unwrapped, exactly as it does today.
+			escaped := protocol.AppendJSONStringStrict(dst, cmd)
+			if escaped == nil {
+				return nil
+			}
+			dst = escaped
 		case partID:
 			dst = append(dst, id...)
 		case partCap:
@@ -381,17 +393,25 @@ func captureDirReady() *captureDirState {
 		return st
 	}
 	dir := cache.CaptureDir()
+	escaped := protocol.AppendJSONString(nil, dir)
 	st := &captureDirState{
 		home:       home,
 		dir:        dir,
-		escapedDir: string(protocol.AppendJSONString(nil, dir)),
-		// $HOME is not ours: a quote or a control byte in it would break out of
-		// the wrapper's shell quoting. Checked here, once, so the hot path does
-		// not rescan a constant — the rest of the capture path is hex plus a
-		// fixed suffix and cannot contain either.
-		ok: shellSafeArg(dir) && os.MkdirAll(dir, 0o700) == nil,
+		escapedDir: string(escaped),
+		// $HOME is not ours. A quote or a control byte in it would break out of
+		// the wrapper's shell quoting, and a byte the JSON encoder refuses
+		// would leave the response with an empty path. Both are checked here,
+		// once, so the hot path does not rescan a constant — the rest of the
+		// capture path is hex plus a fixed suffix and can contain neither.
+		ok: escaped != nil && shellSafeArg(dir) && os.MkdirAll(dir, 0o700) == nil,
 	}
 	captureDirCache.Store(st)
+	// Captures are swept by the daemon's periodic tick, which a CLI-only setup
+	// never runs. AutoSweep is stamped to fire at most once a day, and this
+	// runs once per process, so the cost lands on one Bash call in a day.
+	if st.ok {
+		cache.AutoSweep(time.Now().Unix())
+	}
 	return st
 }
 
@@ -511,8 +531,12 @@ func handleBashPreToolUse(inp *protocol.HookInput, w io.Writer) error {
 	// directory is fixed, but $HOME is not ours — a quote in it would break out
 	// of the quoting. wrapCommand refuses such a path and returns nil, and then
 	// the command runs untouched.
-	sc.out = appendWrappedJSON(sc.out[:0], cmd, bytesconv.B2S(sc.epath), id, capBytes)
-	b := sc.out
+	b := appendWrappedJSON(sc.out[:0], cmd, bytesconv.B2S(sc.epath), id, capBytes)
+	if b == nil {
+		capPool.Put(sc) // the command is not encodable: run it untouched
+		return nil
+	}
+	sc.out = b
 	_, err := w.Write(b)
 	capPool.Put(sc)
 	return err

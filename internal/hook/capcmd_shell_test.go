@@ -162,3 +162,82 @@ func TestWrapped_NoLingeringBookkeepingVars(t *testing.T) {
 		t.Errorf("bookkeeping vars leaked into the caller's shell: %q", out)
 	}
 }
+
+// TestWrapped_MatchesPlainRun is the differential the widened skip list rests
+// on: for every shape the scanner now accepts, running the command wrapped
+// must produce the same bytes, the same exit code and the same effect on the
+// caller's shell as running it plainly.
+//
+// Both sides run in one /bin/sh -c, with the probe appended after the command,
+// so a lost cd or a lost variable shows up as a difference in the probe's
+// output rather than as a silent pass.
+func TestWrapped_MatchesPlainRun(t *testing.T) {
+	cases := []struct {
+		name  string
+		cmd   string
+		probe string // runs after cmd, in the same shell
+	}{
+		{"plain", "echo hello", ""},
+		{"pipeline", "seq 1 20 | grep 7", ""},
+		{"pipeline exit code", "true | false", ""},
+		{"early exit stage", "yes | head -3", ""},
+		{"merge redirect", "sh -c 'echo out; echo err 1>&2' 2>&1", ""},
+		{"own redirect", "printf 'x\\n' > f; cat f", ""},
+		{"append redirect", "echo one >> f; echo two >> f; cat f", ""},
+		{"discard stderr", "ls nonexistent 2>/dev/null; echo rc=$?", ""},
+		{"stdin redirect", "printf 'b\\na\\n' > in; sort < in", ""},
+		{"heredoc", "cat <<'EOF'\nalpha\nbeta\nEOF", ""},
+		{"heredoc into pipe", "cat <<'EOF' | sort -r\na\nb\nEOF", ""},
+		{"substitution", "echo v=$(printf 42)", ""},
+		{"backtick", "echo v=`printf 43`", ""},
+		{"assignment survives", "V=$(printf 7)", "echo after=$V"},
+		{"export survives", "export QQ=9", "echo qq=$QQ"},
+		{"cd survives", "cd /", "pwd"},
+		{"trailing comment", "echo hi # a note", ""},
+		{"failing command", "sh -c 'exit 3'", "echo rc=$?"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if !cappable(c.cmd) {
+				t.Fatalf("the scanner refuses %q, so this case is not exercising the wrapper", c.cmd)
+			}
+			plain, plainCode := runInShell(t, c.cmd, c.probe, "")
+			dir := t.TempDir()
+			capPath := filepath.Join(dir, "x.out")
+			wrapped := string(wrapCommand(nil, c.cmd, capPath, "x", 1600))
+			got, gotCode := runInShell(t, wrapped, c.probe, dir)
+			if got != plain {
+				t.Errorf("output differs:\n plain %q\n wrapped %q", plain, got)
+			}
+			if gotCode != plainCode {
+				t.Errorf("exit code differs: plain %d, wrapped %d", plainCode, gotCode)
+			}
+		})
+	}
+}
+
+// runInShell runs body (plus an optional probe) in one shell and returns its
+// merged output and exit code. dir is the working directory; empty means a
+// fresh temp dir, so the two sides of a comparison never see each other's files.
+func runInShell(t *testing.T, body, probe, dir string) (string, int) {
+	t.Helper()
+	if dir == "" {
+		dir = t.TempDir()
+	}
+	script := body
+	if probe != "" {
+		script += "\n" + probe
+	}
+	c := exec.Command("/bin/sh", "-c", script)
+	c.Dir = dir
+	out, err := c.CombinedOutput()
+	code := 0
+	var ee *exec.ExitError
+	if err != nil {
+		if !errors.As(err, &ee) {
+			t.Fatalf("run %q: %v", script, err)
+		}
+		code = ee.ExitCode()
+	}
+	return string(out), code
+}

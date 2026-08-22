@@ -36,12 +36,23 @@ var reqBufPool = sync.Pool{
 // call), whereas `defer putRequest(buf)` running once per handler is
 // open-coded by the compiler with no allocation.
 //
-// SAFETY: the returned buffer's bytes alias pooled storage, so the caller
-// must not retain them past putRequest. This is sound in handleConn because
-// protocol.DecodeInput uses encoding/json, which copies every string out of
-// the input into fresh Go strings — nothing the store retains aliases the
-// request bytes. Switching to a zero-copy JSON decoder would break this
-// invariant and this pooling with it.
+// SAFETY: the returned buffer's bytes alias pooled storage, so nothing may
+// retain them past putRequest.
+//
+// The decoder IS zero-copy as of the jsontext scan: HookInput.ToolInput and the
+// bytes ToolResponse is parsed from are slices of this buffer, not copies. What
+// keeps the pooling sound is that nothing outlives the dispatch call:
+//
+//   - the string fields of a request (session id, tool name, paths) are packed
+//     into their own allocation by the decoder, not sliced from the request;
+//   - ToolResponse decodes its fields into fresh strings;
+//   - every handler that reads ToolInput either unmarshals it into a struct,
+//     hashes it, or appends it into a buffer before returning.
+//
+// TestDispatchBytes_RetainsNothing scribbles over the buffer after dispatch and
+// fails if anything the store kept changed. A handler that wants to keep bytes
+// from ToolInput must copy them; the test is there to catch the one that
+// forgets.
 func readRequest(r io.Reader) *bytes.Buffer {
 	buf, ok := reqBufPool.Get().(*bytes.Buffer)
 	if !ok {
