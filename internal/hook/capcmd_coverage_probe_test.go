@@ -22,6 +22,9 @@ func TestCoverageProbe(t *testing.T) {
 		if cmd == "" {
 			return "empty"
 		}
+		if cappable(cmd) {
+			return "cappable"
+		}
 		if denied([]byte(cmd)) {
 			return "interactive"
 		}
@@ -64,7 +67,7 @@ func TestCoverageProbe(t *testing.T) {
 		return "cappable" // includes commands whose only redirect is 2>&1
 	}
 
-	type stat struct{ n, bytes, over int }
+	type stat struct{ n, bytes, over, nOver, maxB int }
 	byClass := map[string]*stat{}
 	add := func(class string, n int) {
 		s := byClass[class]
@@ -74,8 +77,12 @@ func TestCoverageProbe(t *testing.T) {
 		}
 		s.n++
 		s.bytes += n
+		if n > s.maxB {
+			s.maxB = n
+		}
 		if n > 1600 {
 			s.over += n - 1600
+			s.nOver++
 		}
 	}
 
@@ -161,10 +168,11 @@ func TestCoverageProbe(t *testing.T) {
 	t.Logf("paired Bash results: %d, output %d bytes, over-cap %d bytes", totalN, totalB, totalOver)
 	for _, k := range keys {
 		v := byClass[k]
-		t.Logf("  %-13s calls %6d (%4.1f%%)  bytes %9d (%4.1f%%)  over-cap %9d (%4.1f%%)",
+		t.Logf("  %-13s calls %6d (%4.1f%%)  over-cap calls %5d (%4.1f%% of class)  bytes %9d (%4.1f%%)  over-cap %9d (%4.1f%%)  max %8d",
 			k, v.n, 100*float64(v.n)/float64(totalN),
+			v.nOver, 100*float64(v.nOver)/float64(v.n),
 			v.bytes, 100*float64(v.bytes)/float64(totalB),
-			v.over, 100*float64(v.over)/float64(totalOver))
+			v.over, 100*float64(v.over)/float64(totalOver), v.maxB)
 	}
 	_ = strings.TrimSpace
 }

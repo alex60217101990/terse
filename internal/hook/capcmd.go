@@ -47,10 +47,20 @@ func cappable(cmd string) bool {
 			continue
 		}
 		switch c {
-		case '&', '|':
-			// Doubled forms are ordinary control flow and stay in the current
-			// shell under brace grouping. A single one backgrounds or pipes.
-			if i+1 < len(b) && b[i+1] == c {
+		case '|':
+			// A pipeline stays inside the brace group, so its output, its exit
+			// code and its SIGPIPE behavior are unchanged by the wrapper
+			// (verified against bash, sh and zsh). "|&" is a different beast —
+			// the '&' that follows disqualifies it on the next iteration.
+			if i+1 < len(b) && b[i+1] == '|' {
+				i++
+			}
+			continue
+		case '&':
+			// "&&" is ordinary control flow and stays in the current shell
+			// under brace grouping. A single one backgrounds: the capture would
+			// be raced.
+			if i+1 < len(b) && b[i+1] == '&' {
 				i++
 				continue
 			}
@@ -102,8 +112,18 @@ func denied(b []byte) bool {
 		for i < len(b) && (b[i] == ' ' || b[i] == '\t' || b[i] == '\n') {
 			i++
 		}
+		if i < len(b) && b[i] == '|' {
+			// A pipe stage is a command of its own: "cat f | less" has to be
+			// caught as surely as "less f".
+			i++
+			if repl {
+				return true
+			}
+			prog, repl = true, false
+			continue
+		}
 		start := i
-		for i < len(b) && b[i] != ' ' && b[i] != '\t' && b[i] != '\n' {
+		for i < len(b) && b[i] != ' ' && b[i] != '\t' && b[i] != '\n' && b[i] != '|' {
 			i++
 		}
 		w := b[start:i]

@@ -15,7 +15,7 @@ func TestCappable(t *testing.T) {
 		{"cd /tmp && ls", true},          // && is safe under brace grouping
 		{"make a || make b", true},       // so is ||
 		{"cd /tmp; ls", true},            // and ;
-		{"ls | head -20", false},         // agent already bounded its output
+		{"ls | head -20", true},          // a pipeline stays inside the group
 		{"cat f > out.txt", false},       // routes its own stdout
 		{"go build ./... 2>&1", true},    // a merge routes nothing out
 		{"go build 2>&1 > o.txt", false}, // a merge plus a real redirect still routes
@@ -25,7 +25,7 @@ func TestCappable(t *testing.T) {
 		{"echo $(date)", false},          // substitution consumed by the caller
 		{"echo `date`", false},           // same, backtick form
 		{"sleep 5\\&&", false},           // \& is a literal; the second & backgrounds
-		{"echo a\\||wc -l", false},       // \| is a literal; the second | is a real pipe
+		{"echo a\\||wc -l", true},        // \| is a literal; the real pipe is fine
 		{"", false},                      // nothing to wrap
 	}
 	for _, c := range cases {
@@ -52,6 +52,9 @@ func TestCappable_Interactive(t *testing.T) {
 		{"GOWORK=off vim foo", false},    // env assignments are skipped
 		{"cd /tmp && vim x", false},      // a separator re-arms the scan
 		{"cargo watch -x test", false},   // the watch program
+		{"git log|vim -", false},         // a pipe stage is a command of its own
+		{"cat f | less", true},           // less reads as cat once stdout is a file
+		{"git log | head -20", true},     // an ordinary pipeline
 		{"go test --watch ./...", false}, // the long flag form
 		{"ssh host uptime", true},        // ssh is not on the list: no TTY either way
 		{"python3 -c 'print(1)'", true},  // a script run, not a session
@@ -107,10 +110,10 @@ func TestPreToolUse_Bash_RewritesWhenCappable(t *testing.T) {
 	}
 }
 
-func TestPreToolUse_Bash_LeavesPipedCommandAlone(t *testing.T) {
+func TestPreToolUse_Bash_LeavesRedirectingCommandAlone(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	in := `{"session_id":"s","hook_event_name":"PreToolUse","tool_name":"Bash",` +
-		`"tool_input":{"command":"ls | head -5"}}`
+		`"tool_input":{"command":"ls > out.txt"}}`
 	var out strings.Builder
 	if err := HandlePreToolUse(strings.NewReader(in), &out); err != nil {
 		t.Fatalf("HandlePreToolUse: %v", err)
