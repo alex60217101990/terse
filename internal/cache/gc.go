@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -91,6 +92,16 @@ func RunGC(dryRun bool, minScore float64) (GCResult, error) {
 		result.BlobBytesFreed += freed
 	}
 
+	// Captures are their own store with their own bound; a manual gc that left
+	// them alone would report a tidy cache while the biggest directory grew.
+	// Nothing to dry-run against: GCCaptures reports only what it deleted, so
+	// a dry run skips it rather than pretending.
+	if !dryRun {
+		rm, freed := GCCaptures(CaptureTTL())
+		result.BlobsRemoved += rm
+		result.BlobBytesFreed += freed
+	}
+
 	return result, err
 }
 
@@ -104,7 +115,7 @@ func SweepBlobs(nowSec int64) {
 	ttl := CacheTTL()
 	PruneDir(RefsDir(), UsageRefsPath(), half, ttl, nowSec, false)
 	PruneDir(LastOutDir(), UsageLastPath(), half, ttl, nowSec, false)
-	GCCaptures(24 * time.Hour)
+	_, _ = GCCaptures(CaptureTTL())
 }
 
 // AutoSweep runs a throttled blob prune: it calls SweepBlobs at most once per
@@ -119,20 +130,77 @@ func AutoSweep(nowSec int64) {
 	}
 }
 
-// GCCaptures deletes capture files older than maxAge. A capture only exists so a
-// capped view stays recoverable; once the session that produced it is gone,
-// nothing can ask for it again.
-func GCCaptures(maxAge time.Duration) {
-	entries, err := os.ReadDir(CaptureDir())
-	if err != nil {
-		return
+// CaptureMaxSize caps the total bytes parked in captures/. A capture is only
+// worth keeping until the model asks for the elided output back, which happens
+// within the turn or not at all, so this is deliberately smaller than the
+// refs/last cap: a heavy day can produce thousands of them.
+const CaptureMaxSize = 32 << 20 // 32 MiB
+
+// DefaultCaptureTTL is how long a capture stays recoverable. A capped view is
+// asked about within the turn that produced it or never, so this is a day, not
+// the 30 the blob stores keep.
+const DefaultCaptureTTL = 24 * time.Hour
+
+// CaptureTTL is the capture age limit: env QDF_CAPTURE_TTL (a Go duration), or
+// DefaultCaptureTTL when unset or unparseable.
+func CaptureTTL() time.Duration {
+	if v := os.Getenv("QDF_CAPTURE_TTL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
 	}
+	return DefaultCaptureTTL
+}
+
+// GCCaptures prunes captures/ by age and then by size, and reports what it
+// removed. Age alone is not a bound: a heavy session can write thousands of
+// captures inside one TTL window, so whatever is left after the age pass is
+// trimmed oldest-first until it fits CaptureMaxSize.
+func GCCaptures(maxAge time.Duration) (removed int, freed int64) {
+	dir := CaptureDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0, 0
+	}
+	type capture struct {
+		path string
+		size int64
+		mod  int64
+	}
+	kept := make([]capture, 0, len(entries))
+	var total int64
 	cutoff := time.Now().Add(-maxAge)
 	for _, e := range entries {
-		info, err := e.Info()
-		if err != nil || info.ModTime().After(cutoff) {
+		info, ierr := e.Info()
+		if ierr != nil || e.IsDir() {
 			continue
 		}
-		_ = os.Remove(filepath.Join(CaptureDir(), e.Name()))
+		path := filepath.Join(dir, e.Name())
+		if info.ModTime().Before(cutoff) {
+			if os.Remove(path) == nil {
+				removed++
+				freed += info.Size()
+			}
+			continue
+		}
+		kept = append(kept, capture{path, info.Size(), info.ModTime().UnixNano()})
+		total += info.Size()
 	}
+	if total <= CaptureMaxSize {
+		return removed, freed
+	}
+	// Oldest first: the newest captures are the ones a running turn might still
+	// come back for.
+	sort.Slice(kept, func(i, j int) bool { return kept[i].mod < kept[j].mod })
+	for _, c := range kept {
+		if total <= CaptureMaxSize {
+			break
+		}
+		if os.Remove(c.path) == nil {
+			removed++
+			freed += c.size
+			total -= c.size
+		}
+	}
+	return removed, freed
 }

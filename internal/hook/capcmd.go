@@ -21,6 +21,30 @@ import (
 	"github.com/alex60217101990/terse/internal/protocol"
 )
 
+// The byte classes the command scan branches on. One table lookup replaces the
+// comparison chain that ran on every byte of every command; ordinary word text
+// — the overwhelming majority — costs a load and a single test.
+const (
+	classWord uint8 = iota
+	classSpace
+	classSemi
+	classPipe
+	classAmp
+	classEscape
+)
+
+var scanClass = func() [256]uint8 {
+	var t [256]uint8
+	for _, c := range []byte{' ', '\t', '\n'} {
+		t[c] = classSpace
+	}
+	t[';'] = classSemi
+	t['|'] = classPipe
+	t['&'] = classAmp
+	t['\\'] = classEscape
+	return t
+}()
+
 // cappable reports whether cmd may be wrapped in a capture.
 //
 // Almost everything qualifies. A brace group is not a subshell, so a wrapped
@@ -60,8 +84,13 @@ func cappable(cmd string) bool {
 		start = -1
 		switch {
 		case !prog:
-			// "cargo watch" and friends put the watcher in argument position.
-			hard = hard || bytesconv.B2S(w) == "watch"
+			// A watcher can sit in argument position two ways: "cargo watch"
+			// names the program, "go test --watch" names a flag. Both are
+			// caught here rather than by a second pass over the command.
+			switch bytesconv.B2S(w) {
+			case "watch", "--watch":
+				hard = true
+			}
 			repl = false // the session program was handed something to run
 		case bytes.IndexByte(w, '=') >= 0: // env assignment: the program is still ahead
 		default:
@@ -81,17 +110,18 @@ func cappable(cmd string) bool {
 		}
 	}
 	for i := 0; i < len(b); i++ {
-		switch c := b[i]; {
-		case c == '\\':
+		c := b[i]
+		if scanClass[c] == classWord {
 			if start < 0 {
-				start = i
+				start = i // the common byte: ordinary word text
 			}
-			i++ // the next byte is escaped: it is data, not shell syntax
-
-		case c == ' ' || c == '\t' || c == '\n':
+			continue
+		}
+		switch scanClass[c] {
+		case classSpace:
 			endWord(i)
 
-		case c == '|' || c == ';':
+		case classSemi, classPipe:
 			// A separator closes the command: a session program that reached it
 			// was invoked bare, and the next word starts a command again.
 			endWord(i)
@@ -103,7 +133,7 @@ func cappable(cmd string) bool {
 				i++ // "||" is control flow, "|&" pipes stderr too
 			}
 
-		case c == '&':
+		case classAmp:
 			switch {
 			case i+1 < len(b) && b[i+1] == '&':
 				endWord(i)
@@ -121,17 +151,15 @@ func cappable(cmd string) bool {
 				return false // a bare "&" backgrounds: the capture would be raced
 			}
 
-		default:
+		case classEscape:
 			if start < 0 {
 				start = i
 			}
+			i++ // the next byte is escaped: it is data, not shell syntax
 		}
 	}
 	endWord(len(b))
-	// "--watch" sits in argument position, where the command-position scan does
-	// not look, and a watcher's output would sit in the capture file until a
-	// timeout the agent never sees past. Rare enough to cost one scan.
-	return !hard && !repl && !bytes.Contains(b, []byte("--watch"))
+	return !hard && !repl
 }
 
 // shellSafeArg reports whether s can be embedded inside a single-quoted shell
@@ -265,18 +293,17 @@ func wrapCommand(dst []byte, cmd, capturePath, id string, capBytes int) []byte {
 // the scaffolding is escaped once at startup, the path once per HOME, and only
 // the model's command is escaped per call.
 //
-// escapedPath must be the JSON-escaped form of capturePath. The id is hex and
-// the two numbers are decimal, so neither can contain a byte JSON escapes.
-//
-// Returns nil if the command cannot be encoded as a JSON string, so a refusal
-// discards the half-built document instead of shipping one with the envelope
-// missing.
+// escapedCmd and escapedPath must already be JSON-escaped: the command appears
+// twice in the wrapper, and escaping it once and copying the result is cheaper
+// than escaping the same bytes again (a copy runs at roughly a tenth of the
+// cost per byte). The id is hex and the two numbers are decimal, so neither can
+// contain a byte JSON escapes.
 //
 // Unlike wrapCommand this does not re-validate the path's shell safety: the
 // only untrusted part of it is $HOME, which captureDirReady checks once per
 // process. Callers that build a path some other way must call shellSafeArg
 // themselves.
-func appendWrappedJSON(dst []byte, cmd, escapedPath, id string, capBytes int) []byte {
+func appendWrappedJSON(dst []byte, escapedCmd, escapedPath, id string, capBytes int) []byte {
 	half := int64(capBytes / 2)
 	dst = append(dst, protocol.PreInputHead...)
 	for i, lit := range wrapLitsJSON {
@@ -288,15 +315,7 @@ func appendWrappedJSON(dst []byte, cmd, escapedPath, id string, capBytes int) []
 		case partPath:
 			dst = append(dst, escapedPath...)
 		case partCmd:
-			// Strict: a command that is not valid UTF-8 would come out of the
-			// lenient escaper with U+FFFD in place of those bytes, and the
-			// shell would then run something the model did not write. Refusing
-			// leaves it to run unwrapped, exactly as it does today.
-			escaped := protocol.AppendJSONStringStrict(dst, cmd)
-			if escaped == nil {
-				return nil
-			}
-			dst = escaped
+			dst = append(dst, escapedCmd...)
 		case partID:
 			dst = append(dst, id...)
 		case partCap:
@@ -425,6 +444,7 @@ func captureDirReady() *captureDirState {
 // the three together keeps the whole rewrite allocation-free after warmup.
 type capScratch struct {
 	path  []byte
+	ecmd  []byte // the command, JSON-escaped once for both of its slots
 	epath []byte // the same path, JSON-escaped
 	out   []byte
 	cmd   []byte
@@ -433,6 +453,7 @@ type capScratch struct {
 var capPool = sync.Pool{New: func() any {
 	return &capScratch{
 		path:  make([]byte, 0, 128),
+		ecmd:  make([]byte, 0, 512),
 		epath: make([]byte, 0, 128),
 		out:   make([]byte, 0, 1024),
 		cmd:   make([]byte, 0, 256),
@@ -528,7 +549,18 @@ func handleBashPreToolUse(inp *protocol.HookInput, w io.Writer) error {
 	sc.epath = append(sc.epath, idBuf[:]...)
 	sc.epath = append(sc.epath, ".out"...)
 
-	need := 2*len(cmd) + 8*len(path) + wrapOverhead + len(protocol.PreInputHead)
+	// Strict: a command that is not valid UTF-8 would come out of the lenient
+	// escaper with U+FFFD in place of those bytes, and the shell would then run
+	// something the model did not write. Refusing leaves it to run unwrapped,
+	// exactly as it does today.
+	ecmd := protocol.AppendJSONStringStrict(sc.ecmd[:0], cmd)
+	if ecmd == nil {
+		capPool.Put(sc)
+		return nil
+	}
+	sc.ecmd = ecmd
+
+	need := 2*len(ecmd) + 8*len(path) + wrapOverhead + len(protocol.PreInputHead)
 	if cap(sc.out) < need {
 		sc.out = make([]byte, 0, need)
 	}
@@ -536,11 +568,7 @@ func handleBashPreToolUse(inp *protocol.HookInput, w io.Writer) error {
 	// directory is fixed, but $HOME is not ours — a quote in it would break out
 	// of the quoting. wrapCommand refuses such a path and returns nil, and then
 	// the command runs untouched.
-	b := appendWrappedJSON(sc.out[:0], cmd, bytesconv.B2S(sc.epath), id, capBytes)
-	if b == nil {
-		capPool.Put(sc) // the command is not encodable: run it untouched
-		return nil
-	}
+	b := appendWrappedJSON(sc.out[:0], bytesconv.B2S(ecmd), bytesconv.B2S(sc.epath), id, capBytes)
 	sc.out = b
 	_, err := w.Write(b)
 	capPool.Put(sc)

@@ -34,10 +34,9 @@ func FuzzWrappedJSON(f *testing.F) {
 	}
 	const path = "/Users/x/.qdf-hook/captures/abc.out"
 	const id = "0123456789abcdef0123456789abcdef"
-	escapedPath := string(jsonEscape(path))
 
 	f.Fuzz(func(t *testing.T, cmd string) {
-		resp := appendWrappedJSON(nil, cmd, escapedPath, id, capBytes)
+		resp := wrapResponse(cmd, path, id)
 		if resp == nil {
 			return // refused: the caller runs the command untouched
 		}

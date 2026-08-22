@@ -57,17 +57,18 @@ func BenchmarkWrapCommand(b *testing.B) {
 // daemon runs: decode the tool input, decide, hash the capture id, resolve the
 // capture directory, rewrite, and encode the response.
 //
-// Measured (M5 Pro, count=6) at the corpus p50 command: 620 ns/op, 0 allocs;
-// at the mean command, 1,253 ns/op, 0 allocs. Both are well under the 5 µs
+// Measured (M5 Pro, count=6) at the corpus p50 command: 450 ns/op, 0 allocs;
+// at the mean command, 874 ns/op, 0 allocs. Both are well under the 5 µs
 // budget and are 1-2% of the 59.7 µs hook roundtrip.
 //
 // The first version of this path cost 2,840 ns and 13 allocations on a
 // 53-byte command — a size the corpus does not actually have. What moved
 // since: os.MkdirAll ran per call and was 92% of the CPU (now once per HOME),
 // encoding/json's reflection wrote the response (now a fused emitter over the
-// same segment table wrapCommand uses), and the capture id was a sha256 over
-// the whole command (now the session hash plus a counter, since the id only
-// has to be unique).
+// same segment table wrapCommand uses), the capture id was a sha256 over the
+// whole command (now the session hash plus a counter, since the id only has to
+// be unique), the command was escaped once per slot rather than once per call,
+// and the command scan branched per byte where it now takes a class table.
 func BenchmarkHandleBashPreToolUse(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
 	raw, err := json.Marshal(map[string]string{"command": benchCmd})

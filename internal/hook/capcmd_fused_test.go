@@ -8,9 +8,20 @@ import (
 	"github.com/alex60217101990/terse/internal/protocol"
 )
 
-// jsonEscape is the caller-side contract of appendWrappedJSON: the path it
-// receives escaped must be the escaped form of the path it receives raw.
+// jsonEscape is the caller-side contract of appendWrappedJSON: what it receives
+// is already JSON-escaped.
 func jsonEscape(s string) []byte { return protocol.AppendJSONString(nil, s) }
+
+// wrapResponse mirrors what handleBashPreToolUse does around the emitter:
+// escape the command strictly, and refuse the rewrite if it cannot be
+// represented. Returns nil for a refusal.
+func wrapResponse(cmd, path, id string) []byte {
+	ecmd := protocol.AppendJSONStringStrict(nil, cmd)
+	if ecmd == nil {
+		return nil
+	}
+	return appendWrappedJSON(nil, string(ecmd), string(jsonEscape(path)), id, capBytes)
+}
 
 // decodeWrapped pulls the rewritten command back out of a PreToolUse response.
 func decodeWrapped(t *testing.T, resp []byte) string {
@@ -56,7 +67,10 @@ func TestAppendWrappedJSON_MatchesWrapCommand(t *testing.T) {
 	}
 	for _, cmd := range cases {
 		want := string(wrapCommand(nil, cmd, path, id, capBytes))
-		resp := appendWrappedJSON(nil, cmd, string(jsonEscape(path)), id, capBytes)
+		resp := wrapResponse(cmd, path, id)
+		if resp == nil {
+			t.Fatalf("the emitter refused %q", cmd)
+		}
 		if got := decodeWrapped(t, resp); got != want {
 			t.Errorf("fused emitter drifted for %q:\n got %q\nwant %q", cmd, got, want)
 		}
