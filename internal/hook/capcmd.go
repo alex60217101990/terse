@@ -164,7 +164,12 @@ const (
 )
 
 var wrapLits = [...]string{
-	"if : 2>/dev/null > '",
+	// "true", not ":". A redirection failure on a POSIX *special* builtin —
+	// and ":" is one — makes a non-interactive shell exit outright, so under
+	// dash an unwritable capture path killed the whole command with status 2
+	// instead of falling through to run it unwrapped. "true" is a regular
+	// builtin: the redirection just fails and the else branch runs.
+	"if true 2>/dev/null > '",
 	"'; then { ",
 	"\n} > '",
 	"' 2>&1\n(__qrc=$?; __qn=$(wc -c < '",
