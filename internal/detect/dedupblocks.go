@@ -76,7 +76,7 @@ const maxFuzzyDiffs = 4
 // on every folded block. "[" and "]" cost one each, and the marker prefix goes
 // from seven tokens to four. Nothing parses these markers back, so the change
 // is one-way and safe; only IsHookOutput in cmd/qdf-replay has to keep
-// recognising the old form, because an archive spans both.
+// recognizing the old form, because an archive spans both.
 const (
 	markerPre = "[repeat: \""
 	markerSuf = "\"]"
@@ -329,7 +329,10 @@ func FoldRepeatedBlocks(content string) string {
 	var b strings.Builder
 	active := false // builder in use (set on the first fold)
 	written := 0    // bytes of content already committed to b
-	seen := seenPool.Get().(map[string]struct{})
+	seen, ok := seenPool.Get().(map[string]struct{})
+	if !ok {
+		panic("seenPool: unexpected type")
+	}
 	defer func() { putSeen(seen, len(seen)) }() // len() captured before putSeen's clear()
 	var seenNorm map[string]string              // normalized key → first (base) block; lazy, pooled
 	defer func() {
@@ -449,7 +452,11 @@ func FoldRepeatedBlocks(content string) string {
 		// First occurrence of this normalized shape: keep verbatim, register it
 		// as the base for future near-duplicates and for exact-copy folding.
 		if seenNorm == nil {
-			seenNorm = seenNormPool.Get().(map[string]string)
+			sn, ok := seenNormPool.Get().(map[string]string)
+			if !ok {
+				panic("seenNormPool: unexpected type")
+			}
+			seenNorm = sn
 		}
 		seenNorm[string(scratch)] = key
 		seen[key] = struct{}{}

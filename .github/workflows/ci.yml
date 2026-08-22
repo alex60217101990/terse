@@ -85,7 +85,10 @@ jobs:
           # key, so a successful run makes every later one a cache hit with no
           # download at all; "latest" re-resolves and re-downloads whenever
           # upstream publishes.
-          version: v2.12.2
+          # v2.13.1 is the first release built with Go 1.27; an older binary
+          # refuses the config outright ("the Go language version (go1.26) used
+          # to build golangci-lint is lower than the targeted Go version").
+          version: v2.13.1
           args: --timeout=5m
 
   client:

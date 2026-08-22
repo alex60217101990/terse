@@ -1,36 +1,119 @@
 version: "2"
 
+# What this optimises for: finding defects. Every linter below either reports a
+# class of bug that reaches a user — a nil dereference, a swallowed error, a
+# leaked body, a value assigned and never read — or reports something that
+# reliably hides one. Layout arguments are left to the formatters at the bottom.
+#
+# Linters that would only be dead weight here are absent by inventory, not by
+# taste: this module has no SQL, no testify, no structured-logging library, no
+# tracing and no protobuf, so sqlclosecheck, rowserrcheck, testifylint,
+# loggercheck and spancheck would each cost a pass over the tree to report
+# nothing. Add one the day the dependency arrives.
+
 run:
   timeout: 5m
   tests: true
+  allow-parallel-runners: true
 
 linters:
   default: none
   enable:
+    # Nil — the most common way a Go program dies. govet's nilness proves a
+    # dereference of a value that is nil on some path; these two add what it
+    # cannot see across function boundaries.
+    - nilerr        # returns nil after checking err != nil, so the error vanishes
+    - nilnil        # returns (nil, nil) from (*T, error), so the caller derefs nothing
+
+    # Errors: dropped, wrapped wrong, compared wrong.
     - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - misspell
-    - revive
-    - bodyclose
-    - copyloopvar
-    - durationcheck
     - errorlint
+    - errchkjson    # marshalling a type that can never encode
+
+    # Resources that leak until the process restarts.
+    - bodyclose
+    - makezero      # append to a slice made with a non-zero length
+
+    # Context: cancellation that never arrives.
+    - noctx
+    - contextcheck
+    - fatcontext
+    - containedctx
+
+    # Concurrency the compiler and govet do not see, on the test side.
+    #
+    # paralleltest is deliberately not here. It reports every test that does not
+    # call t.Parallel, which is an opinion about how fast the suite runs rather
+    # than a class of defect that reaches a user — and these tests share a HOME,
+    # a socket and an on-disk cache, so running them concurrently is a decision
+    # to make per package, with measurements, not a blanket rule.
+    - tparallel
+
+    # Logic and control flow.
     - gocritic
-    - gosec
-    - nilerr
-    - unconvert
+    - staticcheck
+    - govet
+    - exhaustive
+    - recvcheck     # a type with both pointer and value receivers
+    - reassign      # assigning to another package's variable at run time
+    - durationcheck
+    - gocheckcompilerdirectives
+    - ineffassign
+    - wastedassign
+    - unused
     - unparam
 
+    # Serialisation.
+    - musttag
+
+    # Tests that pass without testing anything.
+    - thelper
+    - usetesting
+
+    # Correctness of what the code says.
+    - misspell
+    - godot
+    - canonicalheader
+    - nosprintfhostport
+    - asasalint
+    - bidichk
+    - usestdlibvars
+    - mirror
+    - perfsprint
+    - unconvert
+    - dupl
+    - dogsled
+    - nakedret
+    - revive
+    - nolintlint
+    - whitespace
+
+    # Security. Kept here rather than delegated: this module runs shell commands,
+    # opens paths the user names, and uses unsafe on its zero-copy paths.
+    - gosec
+
+    # Modernisation, cheap and matched to this module's Go version.
+    - copyloopvar
+    - intrange
+
+  # Deliberately absent because they fail working code rather than broken code:
+  #   wrapcheck, exhaustruct, varnamelen, wsl, nlreturn, lll, godox,
+  #   gochecknoglobals, gochecknoinits, ireturn, interfacebloat, testpackage,
+  #   funlen, gocyclo, gocognit, cyclop, maintidx, nestif — a long function is a
+  #   review conversation, not a build failure.
+
   settings:
-    revive:
-      rules:
-        - name: package-comments
-          disabled: true
+    dupl:
+      threshold: 150
+
     errcheck:
-      # Writes to the process's own stdout/stderr (progress, stats tables) and
+      # An unchecked x := v.(T) is a panic waiting for the one input that does
+      # not match, which is the class forcetypeassert reports separately.
+      check-type-assertions: true
+      # `_ = f()` stays allowed: it is how you say the error is genuinely
+      # uninteresting, and forbidding it only moves the silence into a nolint.
+      check-blank: false
+      # Writes to this process's own stdout/stderr (progress, stats tables) and
       # best-effort Close on read paths carry no actionable error — a failed
       # terminal write or a close-after-read cannot be recovered here.
       exclude-functions:
@@ -40,6 +123,153 @@ linters:
         - (*os.File).Close
         - (net.Conn).Close
         - (io.Closer).Close
+
+    errorlint:
+      errorf: false
+      # Both stay on: each names a defect that is invisible otherwise — a
+      # comparison that starts failing the day someone wraps the error, and a
+      # type assertion that misses a wrapped one.
+      asserts: true
+      comparison: true
+
+    exhaustive:
+      # Without this every switch carrying a default is a finding, which is most
+      # switches, and the linter gets turned off within a week.
+      default-signifies-exhaustive: true
+
+    gocritic:
+      disable-all: true
+      # The diagnostic tag is the bug-finding half: offBy1, dupArg, dupSubExpr,
+      # badCond, evalOrder, sloppyReassign, weakCond, exitAfterDefer, deferInLoop,
+      # filepathJoin, truncateCmp, argOrder, mapKey and about twenty more.
+      enabled-tags:
+        - diagnostic
+      enabled-checks:
+        - commentFormatting
+        - paramTypeCombine
+
+    govet:
+      enable-all: true
+      disable:
+        # Struct layout is tuned deliberately on the hot paths here, against
+        # measurements rather than against a linter's model of the ideal.
+        - fieldalignment
+        # Too noisy on idiomatic err shadowing to be worth a reader's attention.
+        - shadow
+
+    misspell:
+      locale: US
+      # https://go.dev/wiki/Spelling — Go spells these with one l.
+      extra-words:
+        - typo: marshall
+          correction: marshal
+        - typo: marshalled
+          correction: marshaled
+        - typo: marshalling
+          correction: marshaling
+        - typo: unmarshall
+          correction: unmarshal
+        - typo: unmarshalled
+          correction: unmarshaled
+        - typo: unmarshalling
+          correction: unmarshaling
+
+    nilnil:
+      checked-types:
+        - chan
+        - func
+        - iface
+        - map
+        - ptr
+        - uintptr
+        - unsafeptr
+
+    nolintlint:
+      allow-unused: true
+      require-specific: true
+
+    perfsprint:
+      errorf: true
+      strconcat: false
+
+    revive:
+      # Below 0.8 so the error-strings rule fires at all.
+      confidence: 0.6
+      rules:
+        - name: blank-imports
+        - name: bool-literal-in-expr
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: datarace
+        - name: defer
+          arguments:
+            - - loop
+              - recover
+              - return
+        - name: dot-imports
+        - name: duplicated-imports
+        - name: early-return
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+          arguments:
+            - disableChecksOnConstants
+            - disableChecksOnVariables
+            - disableStutteringCheck
+        - name: identical-branches
+        - name: identical-ifelseif-branches
+        - name: identical-ifelseif-conditions
+        - name: identical-switch-branches
+        - name: identical-switch-conditions
+        - name: if-return
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: modifies-parameter
+        - name: modifies-value-receiver
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-equal
+        - name: time-naming
+        # unchecked-type-assertion and unhandled-error are not enabled: errcheck
+        # reports both, and one finding reported twice reads as two problems.
+        - name: unconditional-recursion
+        - name: unexported-naming
+        - name: unexported-return
+        - name: unnecessary-format
+        - name: unnecessary-if
+        - name: unnecessary-stmt
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: use-any
+        - name: use-errors-new
+        - name: var-declaration
+        - name: var-naming
+        - name: waitgroup-by-value
+
+    staticcheck:
+      checks:
+        - all
+        # Quickfix checks that rewrite working code into a different spelling of
+        # itself: De Morgan's law, untagged switch to tagged, if-else chain to
+        # switch, embedded field in a selector.
+        - -QF1001
+        - -QF1002
+        - -QF1003
+        - -QF1008
+        # Doc-comment shape, which the formatters and review already settle.
+        - -ST1000
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        # revive's var-naming and receiver-naming own these.
+        - -ST1003
+        - -ST1016
+
     gosec:
       excludes:
         - G103  # unsafe usage is intentional (native client / zero-copy paths)
@@ -53,15 +283,69 @@ linters:
         - G204  # profile subcommand execs `go tool pprof` with a resolved path
         - G703  # path is the user's own settings.json, resolved from HOME
 
+    usetesting:
+      context-background: true
+      context-todo: true
+      os-chdir: true
+      os-mkdir-temp: true
+      os-setenv: true
+      os-create-temp: true
+      os-temp-dir: true
+
   exclusions:
+    generated: lax
+
+    # golangci-lint's own curated sets, in place of hand-copied regexes.
+    # `legacy` and `comments` are not used: the first excuses code this module
+    # does not have, and the second would silence the doc-comment findings godot
+    # is enabled for.
+    presets:
+      - std-error-handling
+      - common-false-positives
+
     rules:
+      # A unix socket path is capped at 104 bytes on darwin, and t.TempDir builds
+      # its directory name out of the test's own name — measured here at 134
+      # bytes for this package's longer test names, where net.Listen then fails
+      # with "bind: invalid argument". These tests use os.MkdirTemp with a short
+      # fixed prefix for exactly that reason.
+      - path: internal/daemon/.*_test\.go
+        linters:
+          - usetesting
+
+      # A test may repeat itself, ignore a return, reach for unsafe fixtures and
+      # hold a context in a struct. It may not skip the checks that make a
+      # passing test mean something — thelper and usetesting stay on.
       - path: _test\.go
-        linters: [errcheck, gosec, gocritic, unparam, staticcheck]
+        linters:
+          - containedctx
+          - dogsled
+          - dupl
+          - errcheck
+          - gocritic
+          - gosec
+          - staticcheck
+          - unparam
+          # A test marshals literals it wrote itself: the call cannot fail, and
+          # if it somehow did the assertion below it would fail anyway.
+          - errchkjson
+          # A test dials the socket it just created and execs a binary it just
+          # built, both with the test's own deadline around them. Threading a
+          # context through those adds ceremony without adding cancellation.
+          - noctx
 
 formatters:
   enable:
-    - gofmt
-    - goimports
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/alex60217101990)
+  exclusions:
+    generated: lax
 
 issues:
   max-same-issues: 0

@@ -3,8 +3,12 @@ package protocol
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"io"
 	"strings"
+	"sync"
+
+	"github.com/alex60217101990/terse/internal/bytesconv"
 )
 
 // HookInput is the JSON Claude Code sends to any PostToolUse hook on stdin.
@@ -209,39 +213,113 @@ type BashInput struct {
 	Cwd     string `json:"working_directory,omitempty"`
 }
 
+// EventPostToolUse is the hookEventName Claude Code expects on every
+// PostToolUse hookSpecificOutput object.
+const EventPostToolUse = "PostToolUse"
+
 // HookOutput is the JSON written to stdout. Nil HookSpecificOutput = pass-through.
 type HookOutput struct {
 	HookSpecificOutput *HookSpecificOutput `json:"hookSpecificOutput,omitempty"`
 }
 
 // HookSpecificOutput carries the replacement for what Claude sees.
+//
+// HookEventName is mandatory: Claude Code validates hookSpecificOutput and
+// rejects the whole object when it is absent. A rejected object drops the
+// replacement (the original, uncompressed output reaches the model) and injects
+// a validation error into the context on top — the opposite of the intent.
 type HookSpecificOutput struct {
+	HookEventName     string `json:"hookEventName"`
 	UpdatedToolOutput string `json:"updatedToolOutput,omitempty"`
 }
 
 // DecodeInput reads exactly one JSON object from r.
 func DecodeInput(r io.Reader) (*HookInput, error) {
-	var inp HookInput
-	if err := json.NewDecoder(r).Decode(&inp); err != nil {
+	// Read the whole request first: it is one small JSON object, and the byte
+	// path below hands out values that alias this buffer, which a streaming
+	// decoder's rotating buffer could not promise. The buffer is not pooled for
+	// the same reason — the HookInput outlives this call.
+	data, err := io.ReadAll(r)
+	if err != nil {
 		return nil, err
 	}
-	return &inp, nil
+	return DecodeInputBytes(data)
 }
 
-// DecodeInputBytes decodes one HookInput from a fully-buffered request via
-// json.Unmarshal, avoiding the json.Decoder buffering that DecodeInput's
-// io.Reader path pays. For callers (the daemon) that already hold the whole
-// request slice.
+// DecodeInputBytes decodes one HookInput from a fully-buffered request.
+//
+// The scan is zero-copy where it can be: tool_input and tool_response are
+// sliced straight out of data instead of being copied, and only the handful of
+// string fields the pipeline keeps are allocated. data must stay valid and
+// unmodified for as long as the returned HookInput is used.
 func DecodeInputBytes(data []byte) (*HookInput, error) {
-	var inp HookInput
-	if err := json.Unmarshal(data, &inp); err != nil {
+	inp := &HookInput{}
+	// The five string fields are gathered raw and materialized together, so a
+	// request costs one string allocation instead of one per field.
+	var raw [numStrFields][]byte
+	err := ScanObject(data, func(key, val []byte) error {
+		switch bytesconv.B2S(key) {
+		case "session_id":
+			raw[fieldSessionID] = val
+		case "tool_name":
+			raw[fieldToolName] = val
+		case "hook_event_name":
+			raw[fieldEventName] = val
+		case "agent_id":
+			raw[fieldAgentID] = val
+		case "transcript_path":
+			raw[fieldTranscript] = val
+		case "tool_input":
+			inp.ToolInput = val
+		case "tool_response":
+			if len(val) == 0 || bytesconv.B2S(val) == "null" {
+				return nil
+			}
+			tr := &ToolResponse{}
+			if err := tr.UnmarshalJSON(val); err != nil {
+				return err
+			}
+			inp.ToolResponse = tr
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	return &inp, nil
+	var out [numStrFields]string
+	joinStrings(&out, &raw)
+	inp.SessionID = out[fieldSessionID]
+	inp.ToolName = out[fieldToolName]
+	inp.HookEventName = out[fieldEventName]
+	inp.AgentID = out[fieldAgentID]
+	inp.TranscriptPath = out[fieldTranscript]
+	return inp, nil
 }
 
-// EncodeOutput writes HookOutput as JSON to w followed by a newline.
+// The string fields of a request, in the order they are packed.
+const (
+	fieldSessionID = iota
+	fieldToolName
+	fieldEventName
+	fieldAgentID
+	fieldTranscript
+	numStrFields
+)
+
+// EncodeOutput writes HookOutput as JSON to w followed by a newline, and writes
+// NOTHING when there is nothing to say.
+//
+// Silence is not cosmetic. Claude Code records a hook_success attachment for
+// every hook that writes anything at all, "{}" included, and that record then
+// rides the conversation prefix and is re-billed on every later turn. Measured
+// across 2,070 local transcripts: 26,517 empty records cost 6.01% of the entire
+// token bill. Writing nothing produces no record and carries exactly the meaning
+// "{}" carried — take no action — which is also what the daemon already falls
+// back to when dispatch fails.
 func EncodeOutput(w io.Writer, out *HookOutput) error {
+	if out == nil || out.HookSpecificOutput == nil {
+		return nil
+	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	return enc.Encode(out)
@@ -266,10 +344,145 @@ func EncodePre(w io.Writer, decision, reason string) error {
 	return enc.Encode(out)
 }
 
+// EncodePreInput writes a PreToolUse response that allows the call and replaces
+// the Bash tool's command with cmd.
+//
+// updatedInput is the only field Claude Code honors for input rewriting; the
+// transcript still records the model's ORIGINAL command, so the replacement text
+// costs no context tokens however long it is. Only the command's OUTPUT changes.
+//
+// permissionDecision "allow" is required, not decoration. Measured live against
+// Claude Code on 2026-08-22: without it the rewritten command is rejected before
+// it runs with "Contains compound_statement" — the permission analyzer refuses to
+// evaluate the wrapper's if/then/else shape — and the tool call fails outright.
+// With it, the same rewrite capped a 23,893-byte output to 1,689 bytes.
+//
+// What "allow" does NOT do, also measured: it does not override the user's
+// rules. A deny rule on the model's ORIGINAL command still blocked the call
+// through the rewrite, an ask rule still forced a prompt, and a deny rule
+// matching only the wrapper's own text never fired — so rules are evaluated
+// against what the model wrote, and the rewrite is invisible to them. The one
+// thing it does skip is the prompt for a command no rule covers.
+func EncodePreInput(w io.Writer, cmd string) error {
+	bp, _ := preInputBuf.Get().(*[]byte)
+	if bp == nil {
+		fresh := make([]byte, 0, 2048)
+		bp = &fresh
+	}
+	buf := *bp
+	buf = append(buf[:0], PreInputHead...)
+	buf = AppendJSONString(buf, cmd)
+	if buf == nil {
+		preInputBuf.Put(bp)
+		return errUnencodable
+	}
+	buf = append(buf, PreInputTail...)
+	_, err := w.Write(buf)
+	*bp = buf
+	preInputBuf.Put(bp)
+	return err
+}
+
+// The response is a fixed shape around one string, so it is written by hand.
+// encoding/json cost 60% of this hook's CPU and every one of its allocations,
+// measured, for a document whose only variable part is the command.
+const (
+	// PreInputHead and PreInputTail bracket the rewritten command. They are
+	// exported so a caller that already builds the command in a buffer can emit
+	// the whole response in one pass instead of handing the text back to be
+	// copied and rescanned.
+	PreInputHead = `{"hookSpecificOutput":{"hookEventName":"PreToolUse",` +
+		`"permissionDecision":"allow","updatedInput":{"command":"`
+	PreInputTail = "\"}}}\n"
+)
+
+var preInputBuf = sync.Pool{New: func() any { b := make([]byte, 0, 2048); return &b }}
+
+// AppendJSONString appends s to dst as the *body* of a JSON string — the
+// surrounding quotes belong to the caller's literal.
+//
+// The escaping is the standard library's, through a jsontext encoder carrying
+// the two options that reproduce encoding/json exactly: EscapeForJS restores
+// the U+2028/U+2029 escapes, AllowInvalidUTF8 the replacement character for a
+// byte that is not valid UTF-8. The differential test pins that equality.
+//
+// The encoder writes a whole JSON string, so its quotes and trailing newline
+// are shifted off. Measured against a hand-rolled escaper over the real
+// distribution of Bash commands (p50 160 B, mean 362, p90 793): 8% slower at
+// the median, 9% faster at the mean, 18% at p90 and 24% at p99, at the same
+// zero allocations.
+//
+// Returns nil if the encoder refuses the string, which leaves the caller to
+// skip whatever it was building rather than emit a broken document.
+func AppendJSONString(dst []byte, s string) []byte {
+	return appendEscaped(dst, s, utf8Lenient)
+}
+
+// AppendJSONStringStrict is AppendJSONString for a string whose bytes must
+// survive unchanged. It refuses (returns nil) a string that is not valid
+// UTF-8, where the lenient form would substitute U+FFFD.
+//
+// The difference matters when the escaped string is a command: substituting a
+// byte would hand the shell something other than what the model wrote, and a
+// command that cannot be represented is better run unwrapped than altered.
+func AppendJSONStringStrict(dst []byte, s string) []byte {
+	return appendEscaped(dst, s, utf8Strict)
+}
+
+func appendEscaped(dst []byte, s string, utf8Opt jsontext.Options) []byte {
+	e, _ := escaperPool.Get().(*escaper)
+	if e == nil {
+		e = newEscaper()
+	}
+	e.out.b = dst
+	e.enc.Reset(&e.out, escapeOpts, utf8Opt)
+	err := e.enc.WriteToken(jsontext.String(s))
+	b := e.out.b
+	e.out.b = nil
+	escaperPool.Put(e)
+	if err != nil {
+		return nil
+	}
+	start := len(dst)
+	copy(b[start:], b[start+1:len(b)-2]) // drop the opening quote
+	return b[:len(b)-3]                  // and the closing quote plus newline
+}
+
+// escaper is a jsontext encoder bound to a slice appender, both pooled: the
+// encoder is reset per call and the appender writes straight into the caller's
+// buffer, so escaping a command allocates nothing.
+type escaper struct {
+	enc *jsontext.Encoder
+	out sliceWriter
+}
+
+type sliceWriter struct{ b []byte }
+
+func (w *sliceWriter) Write(p []byte) (int, error) {
+	w.b = append(w.b, p...)
+	return len(p), nil
+}
+
+var (
+	escapeOpts  = jsontext.EscapeForJS(true)
+	utf8Lenient = jsontext.AllowInvalidUTF8(true)
+	utf8Strict  = jsontext.AllowInvalidUTF8(false)
+	escaperPool = sync.Pool{New: func() any { return newEscaper() }}
+)
+
+func newEscaper() *escaper {
+	e := &escaper{}
+	e.enc = jsontext.NewEncoder(&e.out, escapeOpts, utf8Lenient)
+	return e
+}
+
 // Passthrough returns an empty HookOutput that tells Claude Code to use the original output.
 func Passthrough() *HookOutput { return &HookOutput{} }
 
 // Replace returns a HookOutput that substitutes the tool output with s.
 func Replace(s string) *HookOutput {
-	return &HookOutput{HookSpecificOutput: &HookSpecificOutput{UpdatedToolOutput: s}}
+	return &HookOutput{HookSpecificOutput: &HookSpecificOutput{
+		HookEventName:     EventPostToolUse,
+		UpdatedToolOutput: s,
+	}}
 }

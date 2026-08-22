@@ -15,7 +15,7 @@ import (
 // BenchmarkPreToolUse_Allow — no cache entry, so the interceptor always allows.
 func BenchmarkPreToolUse_Allow(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
-	f, _ := os.CreateTemp("", "bench-allow-*.go")
+	f, _ := os.CreateTemp(b.TempDir(), "bench-allow-*.go")
 	f.WriteString("package main\n")
 	f.Close()
 	defer os.Remove(f.Name())
@@ -78,7 +78,7 @@ func BenchmarkWrite_Compress(b *testing.B) {
 // BenchmarkReadHook_PreToolIntercept — full PreToolUse cycle with a warm cache entry.
 func BenchmarkReadHook_PreToolIntercept(b *testing.B) {
 	b.Setenv("HOME", b.TempDir())
-	f, _ := os.CreateTemp("", "bench-intercept-*.go")
+	f, _ := os.CreateTemp(b.TempDir(), "bench-intercept-*.go")
 	content := []byte(strings.Repeat("package main\n", 20))
 	f.Write(content)
 	f.Close()

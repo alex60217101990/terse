@@ -10,8 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/alex60217101990/terse/internal/daemon"
 	"github.com/spf13/cobra"
+
+	"github.com/alex60217101990/terse/internal/daemon"
 )
 
 // hookSpec is one hook entry qdf-hook installs into Claude Code settings.
@@ -31,8 +32,16 @@ type hookSpec struct {
 // through `post`, which dispatches internally — so new tools are covered with
 // no config change. The PostToolUse and SessionStart entries get their full
 // command line from hookCommand rather than "<exe> <sub>" — see there.
+//
+// PreToolUse has two entries instead of one catch-all: Claude Code only
+// invokes a hook for the tool names its matcher names, so Read's mtime
+// fast-path and Bash's output-capping rewrite each need their own matcher to
+// ever run. Both point at the same "pretooluse" command — routeInput already
+// dispatches on the tool name inside that single handler — so this is purely
+// about getting Claude Code to call it for Bash at all, not new logic.
 var qdfHooks = []hookSpec{
 	{"PreToolUse", "Read", "pretooluse"},
+	{"PreToolUse", "Bash", "pretooluse"},
 	{"PostToolUse", ".*", "post"},
 	{"PreCompact", ".*", "precompact"},
 	{"PostCompact", ".*", "postcompact"},
@@ -66,7 +75,7 @@ By default it edits the global ~/.claude/settings.json. Use --project to edit
 .claude/settings.json in the current directory instead. It is idempotent:
 existing hooks (qdf-hook's or anyone else's) are preserved, and re-running
 never duplicates entries. Restart Claude Code afterwards for the hooks to load.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runInit(project, dir, printOnly)
 		},
 	}
@@ -195,11 +204,11 @@ func mergeHooks(hb hooksBlock, exe string) int {
 	changed := 0
 	for _, h := range qdfHooks {
 		want := hookCommand(h, exe)
-		if upgradeExisting(hb[h.event], h.sub, want) {
+		if upgradeExisting(hb[h.event], h.matcher, h.sub, want) {
 			changed++ // rewrote an out-of-date qdf-hook command in place
 			continue
 		}
-		if commandPresent(hb[h.event], h.sub) {
+		if commandPresent(hb[h.event], h.matcher, h.sub) {
 			continue // already present and current
 		}
 		hb[h.event] = append(hb[h.event], hookEntry{
@@ -211,12 +220,20 @@ func mergeHooks(hb hooksBlock, exe string) int {
 	return changed
 }
 
-// upgradeExisting finds the first qdf-hook command for sub whose text differs
-// from want and rewrites it in place, returning true. A command already equal
-// to want is left alone (returns false — commandPresent then treats it as an
-// up-to-date no-op).
-func upgradeExisting(entries []hookEntry, sub, want string) bool {
+// upgradeExisting finds the first qdf-hook command for matcher+sub whose text
+// differs from want and rewrites it in place, returning true. A command
+// already equal to want is left alone (returns false — commandPresent then
+// treats it as an up-to-date no-op).
+//
+// matcher narrows the search alongside sub because PreToolUse now registers
+// "pretooluse" twice, once per matcher (Read, Bash): matching on sub alone
+// would let the Read entry satisfy the Bash lookup (and vice versa) and the
+// second entry would never get installed.
+func upgradeExisting(entries []hookEntry, matcher, sub, want string) bool {
 	for ei := range entries {
+		if entries[ei].Matcher != matcher {
+			continue
+		}
 		for hi := range entries[ei].Hooks {
 			cmd := entries[ei].Hooks[hi].Command
 			if isQdfHookCommand(cmd, sub) && cmd != want {
@@ -299,12 +316,17 @@ func shFields(s string) []string {
 	return out
 }
 
-// commandPresent reports whether any entry already invokes THIS tool's given
-// subcommand. It matches only qdf-hook's own command (binary basename
-// "qdf-hook"), so another tool ending in the same word — e.g. sqz's
-// "hook precompact" — is not mistaken for qdf-hook's "precompact".
-func commandPresent(entries []hookEntry, sub string) bool {
+// commandPresent reports whether an entry for matcher already invokes THIS
+// tool's given subcommand. It matches only qdf-hook's own command (binary
+// basename "qdf-hook"), so another tool ending in the same word — e.g. sqz's
+// "hook precompact" — is not mistaken for qdf-hook's "precompact". The
+// matcher check keeps PreToolUse's two "pretooluse" registrations (Read,
+// Bash) independent — see upgradeExisting.
+func commandPresent(entries []hookEntry, matcher, sub string) bool {
 	for _, e := range entries {
+		if e.Matcher != matcher {
+			continue
+		}
 		for _, h := range e.Hooks {
 			if isQdfHookCommand(h.Command, sub) {
 				return true

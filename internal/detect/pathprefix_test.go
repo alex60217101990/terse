@@ -30,7 +30,7 @@ func TestFoldPathPrefix_Folds(t *testing.T) {
 func TestFoldPathPrefix_NoCommonPrefixUnchanged(t *testing.T) {
 	in := "/a/x.go\n/b/y.go\n/c/z.go\nrandom prose line\n"
 	if out := detect.FoldPathPrefix(in); out != in {
-		t.Fatalf("no shared prefix — must be unchanged")
+		t.Fatal("no shared prefix — must be unchanged")
 	}
 }
 
@@ -48,7 +48,7 @@ func TestFoldPathPrefix_MixedLinesPreserved(t *testing.T) {
 		t.Errorf("non-path lines must survive verbatim:\n%s", out)
 	}
 	if len(out) >= len(in) {
-		t.Fatalf("expected shrink")
+		t.Fatal("expected shrink")
 	}
 }
 

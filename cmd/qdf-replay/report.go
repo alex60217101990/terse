@@ -110,7 +110,7 @@ func printReport(w io.Writer, rep Report) {
 //
 // Tolerance is zero. The replay is deterministic for a fixed corpus and a fixed
 // binary — identical inputs, no clock, no concurrency in the ledger — so any
-// movement at all is a real behaviour change, and a tolerance band would only
+// movement at all is a real behavior change, and a tolerance band would only
 // hide the small regressions that accumulate.
 func compareBaseline(w io.Writer, base, cur Report) error {
 	if base.Fingerprint.Hash != cur.Fingerprint.Hash {
@@ -142,7 +142,7 @@ func compareBaseline(w io.Writer, base, cur Report) error {
 		c, ok := cur.ByHookAction[k]
 		if !ok {
 			// Same corpus, so the triples still exist — they were routed
-			// somewhere else. That is a behaviour change the gate must not
+			// somewhere else. That is a behavior change the gate must not
 			// swallow just because the total happened to improve.
 			bad = append(bad, row{k, "category disappeared", b, Cell{}})
 			continue

@@ -61,7 +61,7 @@ func TestContextKeySeparatesSubagentsFromEachOther(t *testing.T) {
 }
 
 // Older Claude Code builds may not send transcript_path. Falling back to the
-// plain session id preserves today's behaviour rather than disabling the cache.
+// plain session id preserves today's behavior rather than disabling the cache.
 func TestContextKeyFallsBackWithoutTranscriptPath(t *testing.T) {
 	const sid = "abc"
 	if got := ContextKey(&protocol.HookInput{SessionID: sid}); got != sid {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,7 +47,7 @@ func cmdProfile() *cobra.Command {
 
   qdf-hook daemon --serve --pprof 127.0.0.1:6060`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if addr == "" {
 				addr = os.Getenv("QDF_PPROF")
 			}
@@ -78,7 +79,11 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 		url = fmt.Sprintf("%s?seconds=%d", url, int(dur.Seconds()))
 	}
 
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("profile: build request for %s: %w", url, err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("profile: fetch %s: %w (is the daemon running with --pprof %s?)", url, err, addr)
 	}
@@ -89,18 +94,7 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 	}
 
 	wroteTemp := outPath == ""
-	if wroteTemp {
-		f, err := os.CreateTemp("", "qdf-hook-profile-*.pb.gz")
-		if err != nil {
-			return fmt.Errorf("profile: create temp file: %w", err)
-		}
-		outPath = f.Name()
-		_, cerr := io.Copy(f, resp.Body)
-		_ = f.Close()
-		if cerr != nil {
-			return fmt.Errorf("profile: write %s: %w", outPath, cerr)
-		}
-	} else {
+	if !wroteTemp {
 		f, err := os.Create(outPath)
 		if err != nil {
 			return fmt.Errorf("profile: create %s: %w", outPath, err)
@@ -114,7 +108,18 @@ func runProfile(kind, addr, outPath string, dur time.Duration) error {
 		return nil
 	}
 
-	pprofCmd := exec.Command("go", "tool", "pprof", outPath)
+	f, err := os.CreateTemp("", "qdf-hook-profile-*.pb.gz")
+	if err != nil {
+		return fmt.Errorf("profile: create temp file: %w", err)
+	}
+	outPath = f.Name()
+	_, cerr := io.Copy(f, resp.Body)
+	_ = f.Close()
+	if cerr != nil {
+		return fmt.Errorf("profile: write %s: %w", outPath, cerr)
+	}
+
+	pprofCmd := exec.CommandContext(context.Background(), "go", "tool", "pprof", outPath)
 	pprofCmd.Stdin = os.Stdin
 	pprofCmd.Stdout = os.Stdout
 	pprofCmd.Stderr = os.Stderr

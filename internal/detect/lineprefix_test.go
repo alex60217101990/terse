@@ -70,7 +70,7 @@ func TestFoldLinePrefixes_FoldsAndRoundTrips(t *testing.T) {
 	}
 }
 
-// Lines that share nothing with their neighbours must survive untouched, and
+// Lines that share nothing with their neighbors must survive untouched, and
 // the payload must still round-trip around them.
 func TestFoldLinePrefixes_InterleavedLinesSurvive(t *testing.T) {
 	in := "" +
@@ -110,7 +110,7 @@ func TestFoldLinePrefixes_PrefixEndsOnABoundary(t *testing.T) {
 		t.Errorf("prefix %q does not end on a boundary", decl)
 	}
 	if got := unfold(t, out); got != in {
-		t.Fatalf("round trip lost content")
+		t.Fatal("round trip lost content")
 	}
 }
 

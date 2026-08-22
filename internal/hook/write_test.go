@@ -3,8 +3,8 @@ package hook_test
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,7 +60,7 @@ func TestWrite_LargeContent_Compressed(t *testing.T) {
 	}
 	// Hash prefix must match first 8 bytes of sha256(the file bytes).
 	hash := sha256.Sum256([]byte(content))
-	hashHex := fmt.Sprintf("%x", hash[:8])
+	hashHex := hex.EncodeToString(hash[:8])
 	if !strings.Contains(compressed, hashHex) {
 		t.Errorf("compressed output should contain hash %s: %s", hashHex, compressed)
 	}
@@ -153,8 +153,12 @@ func TestWrite_CheapEcho_PassesThroughAndStillCaches(t *testing.T) {
 		t.Fatalf("HandleWrite returned error: %v", err)
 	}
 	var resp protocol.HookOutput
-	if jsonErr := json.Unmarshal([]byte(out.String()), &resp); jsonErr != nil {
-		t.Fatalf("output is not valid JSON: %v", jsonErr)
+	// An empty response is the pass-through contract: a hook that has nothing to
+	// say writes nothing, so no hook_success record is made.
+	if raw := out.String(); raw != "" {
+		if jsonErr := json.Unmarshal([]byte(raw), &resp); jsonErr != nil {
+			t.Fatalf("output is not valid JSON: %v", jsonErr)
+		}
 	}
 	if resp.HookSpecificOutput != nil {
 		t.Fatalf("a marker costlier than the echo must not be emitted, got: %s",

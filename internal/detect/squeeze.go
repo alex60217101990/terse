@@ -8,7 +8,7 @@ import (
 
 // ansiRE matches ANSI/VT escape sequences (colors, cursor moves, progress
 // redraws) — pure presentation bytes that carry no information for the model.
-var ansiRE = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
+var ansiRE = regexp.MustCompile(`\x1b\[[0-9;?]*[\x20-\x2f]*[\x40-\x7e]`)
 
 // SqueezeOutput compresses unstructured terminal output losslessly-in-meaning:
 // it strips ANSI escape sequences and collapses runs of identical consecutive

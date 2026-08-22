@@ -26,10 +26,10 @@ type Cell struct {
 
 // Saved is the token difference. Negative means the hook made the output more
 // expensive than the raw tool result.
-func (c Cell) Saved() int { return c.TokensIn - c.TokensOut }
+func (c *Cell) Saved() int { return c.TokensIn - c.TokensOut }
 
 // SavedPct is Saved as a percentage of TokensIn.
-func (c Cell) SavedPct() float64 {
+func (c *Cell) SavedPct() float64 {
 	if c.TokensIn == 0 {
 		return 0
 	}
@@ -45,7 +45,6 @@ func (c *Cell) add(in, out int) {
 // Report is one replay's result: what corpus it ran over, what the walk had to
 // throw away, and the per-category token ledger.
 type Report struct {
-
 	// ByHookAction is keyed "<tool>/<action>", e.g. "Bash/summary".
 	//
 	// A per-category ledger rather than a single total, because the total hides
@@ -222,6 +221,12 @@ func toolResponse(tr Triple) (json.RawMessage, error) {
 // would read as a 100% saving on every payload the tool declined to touch,
 // which is the single easiest way to make this harness lie.
 func emittedOutput(raw []byte, original string) (string, error) {
+	// Silence is the pass-through contract: a hook with nothing to say writes
+	// nothing at all, so that Claude Code records no hook_success attachment for
+	// it. An empty reply therefore means "the model saw the original".
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return original, nil
+	}
 	var out protocol.HookOutput
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", err

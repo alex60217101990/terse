@@ -44,8 +44,12 @@ func runRead(t *testing.T, req string) protocol.HookOutput {
 		t.Fatalf("HandleRead: %v", err)
 	}
 	var resp protocol.HookOutput
-	if err := json.Unmarshal([]byte(out.String()), &resp); err != nil {
-		t.Fatalf("output is not valid JSON: %v", err)
+	// An empty response is the pass-through contract: a hook that has
+	// nothing to say writes nothing, so no hook_success record is made.
+	if raw := out.String(); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+			t.Fatalf("output is not valid JSON: %v", err)
+		}
 	}
 	return resp
 }

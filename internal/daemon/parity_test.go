@@ -156,17 +156,23 @@ func readPayload(path, content string) string {
 type parityCase struct {
 	name    string
 	payload string
+	// silent marks a payload whose correct reply is no reply at all. Pass-through
+	// writes nothing so Claude Code records no hook_success attachment for it, so
+	// "" is a real answer here, not a malformed fixture.
+	silent bool
 }
 
 func parityCases() []parityCase {
 	return []parityCase{
-		{"Bash_JSONArray", genericPayload("Bash", jsonArrayPayloadContent())},
-		{"Bash_GoTestOutput", genericPayload("Bash", goTestOutputContent())},
-		{"Bash_PlainLog", genericPayload("Bash", plainLogContent())},
-		{"Glob_PathList", genericPayload("Glob", globPathListContent())},
-		{"Grep_FileLineText", genericPayload("Grep", grepMatchesContent())},
-		{"Read_FileContent", readPayload("/tmp/qdf-parity-fixture.txt", readFileContent())},
-		{"MCP_JSONArray", genericPayload("mcp__x__y", jsonArrayPayloadContent())},
+		{name: "Bash_JSONArray", payload: genericPayload("Bash", jsonArrayPayloadContent())},
+		{name: "Bash_GoTestOutput", payload: genericPayload("Bash", goTestOutputContent())},
+		{name: "Bash_PlainLog", payload: genericPayload("Bash", plainLogContent())},
+		{name: "Glob_PathList", payload: genericPayload("Glob", globPathListContent())},
+		{name: "Grep_FileLineText", payload: genericPayload("Grep", grepMatchesContent())},
+		// A file's first sighting has nothing cached to compare against, so both
+		// sides correctly pass it through in silence.
+		{"Read_FileContent", readPayload("/tmp/qdf-parity-fixture.txt", readFileContent()), true},
+		{name: "MCP_JSONArray", payload: genericPayload("mcp__x__y", jsonArrayPayloadContent())},
 	}
 }
 
@@ -215,6 +221,12 @@ func TestParity_DaemonMatchesDirectDispatch(t *testing.T) {
 			if direct != viaDaemon {
 				t.Fatalf("daemon reply diverges from direct hook.Dispatch for %s\n--- direct ---\n%s\n--- daemon ---\n%s",
 					tc.name, direct, viaDaemon)
+			}
+			if tc.silent {
+				if direct != "" {
+					t.Fatalf("%s: expected a silent pass-through, got %q", tc.name, direct)
+				}
+				return
 			}
 			if direct == "" {
 				t.Fatalf("%s: both sides produced an empty reply (payload likely malformed)", tc.name)

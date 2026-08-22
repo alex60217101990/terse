@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -10,9 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/alex60217101990/terse/internal/cache"
 	"github.com/alex60217101990/terse/internal/daemon"
-	"github.com/spf13/cobra"
 )
 
 // pingTimeout bounds how long `daemon --ping` waits for a reply before
@@ -67,7 +69,7 @@ trip.
   --ping    probe a running daemon and exit 0/1 (for a container HEALTHCHECK)
   --pprof   (with --serve) also serve net/http/pprof on a loopback-only
             addr, e.g. 127.0.0.1:6060 (or $QDF_PPROF)`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			switch {
 			case ping:
 				// Exit 0/1 explicitly (rather than returning an error for
@@ -118,7 +120,7 @@ trip.
 				}
 				return daemon.Ensure(daemon.SockPath(), exe, appVersion)
 			default:
-				return fmt.Errorf("daemon: specify --serve, --ensure, or --ping")
+				return errors.New("daemon: specify --serve, --ensure, or --ping")
 			}
 		},
 	}

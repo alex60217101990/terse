@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/alex60217101990/terse/internal/cache"
-	"github.com/spf13/cobra"
 )
 
 func cmdGC() *cobra.Command {
@@ -17,7 +18,7 @@ func cmdGC() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gc",
 		Short: "Remove stale session state files by utility score",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if maxSize != "" {
 				_ = os.Setenv("QDF_CACHE_MAX_SIZE", maxSize)
 			}

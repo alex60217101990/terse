@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"io"
 	"net"
 	"strings"
@@ -14,7 +15,8 @@ import (
 // output (never-worse). This is the pure-Go fast path used by `qdf-hook post`
 // and `pretooluse`, and the sole client on platforms without qdf-hookc.
 func DialAndProxy(sockPath string, in io.Reader, out io.Writer, timeout time.Duration) error {
-	c, err := net.DialTimeout("unix", sockPath, timeout)
+	d := net.Dialer{Timeout: timeout}
+	c, err := d.DialContext(context.Background(), "unix", sockPath)
 	if err != nil {
 		return err
 	}
@@ -37,6 +39,8 @@ func DialAndProxy(sockPath string, in io.Reader, out io.Writer, timeout time.Dur
 // out first keeps the reply all-or-nothing.
 const minExchangeDeadline = 15 * time.Second
 
+// ProxyConn copies in to the connection and the connection's reply to out,
+// bounding the whole exchange by timeout (raised to minExchangeDeadline).
 func ProxyConn(c net.Conn, in io.Reader, out io.Writer, timeout time.Duration) error {
 	defer c.Close()
 	// timeout is a dial-scale bound; give the exchange at least

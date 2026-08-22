@@ -240,7 +240,7 @@ func handleGeneric(store hookcore.StateStore, toolName string, inp *protocol.Hoo
 	// because a single header line disqualifies the whole payload.
 	//
 	// It runs before the fold below, not after: dropping the gutter is what
-	// leaves neighbouring lines with a shared head for the fold to find.
+	// leaves neighboring lines with a shared head for the fold to find.
 	// replacementTokens is the token count of replacement once a gate has paid
 	// for it, so the next gate and the analytics record reuse it instead of
 	// tokenising the same string again. -1 means not counted yet.

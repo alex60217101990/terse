@@ -12,6 +12,7 @@ import (
 // Every wave-2 transform must (a) never panic, (b) never grow the input,
 // (c) keep lossless transforms reversible in the properties they promise.
 func fuzzNeverWorse(f *testing.F, fn func(string) string, emptyMeansNoWin bool) {
+	f.Helper()
 	f.Add("diff --git a/x b/x\n@@ -1 +1 @@\n-a\n+b\n")
 	f.Add("CONTAINER ID   IMAGE\nabc   img:1\n")
 	f.Add("Traceback (most recent call last):\n  File \"x\", line 1, in f\n    x\nE: boom\n")
@@ -56,6 +57,7 @@ func FuzzThinLineNumberRunsNeverCostsTokens(f *testing.F) {
 }
 
 func fuzzThinNeverCostsTokens(f *testing.F, thin func(string) string) {
+	f.Helper()
 	var numbered strings.Builder
 	for i := 1; i <= 24; i++ {
 		fmt.Fprintf(&numbered, "%d\t\tvalue := lookup(ctx, %q)\n", i, "key")

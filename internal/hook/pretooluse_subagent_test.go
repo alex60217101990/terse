@@ -28,8 +28,12 @@ func decidePreToolUse(t *testing.T, payload string) (decision, reason string) {
 		t.Fatalf("HandlePreToolUse: %v", err)
 	}
 	var resp map[string]any
-	if err := json.Unmarshal([]byte(out.String()), &resp); err != nil {
-		t.Fatalf("decode response %q: %v", out.String(), err)
+	// An empty response is the pass-through contract: a hook that has
+	// nothing to say writes nothing, so no hook_success record is made.
+	if raw := out.String(); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+			t.Fatalf("decode response %q: %v", out.String(), err)
+		}
 	}
 	hso, ok := resp["hookSpecificOutput"].(map[string]any)
 	if !ok {

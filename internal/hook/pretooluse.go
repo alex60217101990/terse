@@ -32,6 +32,10 @@ func HandlePreToolUse(r io.Reader, w io.Writer) error {
 // routeInput) share it. Routing through the daemon lets a repeated Read hit
 // the in-memory session instead of a fresh process + disk decode.
 func handlePreToolUse(store hookcore.StateStore, inp *protocol.HookInput, w io.Writer) error {
+	if inp.ToolName == "Bash" {
+		return handleBashPreToolUse(inp, w)
+	}
+
 	start := time.Now()
 
 	var ti protocol.ReadInput

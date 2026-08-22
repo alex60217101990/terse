@@ -2,6 +2,7 @@ package detect_test
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -98,7 +99,7 @@ func BenchmarkFoldRepeatedBlocks_Fuzzy(b *testing.B) {
 	mk := func(id int, ts string) string {
 		return "### request-log\n" +
 			"handler widget-service latency=42ms\n" +
-			"request id=" + fmt.Sprint(id) + " completed at " + ts + "\n" +
+			"request id=" + strconv.Itoa(id) + " completed at " + ts + "\n" +
 			"payload bytes=2048 checksum=deadbeefcafe1234\n" +
 			"status=ok worker=w1 retries=0\n"
 	}
@@ -116,7 +117,7 @@ func TestFoldRepeatedBlocks_FuzzyFoldsWithDiff(t *testing.T) {
 	mk := func(id int, ts string) string {
 		return "### request-log\n" +
 			"handler widget-service latency=42ms\n" +
-			"request id=" + fmt.Sprint(id) + " completed at " + ts + "\n" +
+			"request id=" + strconv.Itoa(id) + " completed at " + ts + "\n" +
 			"payload bytes=2048 checksum=deadbeefcafe1234\n" +
 			"status=ok worker=w1 retries=0\n"
 	}
@@ -136,7 +137,7 @@ func TestFoldRepeatedBlocks_FuzzyFoldsWithDiff(t *testing.T) {
 		}
 	}
 	if !strings.Contains(out, a) {
-		t.Errorf("first occurrence must stay verbatim")
+		t.Error("first occurrence must stay verbatim")
 	}
 }
 
@@ -173,7 +174,7 @@ func TestFoldRepeatedBlocks_ManyDiffsStayVerbatim(t *testing.T) {
 func TestFoldRepeatedBlocks_ExactCopyOfNearDupFoldsToBase(t *testing.T) {
 	mk := func(id int) string {
 		return "### job-record\n" +
-			"worker started job id=" + fmt.Sprint(id) + " on host node-alpha here\n" +
+			"worker started job id=" + strconv.Itoa(id) + " on host node-alpha here\n" +
 			"stage=complete elapsed unchanging descriptive tail to pass floor\n"
 	}
 	a := mk(1)

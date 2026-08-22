@@ -107,7 +107,10 @@ func plausibleGrepFile(seg string) bool {
 // mode, "tree" when delegated to the file-tree compressor, or "" (empty
 // summary) when the input doesn't look like grep output.
 func buildGrepSummary(content string) (string, string) {
-	groups := grepGroupsPool.Get().(map[string][]grepMatch)
+	groups, ok := grepGroupsPool.Get().(map[string][]grepMatch)
+	if !ok {
+		panic("grepGroupsPool: unexpected type")
+	}
 	// Cleared and returned to the pool on every exit path (len captured before
 	// clear() so the size guard sees the true entry count). The result string
 	// has already copied out any needed substrings via the Builder below.

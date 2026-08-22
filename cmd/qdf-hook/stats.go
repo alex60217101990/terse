@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alex60217101990/terse/internal/analytics"
 	"github.com/spf13/cobra"
+
+	"github.com/alex60217101990/terse/internal/analytics"
 )
 
 func cmdStats() *cobra.Command {
@@ -15,7 +16,7 @@ func cmdStats() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats",
 		Short: "Show token savings analytics",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			events, err := analytics.LoadEvents(days)
 			if err != nil {
 				return fmt.Errorf("load events: %w", err)

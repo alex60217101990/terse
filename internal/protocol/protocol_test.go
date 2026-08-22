@@ -139,3 +139,77 @@ func TestDecode_PlainStringContent(t *testing.T) {
 		t.Fatalf("Text() = %q, want %q", inp.ToolResponse.Text(), "hello world")
 	}
 }
+
+// TestReplace_CarriesHookEventName locks the PostToolUse response contract:
+// Claude Code validates hookSpecificOutput and requires hookEventName. Without
+// it the whole object is rejected, the compressed replacement is dropped, and
+// a validation error is injected into the context instead — costing far more
+// than the compression saved.
+func TestReplace_CarriesHookEventName(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodeOutput(&b, protocol.Replace("§ref:abc§")); err != nil {
+		t.Fatalf("EncodeOutput: %v", err)
+	}
+	got := b.String()
+	if !strings.Contains(got, `"hookEventName":"PostToolUse"`) {
+		t.Errorf("Replace output missing hookEventName: %s", got)
+	}
+	if !strings.Contains(got, `"updatedToolOutput":"§ref:abc§"`) {
+		t.Errorf("Replace output missing updatedToolOutput: %s", got)
+	}
+}
+
+// TestPassthrough_WritesNothing pins the cheapest hook response there is:
+// silence. Claude Code records a hook_success attachment for every hook that
+// writes anything at all — even "{}" — and that record then rides the prefix for
+// the rest of the session. Measured across 2,070 local transcripts: 26,517 such
+// empty records cost 6.01% of the entire token bill. A hook that writes nothing
+// produces no record, and means exactly what "{}" meant: do nothing.
+//
+// This matches what the daemon already does when dispatch fails — it closes the
+// connection with no reply and calls that a safe passthrough.
+func TestPassthrough_WritesNothing(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodeOutput(&b, protocol.Passthrough()); err != nil {
+		t.Fatalf("EncodeOutput: %v", err)
+	}
+	if got := b.String(); got != "" {
+		t.Errorf("Passthrough must write nothing, wrote %q", got)
+	}
+}
+
+// TestEncodeOutput_NilIsSilent covers the nil handle the daemon can reach.
+func TestEncodeOutput_NilIsSilent(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodeOutput(&b, nil); err != nil {
+		t.Fatalf("EncodeOutput(nil): %v", err)
+	}
+	if got := b.String(); got != "" {
+		t.Errorf("nil output must write nothing, wrote %q", got)
+	}
+}
+
+// TestEncodePreInput_RewritesCommand pins the one field Claude Code honors for
+// input rewriting. Probed against Claude Code 2.1.238: of updatedInput,
+// updatedToolInput, modifiedInput and toolInput, only updatedInput takes effect.
+//
+// permissionDecision "allow" rides along because the rewrite does not run
+// without it: measured live on 2026-08-22, a rewrite carrying updatedInput alone
+// is rejected with "Contains compound_statement". The user's deny and ask rules
+// are still evaluated, and against the ORIGINAL command.
+func TestEncodePreInput_RewritesCommand(t *testing.T) {
+	var b strings.Builder
+	if err := protocol.EncodePreInput(&b, "{ ls ; } > /tmp/c 2>&1"); err != nil {
+		t.Fatalf("EncodePreInput: %v", err)
+	}
+	got := b.String()
+	for _, want := range []string{
+		`"hookEventName":"PreToolUse"`,
+		`"permissionDecision":"allow"`,
+		`"updatedInput":{"command":"{ ls ; } > /tmp/c 2>&1"}`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("response missing %s: %s", want, got)
+		}
+	}
+}

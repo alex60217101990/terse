@@ -417,7 +417,10 @@ func (m *MemStore) FlushDirty() {
 	m.dirtySessions = make(map[string]*cache.SessionState)
 	m.dirtyMu.Unlock()
 
-	bufPtr := flushBufPool.Get().(*[]byte)
+	bufPtr, ok := flushBufPool.Get().(*[]byte)
+	if !ok {
+		panic("flushBufPool: unexpected type")
+	}
 	buf := *bufPtr
 
 	var failed map[string]*cache.SessionState

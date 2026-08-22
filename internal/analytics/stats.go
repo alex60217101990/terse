@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -49,8 +50,13 @@ type LatStat struct {
 	P99 float64 `json:"p99"`
 }
 
-func (s Stats) SavedBytes() int     { return s.TotalBytesIn - s.TotalBytesOut }
-func (s Stats) SavedTokens() int    { return s.TotalTokensIn - s.TotalTokensOut }
+// SavedBytes reports how many bytes the compression avoided sending over the wire.
+func (s Stats) SavedBytes() int { return s.TotalBytesIn - s.TotalBytesOut }
+
+// SavedTokens reports how many tokens the compression avoided billing the model for.
+func (s Stats) SavedTokens() int { return s.TotalTokensIn - s.TotalTokensOut }
+
+// OriginalTokens reports the token count the window would have cost with no compression at all.
 func (s Stats) OriginalTokens() int { return s.TotalTokensIn }
 
 // eventTokens returns an events token counts, falling back to the old bytes/4
@@ -72,10 +78,11 @@ func humanTokens(n int) string {
 	case n >= 1_000:
 		return fmt.Sprintf("%.1fk", float64(n)/1e3)
 	default:
-		return fmt.Sprintf("%d", n)
+		return strconv.Itoa(n)
 	}
 }
 
+// SavingsPercent reports the fraction of the original byte count that compression removed, as 0-100.
 func (s Stats) SavingsPercent() float64 {
 	if s.TotalBytesIn == 0 {
 		return 0
@@ -109,6 +116,7 @@ func normalizeHook(h string) string {
 	return h
 }
 
+// ComputeStats aggregates a session's recorded events into the summary numbers reports display.
 func ComputeStats(events []Event) Stats {
 	s := Stats{
 		ByHookAction: make(map[string]map[string]int),
@@ -316,7 +324,12 @@ func PrintStats(s Stats, jsonOut bool, style string, w io.Writer) {
 	if jsonOut {
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(s)
+		if err := enc.Encode(s); err != nil {
+			// A NaN/Inf percentage (e.g. TotalBytesIn == 0) is the only way
+			// this can fail; report it rather than leaving the caller with
+			// silently truncated JSON.
+			fmt.Fprintf(os.Stderr, "qdf-hook: stats: encode json: %v\n", err)
+		}
 		return
 	}
 

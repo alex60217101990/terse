@@ -6,6 +6,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -120,7 +121,8 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 	// daemon (dial succeeds) — which we must not clobber — from a stale file
 	// (dial refused/absent), which we remove so net.Listen won't fail with
 	// "address already in use".
-	if c, derr := net.DialTimeout("unix", sockPath, 100*time.Millisecond); derr == nil {
+	dialer := net.Dialer{Timeout: 100 * time.Millisecond}
+	if c, derr := dialer.DialContext(context.Background(), "unix", sockPath); derr == nil {
 		_ = c.Close()
 		return fmt.Errorf("daemon already running at %s", sockPath)
 	}
@@ -139,20 +141,24 @@ func Serve(sockPath string, idle time.Duration, version string) error {
 		fmt.Fprintln(os.Stderr, msg)
 	}
 
-	ln, err := net.Listen("unix", sockPath)
+	var lc net.ListenConfig
+	ln, err := lc.Listen(context.Background(), "unix", sockPath)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			if mkErr := os.MkdirAll(filepath.Dir(sockPath), 0o700); mkErr != nil {
 				return mkErr
 			}
-			ln, err = net.Listen("unix", sockPath)
+			ln, err = lc.Listen(context.Background(), "unix", sockPath)
 		}
 		if err != nil {
 			return err
 		}
 	}
 	defer func() { _ = ln.Close() }()
-	ul := ln.(*net.UnixListener)
+	ul, ok := ln.(*net.UnixListener)
+	if !ok {
+		return fmt.Errorf("daemon: listener for %q is not a *net.UnixListener", sockPath)
+	}
 
 	// Open one long-lived analytics appender fd for the whole daemon
 	// lifetime and route every hook handler's analytics.Record through it
@@ -375,7 +381,8 @@ func writeStats(c net.Conn) {
 // fails or times out — indistinguishable reasons for treating the daemon as
 // not (yet) live.
 func ping(sockPath string, timeout time.Duration) (string, error) {
-	c, err := net.DialTimeout("unix", sockPath, timeout)
+	dialer := net.Dialer{Timeout: timeout}
+	c, err := dialer.DialContext(context.Background(), "unix", sockPath)
 	if err != nil {
 		return "", err
 	}
@@ -403,7 +410,8 @@ func ping(sockPath string, timeout time.Duration) (string, error) {
 // already gone there's nothing to quit, and Ensure's subsequent wait/replace
 // logic handles that either way.
 func sendQuit(sockPath string) {
-	c, err := net.DialTimeout("unix", sockPath, pingProbe)
+	dialer := net.Dialer{Timeout: pingProbe}
+	c, err := dialer.DialContext(context.Background(), "unix", sockPath)
 	if err != nil {
 		return
 	}
@@ -421,9 +429,10 @@ func sendQuit(sockPath string) {
 // waitGone polls sockPath until dialing it fails (the previous daemon has
 // released the socket) or timeout elapses.
 func waitGone(sockPath string, timeout time.Duration) {
+	dialer := net.Dialer{Timeout: 50 * time.Millisecond}
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		c, err := net.DialTimeout("unix", sockPath, 50*time.Millisecond)
+		c, err := dialer.DialContext(context.Background(), "unix", sockPath)
 		if err != nil {
 			return
 		}
@@ -470,7 +479,7 @@ func Ensure(sockPath, exePath, version string) error {
 		waitGone(sockPath, time.Second)
 	}
 
-	cmd := exec.Command(exePath, "daemon", "--serve")
+	cmd := exec.CommandContext(context.Background(), exePath, "daemon", "--serve")
 	cmd.SysProcAttr = detachSysProcAttr()
 	// stdin/stdout are left nil (exec connects them to /dev/null) so the
 	// daemon never holds the hook's pipes open. stderr goes to a log file

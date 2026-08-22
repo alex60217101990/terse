@@ -11,8 +11,8 @@ import (
 )
 
 // makeReadInput marshals a PostToolUse Read hook payload as JSON.
-func makeReadInput(t testing.TB, sessionID, path, content string) string {
-	t.Helper()
+func makeReadInput(tb testing.TB, sessionID, path, content string) string {
+	tb.Helper()
 	inp := map[string]any{
 		"session_id":    sessionID,
 		"tool_name":     "Read",
@@ -38,8 +38,12 @@ func TestReadHook_FirstRead_PassThrough(t *testing.T) {
 	}
 
 	var resp protocol.HookOutput
-	if err := json.Unmarshal([]byte(out.String()), &resp); err != nil {
-		t.Fatalf("invalid JSON output: %v / raw: %s", err, out.String())
+	// An empty response is the pass-through contract: a hook that has
+	// nothing to say writes nothing, so no hook_success record is made.
+	if raw := out.String(); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+			t.Fatalf("invalid JSON output: %v / raw: %s", err, out.String())
+		}
 	}
 	// First read: pass through (no updatedToolOutput OR updatedToolOutput == original).
 	if resp.HookSpecificOutput != nil {

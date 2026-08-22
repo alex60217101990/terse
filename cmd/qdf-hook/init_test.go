@@ -237,6 +237,27 @@ func TestRunInit_HybridAndSessionStart(t *testing.T) {
 		t.Errorf("PostToolUse command missing %q: %q", shquote(exe)+" post", postCmd)
 	}
 
+	// (a2) PreToolUse carries a hybrid entry for BOTH the Read fast-path and
+	// the Bash output-capping rewrite. One matcher can't cover both tools —
+	// Claude Code only invokes a hook for the tool names its matcher names —
+	// so init must register a separate entry per matcher, both pointing at
+	// the same "pretooluse" command.
+	isHybridPre := func(cmd string) bool { return isQdfHookCommand(cmd, "pretooluse") }
+	preMatchers := map[string]int{}
+	for _, e := range hb["PreToolUse"] {
+		for _, h := range e.Hooks {
+			if isHybridPre(h.Command) {
+				preMatchers[e.Matcher]++
+			}
+		}
+	}
+	if preMatchers["Read"] != 1 {
+		t.Errorf("expected exactly 1 PreToolUse hook for matcher %q, got %d", "Read", preMatchers["Read"])
+	}
+	if preMatchers["Bash"] != 1 {
+		t.Errorf("expected exactly 1 PreToolUse hook for matcher %q, got %d", "Bash", preMatchers["Bash"])
+	}
+
 	// (b) exactly one SessionStart daemon --ensure hook.
 	if n := countMatching(hb, "SessionStart", isEnsure); n != 1 {
 		t.Fatalf("expected exactly 1 SessionStart ensure hook, got %d", n)
@@ -260,6 +281,18 @@ func TestRunInit_HybridAndSessionStart(t *testing.T) {
 	if n := countMatching(hb2, "SessionStart", isEnsure); n != 1 {
 		t.Errorf("expected still exactly 1 SessionStart ensure hook after second init, got %d", n)
 	}
+	preMatchers2 := map[string]int{}
+	for _, e := range hb2["PreToolUse"] {
+		for _, h := range e.Hooks {
+			if isHybridPre(h.Command) {
+				preMatchers2[e.Matcher]++
+			}
+		}
+	}
+	if preMatchers2["Read"] != 1 || preMatchers2["Bash"] != 1 {
+		t.Errorf("expected still exactly 1 PreToolUse hook per matcher after second init, got Read=%d Bash=%d",
+			preMatchers2["Read"], preMatchers2["Bash"])
+	}
 }
 
 // TestHookCommand_UsesNativeClientNotNc covers Task 5: the daemon-hybrid
@@ -282,7 +315,8 @@ func TestHookCommand_UsesNativeClientNotNc(t *testing.T) {
 func TestMergeHooks_UpgradesLegacyNcToNativeClient(t *testing.T) {
 	exe := "/Users/x/.local/bin/qdf-hook"
 	hb := hooksBlock{"PostToolUse": []hookEntry{{Matcher: ".*", Hooks: []hookCmd{
-		{Type: "command", Command: "nc -U ~/.qdf-hook/d.sock 2>/dev/null || " + exe + " post"}}}}}
+		{Type: "command", Command: "nc -U ~/.qdf-hook/d.sock 2>/dev/null || " + exe + " post"},
+	}}}}
 	if changed := mergeHooks(hb, exe); changed == 0 {
 		t.Fatal("expected legacy nc entry to be upgraded")
 	}
@@ -311,7 +345,48 @@ func TestHookCommand_SpacedPathQuotedAndIdempotent(t *testing.T) {
 	}
 	// A foreign tool sharing the subword must still not match.
 	if isQdfHookCommand("/opt/sqz hook post", "post") {
-		t.Fatalf("must not match a foreign tool's command")
+		t.Fatal("must not match a foreign tool's command")
+	}
+}
+
+// TestMergeHooks_SameSubDifferentMatchersBothInstalled covers PreToolUse's two
+// "pretooluse" registrations (Read, Bash): commandPresent/upgradeExisting
+// must key on matcher as well as sub, or installing the Read entry first
+// would make the Bash entry look "already present" and it would never be
+// added.
+func TestMergeHooks_SameSubDifferentMatchersBothInstalled(t *testing.T) {
+	hb := hooksBlock{}
+	added := mergeHooks(hb, "qdf-hook")
+	if added != len(qdfHooks) {
+		t.Fatalf("expected all %d hooks added, got %d", len(qdfHooks), added)
+	}
+
+	matchers := map[string]int{}
+	for _, e := range hb["PreToolUse"] {
+		for _, h := range e.Hooks {
+			if isQdfHookCommand(h.Command, "pretooluse") {
+				matchers[e.Matcher]++
+			}
+		}
+	}
+	if matchers["Read"] != 1 || matchers["Bash"] != 1 {
+		t.Fatalf("expected 1 pretooluse hook for each of Read and Bash, got %v", matchers)
+	}
+
+	// Idempotency: a second merge adds nothing, and both matchers survive.
+	if again := mergeHooks(hb, "qdf-hook"); again != 0 {
+		t.Errorf("second merge should add 0, added %d", again)
+	}
+	matchers2 := map[string]int{}
+	for _, e := range hb["PreToolUse"] {
+		for _, h := range e.Hooks {
+			if isQdfHookCommand(h.Command, "pretooluse") {
+				matchers2[e.Matcher]++
+			}
+		}
+	}
+	if matchers2["Read"] != 1 || matchers2["Bash"] != 1 {
+		t.Errorf("second merge changed pretooluse registrations: %v", matchers2)
 	}
 }
 
