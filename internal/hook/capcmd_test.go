@@ -12,21 +12,26 @@ func TestCappable(t *testing.T) {
 	}{
 		{"ls -la", true},
 		{"go build ./...", true},
-		{"cd /tmp && ls", true},          // && is safe under brace grouping
-		{"make a || make b", true},       // so is ||
-		{"cd /tmp; ls", true},            // and ;
-		{"ls | head -20", true},          // a pipeline stays inside the group
-		{"cat f > out.txt", false},       // routes its own stdout
-		{"go build ./... 2>&1", true},    // a merge routes nothing out
-		{"go build 2>&1 > o.txt", false}, // a merge plus a real redirect still routes
-		{"sort < in.txt", false},         // routes its own stdin
-		{"cat <<'EOF'\nx\nEOF", false},   // heredoc
-		{"sleep 5 &", false},             // backgrounds; capture would race
-		{"echo $(date)", false},          // substitution consumed by the caller
-		{"echo `date`", false},           // same, backtick form
-		{"sleep 5\\&&", false},           // \& is a literal; the second & backgrounds
-		{"echo a\\||wc -l", true},        // \| is a literal; the real pipe is fine
-		{"", false},                      // nothing to wrap
+		{"cd /tmp && ls", true},           // && is control flow under brace grouping
+		{"make a || make b", true},        // so is ||
+		{"cd /tmp; ls", true},             // and ;
+		{"ls | head -20", true},           // a pipeline stays inside the group
+		{"seq 1 9|grep 7", true},          // no spaces around the pipe
+		{"ls |& wc -l", true},             // "|&" pipes stderr, it does not background
+		{"cat f > out.txt", true},         // its own redirect is applied after the group's
+		{"go build ./... 2>&1", true},     // a merge routes nothing out
+		{"go build 2>&1 > o.txt", true},   // both, still fine
+		{"ls &> all.txt", true},           // "&>" is a redirect, not a background
+		{"sort < in.txt", true},           // stdin is untouched by the wrapper
+		{"cat <<'EOF'\nx\nEOF", true},     // the heredoc body feeds the group
+		{"echo $(date)", true},            // the shell consumes the substitution
+		{"echo `date`", true},             // same, backtick form
+		{"V=$(id -u); echo $V", true},     // an assignment survives: no subshell
+		{"sleep 5 &", false},              // backgrounds; the capture would be raced
+		{"make build & make test", false}, // same, between two commands
+		{"sleep 5\\&&", false},            // \\& is a literal; the second & backgrounds
+		{"echo a\\||wc -l", true},         // \\| is a literal; the real pipe is fine
+		{"", false},                       // nothing to wrap
 	}
 	for _, c := range cases {
 		if got := cappable(c.cmd); got != c.want {
@@ -110,10 +115,10 @@ func TestPreToolUse_Bash_RewritesWhenCappable(t *testing.T) {
 	}
 }
 
-func TestPreToolUse_Bash_LeavesRedirectingCommandAlone(t *testing.T) {
+func TestPreToolUse_Bash_LeavesBackgroundCommandAlone(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	in := `{"session_id":"s","hook_event_name":"PreToolUse","tool_name":"Bash",` +
-		`"tool_input":{"command":"ls > out.txt"}}`
+		`"tool_input":{"command":"long-build &"}}`
 	var out strings.Builder
 	if err := HandlePreToolUse(strings.NewReader(in), &out); err != nil {
 		t.Fatalf("HandlePreToolUse: %v", err)

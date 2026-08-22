@@ -15,20 +15,17 @@ import (
 	"github.com/alex60217101990/terse/internal/protocol"
 )
 
-// classDisqualify marks bytes that make a command unsafe or pointless to wrap.
-// A table lookup keeps the scan branchless per byte; the two-character forms
-// (&&, ||, $() are resolved by a single lookahead at the marked byte.
-const classDisqualify uint8 = 1
-
-var cmdClass [256]uint8
-
-func init() {
-	for _, c := range []byte{'|', '>', '<', '&', '`', '$'} {
-		cmdClass[c] |= classDisqualify
-	}
-}
-
 // cappable reports whether cmd may be wrapped in a capture.
+//
+// Almost everything qualifies. A brace group is not a subshell, so a wrapped
+// command keeps the caller's shell: cd, exports and assignments persist, exit
+// codes propagate, pipelines keep their SIGPIPE behavior, heredocs feed the
+// group, and a command's own redirections win over the group's because they are
+// applied later (all verified against bash, sh and zsh).
+//
+// Two things are refused. A bare "&" backgrounds the command, and the wrapper
+// would then read a capture the job is still writing. A bare interactive
+// session (§6, denied below) has nothing to capture in the first place.
 //
 // One forward pass, early exit on the first disqualifier, no allocation and no
 // regexp: this runs before every Bash call the agent makes.
@@ -38,52 +35,20 @@ func cappable(cmd string) bool {
 		return false
 	}
 	for i := 0; i < len(b); i++ {
-		c := b[i]
-		if c == '\\' {
+		switch b[i] {
+		case '\\':
 			i++ // the next byte is escaped: it is data, not shell syntax
-			continue
-		}
-		if cmdClass[c] == 0 {
-			continue
-		}
-		switch c {
-		case '|':
-			// A pipeline stays inside the brace group, so its output, its exit
-			// code and its SIGPIPE behavior are unchanged by the wrapper
-			// (verified against bash, sh and zsh). "|&" is a different beast —
-			// the '&' that follows disqualifies it on the next iteration.
-			if i+1 < len(b) && b[i+1] == '|' {
-				i++
-			}
-			continue
 		case '&':
-			// "&&" is ordinary control flow and stays in the current shell
-			// under brace grouping. A single one backgrounds: the capture would
-			// be raced.
-			if i+1 < len(b) && b[i+1] == '&' {
+			// Every other form of "&" is not a background: "&&" is control
+			// flow, ">&"/"<&" duplicate a descriptor, "|&" pipes stderr too,
+			// and "&>" redirects both streams.
+			switch {
+			case i+1 < len(b) && (b[i+1] == '&' || b[i+1] == '>'):
 				i++
-				continue
-			}
-			return false
-		case '$':
-			if i+1 < len(b) && b[i+1] == '(' {
+			case i > 0 && (b[i-1] == '>' || b[i-1] == '<' || b[i-1] == '|'):
+			default:
 				return false
 			}
-			// A plain variable reference is fine.
-		case '>':
-			// "2>&1" only merges the two streams; it routes nothing out of the
-			// command, and the wrapper's own "> capture 2>&1" already does the
-			// same job. Skipping it keeps the biggest single class of otherwise
-			// ordinary commands cappable: measured on 24,329 corpus Bash calls,
-			// commands whose only redirect is a merge carry 4.2% of all
-			// over-cap output bytes.
-			if i >= 1 && b[i-1] == '2' && i+2 < len(b) && b[i+1] == '&' && b[i+2] == '1' {
-				i += 2
-				continue
-			}
-			return false
-		default: // '<', '`'
-			return false
 		}
 	}
 	return !denied(b)

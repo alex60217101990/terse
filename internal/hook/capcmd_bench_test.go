@@ -1,6 +1,12 @@
 package hook
 
-import "testing"
+import (
+	"encoding/json"
+	"io"
+	"testing"
+
+	"github.com/alex60217101990/terse/internal/protocol"
+)
 
 // The corpus median Bash command is about 50 bytes; this is that shape.
 const benchCmd = "GOWORK=off go test ./internal/hook/ -run TestSomething"
@@ -33,4 +39,29 @@ func BenchmarkWrapCommand(b *testing.B) {
 		buf = wrapCommand(buf[:0], benchCmd, "/Users/x/.qdf-hook/captures/abc.out", "abc", 1600)
 	}
 	_ = buf
+}
+
+// BenchmarkHandleBashPreToolUse measures the whole per-Bash-call path the
+// daemon runs: decode the tool input, decide, hash the capture id, ensure the
+// capture directory, rewrite, and encode the response.
+func BenchmarkHandleBashPreToolUse(b *testing.B) {
+	b.Setenv("HOME", b.TempDir())
+	raw, err := json.Marshal(map[string]string{"command": benchCmd})
+	if err != nil {
+		b.Fatal(err)
+	}
+	inp := &protocol.HookInput{
+		SessionID: "bench-session-0123456789abcdef",
+		ToolName:  "Bash",
+		ToolInput: raw,
+	}
+	if err := handleBashPreToolUse(inp, io.Discard); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if err := handleBashPreToolUse(inp, io.Discard); err != nil {
+			b.Fatal(err)
+		}
+	}
 }
