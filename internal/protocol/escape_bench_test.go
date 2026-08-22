@@ -2,23 +2,18 @@ package protocol_test
 
 import (
 	"encoding/json/jsontext"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/alex60217101990/terse/internal/protocol"
 )
 
-// Go 1.27 exports jsontext.AppendQuote, which does the same job as the
-// hand-rolled escaper. Kept as the record of a rejected swap.
-//
-// In isolation the stdlib wins by about 26% on every shape below. In place it
-// was worth 2.4% of the hook call (297 -> 290 ns), because the quotes it adds
-// have to be memmoved away — this escaper writes the *body* of a string that
-// is still being built. Against that it does not escape U+2028/U+2029, which
-// encoding/json does, so adopting it would fork the response bytes from the
-// encoder the differential test pins, and needs a fallback branch for the
-// invalid-UTF-8 case it rejects. Not worth 7 ns; revisit if the fused emitter
-// ever escapes more than one command per call.
+// AppendJSONString runs the standard library's encoder with the two options
+// that reproduce encoding/json (EscapeForJS, AllowInvalidUTF8). AppendQuote is
+// the same quoting WITHOUT options — kept here as the floor it costs to skip
+// them, and as the reason they are worth paying for: without EscapeForJS the
+// bytes fork from encoding/json on U+2028/U+2029.
 var escapeCases = []struct {
 	name string
 	s    string
@@ -57,4 +52,30 @@ func BenchmarkJsontextAppendQuote(b *testing.B) {
 			_ = buf
 		})
 	}
+}
+
+// Command sizes as they actually occur: measured over 23,857 cappable Bash
+// calls, p50 is 160 bytes, the mean 362, p90 793 and p99 3,141. The wrapper
+// embeds the command twice, so this is what the response encoder really pays.
+func BenchmarkAppendJSONString_Sizes(b *testing.B) {
+	for _, n := range []int{160, 362, 793, 3141} {
+		s := cmdOf(n)
+		b.Run(strconv.Itoa(n), func(b *testing.B) {
+			buf := make([]byte, 0, 8192)
+			b.ReportAllocs()
+			for b.Loop() {
+				buf = protocol.AppendJSONString(buf[:0], s)
+			}
+			_ = buf
+		})
+	}
+}
+
+// cmdOf builds a command-shaped string of about n bytes.
+func cmdOf(n int) string {
+	var b strings.Builder
+	for b.Len() < n {
+		b.WriteString(`GOWORK=off go test ./internal/hook/ -run 'TestSomething' -count=1 && echo "step done"; `)
+	}
+	return b.String()[:n]
 }

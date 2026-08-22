@@ -65,6 +65,7 @@ func TestCoverageProbe(t *testing.T) {
 	}
 
 	type stat struct{ n, bytes, over, nOver, maxB int }
+	var cmdLens []int
 	byClass := map[string]*stat{}
 	add := func(class string, n int) {
 		s := byClass[class]
@@ -145,6 +146,9 @@ func TestCoverageProbe(t *testing.T) {
 					}
 					delete(cmdByID, id)
 					add(classify(cmd), resultLen(m))
+					if cappable(cmd) {
+						cmdLens = append(cmdLens, len(cmd))
+					}
 				}
 			}
 		}
@@ -162,6 +166,15 @@ func TestCoverageProbe(t *testing.T) {
 		totalOver += v.over
 	}
 	sort.Slice(keys, func(i, j int) bool { return byClass[keys[i]].bytes > byClass[keys[j]].bytes })
+	sort.Ints(cmdLens)
+	if n := len(cmdLens); n > 0 {
+		sum := 0
+		for _, v := range cmdLens {
+			sum += v
+		}
+		t.Logf("cappable command length: n=%d mean=%d p50=%d p90=%d p99=%d max=%d",
+			n, sum/n, cmdLens[n/2], cmdLens[n*90/100], cmdLens[n*99/100], cmdLens[n-1])
+	}
 	t.Logf("paired Bash results: %d, output %d bytes, over-cap %d bytes", totalN, totalB, totalOver)
 	for _, k := range keys {
 		v := byClass[k]

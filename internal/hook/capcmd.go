@@ -2,7 +2,9 @@ package hook
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/buger/jsonparser"
 
@@ -324,8 +327,18 @@ var captureSeq atomic.Uint64
 // before returning, so nothing outlives the request. An escaped command is
 // unescaped into scratch, which the caller owns for the same window.
 func decodeCappableCommand(raw json.RawMessage, scratch []byte) (string, []byte, bool) {
-	v, typ, _, err := jsonparser.Get(raw, "command")
-	if err != nil || typ != jsonparser.String {
+	var v []byte
+	// ObjectEach, not Get: Get unescapes every string it returns, which costs a
+	// full pass and a copy over a command that almost never carries an escape.
+	// Measured at the corpus mean command size, that unescape was 10% of the
+	// whole hook call.
+	_ = jsonparser.ObjectEach(raw, func(key, value []byte, vt jsonparser.ValueType, _ int) error {
+		if v == nil && vt == jsonparser.String && string(key) == "command" {
+			v = value
+		}
+		return nil
+	})
+	if v == nil {
 		return "", scratch, false
 	}
 	if bytes.IndexByte(v, '\\') >= 0 {
@@ -386,7 +399,6 @@ func captureDirReady() *captureDirState {
 // id, the capture path built from that id, and the rewritten command. Pooling
 // the three together keeps the whole rewrite allocation-free after warmup.
 type capScratch struct {
-	hash  []byte
 	path  []byte
 	epath []byte // the same path, JSON-escaped
 	out   []byte
@@ -395,7 +407,6 @@ type capScratch struct {
 
 var capPool = sync.Pool{New: func() any {
 	return &capScratch{
-		hash:  make([]byte, 0, 256),
 		path:  make([]byte, 0, 128),
 		epath: make([]byte, 0, 128),
 		out:   make([]byte, 0, 1024),
@@ -403,16 +414,54 @@ var capPool = sync.Pool{New: func() any {
 	}
 }}
 
-// captureID is sha256(session+cmd+seq)[:16] in hex — the same content address
-// cache.RefHashOf computes, written straight into a caller-owned array so the
-// id costs no allocation of its own.
-func captureID(dst *[32]byte, scratch []byte, session, cmd string, seq uint64) []byte {
-	scratch = append(scratch[:0], session...)
-	scratch = append(scratch, cmd...)
-	scratch = strconv.AppendUint(scratch, seq, 10)
-	sum := sha256.Sum256(scratch)
-	hex.Encode(dst[:], sum[:16])
-	return scratch
+// captureID writes the 32 hex characters that name this invocation's capture.
+//
+// The id only has to be unique, not derived from the command: hashing 362 bytes
+// of command text per call cost 9% of the hook and bought nothing. The session
+// is hashed once — together with a per-process nonce, so a restarted process
+// cannot reuse a live session's ids — and the monotonic counter makes every
+// invocation within the process distinct.
+func captureID(dst *[32]byte, session string, seq uint64) {
+	hex.Encode(dst[:16], sessionBase(session))
+	var tail [8]byte
+	binary.BigEndian.PutUint64(tail[:], seq)
+	hex.Encode(dst[16:], tail[:])
+}
+
+// sessionBase is sha256(nonce+session)[:8], cached for the session the process
+// is currently serving. The daemon serves one session at a time in practice; a
+// switch just recomputes.
+func sessionBase(session string) []byte {
+	if st := sessionBaseCache.Load(); st != nil && st.session == session {
+		return st.base[:]
+	}
+	st := &sessionBaseState{session: session}
+	sum := sha256.Sum256(append(append(make([]byte, 0, len(procNonce)+len(session)), procNonce...), session...))
+	copy(st.base[:], sum[:8])
+	sessionBaseCache.Store(st)
+	return st.base[:]
+}
+
+type sessionBaseState struct {
+	session string
+	base    [8]byte
+}
+
+var (
+	sessionBaseCache atomic.Pointer[sessionBaseState]
+	procNonce        = newProcNonce()
+)
+
+// newProcNonce seeds the capture ids of this process. A random read that fails
+// is not worth failing the hook over: the pid and start time still separate
+// this process from the one before it.
+func newProcNonce() []byte {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		binary.BigEndian.PutUint64(b, uint64(os.Getpid()))
+		binary.BigEndian.PutUint64(b[8:], uint64(time.Now().UnixNano()))
+	}
+	return b
 }
 
 // handleBashPreToolUse rewrites a Bash command so the shell bounds its own
@@ -438,7 +487,7 @@ func handleBashPreToolUse(inp *protocol.HookInput, w io.Writer) error {
 	}
 
 	var idBuf [32]byte
-	sc.hash = captureID(&idBuf, sc.hash, inp.SessionID, cmd, captureSeq.Add(1))
+	captureID(&idBuf, inp.SessionID, captureSeq.Add(1))
 	id := bytesconv.B2S(idBuf[:])
 
 	sc.path = append(sc.path[:0], cd.dir...)

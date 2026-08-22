@@ -33,6 +33,10 @@ var scanPool = sync.Pool{New: func() any {
 
 var errNotObject = errors.New("protocol: request is not a JSON object")
 
+// errUnencodable reports a string the JSON encoder refused. It never happens
+// for a command Claude Code sent, and a caller that sees it emits nothing.
+var errUnencodable = errors.New("protocol: value cannot be encoded as JSON")
+
 // ErrStopScan ends a ScanObject walk early. It is not an error condition:
 // ScanObject returns nil when fn stops it.
 var ErrStopScan = errors.New("protocol: stop scan")
