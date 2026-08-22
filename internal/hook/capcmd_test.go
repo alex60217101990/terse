@@ -12,19 +12,21 @@ func TestCappable(t *testing.T) {
 	}{
 		{"ls -la", true},
 		{"go build ./...", true},
-		{"cd /tmp && ls", true},        // && is safe under brace grouping
-		{"make a || make b", true},     // so is ||
-		{"cd /tmp; ls", true},          // and ;
-		{"ls | head -20", false},       // agent already bounded its output
-		{"cat f > out.txt", false},     // routes its own stdout
-		{"sort < in.txt", false},       // routes its own stdin
-		{"cat <<'EOF'\nx\nEOF", false}, // heredoc
-		{"sleep 5 &", false},           // backgrounds; capture would race
-		{"echo $(date)", false},        // substitution consumed by the caller
-		{"echo `date`", false},         // same, backtick form
-		{"sleep 5\\&&", false},         // \& is a literal; the second & backgrounds
-		{"echo a\\||wc -l", false},     // \| is a literal; the second | is a real pipe
-		{"", false},                    // nothing to wrap
+		{"cd /tmp && ls", true},          // && is safe under brace grouping
+		{"make a || make b", true},       // so is ||
+		{"cd /tmp; ls", true},            // and ;
+		{"ls | head -20", false},         // agent already bounded its output
+		{"cat f > out.txt", false},       // routes its own stdout
+		{"go build ./... 2>&1", true},    // a merge routes nothing out
+		{"go build 2>&1 > o.txt", false}, // a merge plus a real redirect still routes
+		{"sort < in.txt", false},         // routes its own stdin
+		{"cat <<'EOF'\nx\nEOF", false},   // heredoc
+		{"sleep 5 &", false},             // backgrounds; capture would race
+		{"echo $(date)", false},          // substitution consumed by the caller
+		{"echo `date`", false},           // same, backtick form
+		{"sleep 5\\&&", false},           // \& is a literal; the second & backgrounds
+		{"echo a\\||wc -l", false},       // \| is a literal; the second | is a real pipe
+		{"", false},                      // nothing to wrap
 	}
 	for _, c := range cases {
 		if got := cappable(c.cmd); got != c.want {
@@ -33,28 +35,30 @@ func TestCappable(t *testing.T) {
 	}
 }
 
-// TestCappable_Interactive covers spec §6's interactive/streaming deny list:
-// wrapping sends the program's stdout to a file, which is wrong for anything
-// the caller drives or streams from.
+// TestCappable_Interactive covers spec §6's interactive/streaming deny list.
+// The list is narrow on purpose: a shell tool never types into a REPL, so only
+// the bare, argument-less form of a session program is refused.
 func TestCappable_Interactive(t *testing.T) {
 	cases := []struct {
 		cmd  string
 		want bool
 	}{
-		{"vim foo", false},
-		{"ssh host uptime", false},
-		{"less README.md", false},
-		{"top -l 1", false},
-		{"python", false},
+		{"vim foo", false},               // drives a terminal whatever follows
+		{"top -l 1", false},              // same
+		{"python", false},                // a bare REPL
+		{"python3", false},               // same
+		{"psql; echo done", false},       // the session ends its segment
 		{"/usr/bin/vi notes.txt", false}, // matched on the basename
 		{"GOWORK=off vim foo", false},    // env assignments are skipped
-		{"cargo watch -x test", false},   // watch anywhere in the words
-		{"go test --watch ./...", false}, // long flag form
-		{"tsc -w", false},                // short flag form
+		{"cd /tmp && vim x", false},      // a separator re-arms the scan
+		{"cargo watch -x test", false},   // the watch program
+		{"go test --watch ./...", false}, // the long flag form
+		{"ssh host uptime", true},        // ssh is not on the list: no TTY either way
+		{"python3 -c 'print(1)'", true},  // a script run, not a session
+		{"less README.md", true},         // reads as cat once stdout is a file
 		{"vimdiff-report --list", true},  // prefix of a denied name only
-		{"git commit -m 'ssh'", true},    // denied name only as a word
-		{"grep -w pattern file", false},  // spec §6 denies a bare -w word
-		{"grep -we pattern file", true},  // only the exact word, not a prefix
+		{"git commit -m 'ssh'", true},    // denied name only in program position
+		{"grep -w pattern file", true},   // -w is a word-match flag far more often
 	}
 	for _, c := range cases {
 		if got := cappable(c.cmd); got != c.want {

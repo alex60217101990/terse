@@ -294,6 +294,19 @@ func EncodePre(w io.Writer, decision, reason string) error {
 // updatedInput is the only field Claude Code honors for input rewriting; the
 // transcript still records the model's ORIGINAL command, so the replacement text
 // costs no context tokens however long it is. Only the command's OUTPUT changes.
+//
+// permissionDecision "allow" is required, not decoration. Measured live against
+// Claude Code on 2026-08-22: without it the rewritten command is rejected before
+// it runs with "Contains compound_statement" — the permission analyzer refuses to
+// evaluate the wrapper's if/then/else shape — and the tool call fails outright.
+// With it, the same rewrite capped a 23,893-byte output to 1,689 bytes.
+//
+// What "allow" does NOT do, also measured: it does not override the user's
+// rules. A deny rule on the model's ORIGINAL command still blocked the call
+// through the rewrite, an ask rule still forced a prompt, and a deny rule
+// matching only the wrapper's own text never fired — so rules are evaluated
+// against what the model wrote, and the rewrite is invisible to them. The one
+// thing it does skip is the prompt for a command no rule covers.
 func EncodePreInput(w io.Writer, cmd string) error {
 	type bashInput struct {
 		Command string `json:"command"`

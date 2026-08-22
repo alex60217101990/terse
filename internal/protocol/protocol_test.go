@@ -192,6 +192,11 @@ func TestEncodeOutput_NilIsSilent(t *testing.T) {
 // TestEncodePreInput_RewritesCommand pins the one field Claude Code honors for
 // input rewriting. Probed against Claude Code 2.1.238: of updatedInput,
 // updatedToolInput, modifiedInput and toolInput, only updatedInput takes effect.
+//
+// permissionDecision "allow" rides along because the rewrite does not run
+// without it: measured live on 2026-08-22, a rewrite carrying updatedInput alone
+// is rejected with "Contains compound_statement". The user's deny and ask rules
+// are still evaluated, and against the ORIGINAL command.
 func TestEncodePreInput_RewritesCommand(t *testing.T) {
 	var b strings.Builder
 	if err := protocol.EncodePreInput(&b, "{ ls ; } > /tmp/c 2>&1"); err != nil {
