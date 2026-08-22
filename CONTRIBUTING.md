@@ -12,8 +12,8 @@ gofmt -w .                                # formatting
 go vet ./...
 ```
 
-Go 1.26+ is required (the code relies on `unsafe.String`, `b.Loop()`, and the
-1.26 allocator behavior).
+Go 1.27+ is required (the code relies on `unsafe.String`, `b.Loop()`, the
+`encoding/json/jsontext` decoder, and the 1.26+ allocator behavior).
 
 ## The one hard rule: measure before you optimize
 

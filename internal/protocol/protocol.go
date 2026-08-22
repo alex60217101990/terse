@@ -257,7 +257,7 @@ func DecodeInputBytes(data []byte) (*HookInput, error) {
 	// The five string fields are gathered raw and materialized together, so a
 	// request costs one string allocation instead of one per field.
 	var raw [numStrFields][]byte
-	err := scanObject(data, func(key, val []byte) error {
+	err := ScanObject(data, func(key, val []byte) error {
 		switch bytesconv.B2S(key) {
 		case "session_id":
 			raw[fieldSessionID] = val

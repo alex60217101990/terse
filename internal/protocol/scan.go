@@ -33,15 +33,20 @@ var scanPool = sync.Pool{New: func() any {
 
 var errNotObject = errors.New("protocol: request is not a JSON object")
 
-// scanObject walks the members of the top-level JSON object in data, calling fn
+// ErrStopScan ends a ScanObject walk early. It is not an error condition:
+// ScanObject returns nil when fn stops it.
+var ErrStopScan = errors.New("protocol: stop scan")
+
+// ScanObject walks the members of the top-level JSON object in data, calling fn
 // with each key (quotes stripped, escapes left as-is) and the member's raw
-// value.
+// value. Returning ErrStopScan from fn ends the walk without an error, so a
+// caller after one field pays only for the members before it.
 //
 // Both slices ALIAS data — jsontext hands back values that live in the
 // decoder's own buffer and are invalidated by the next read, so the offsets are
 // used to point back into the caller's bytes instead. A caller that keeps a
 // value beyond data's lifetime must copy it.
-func scanObject(data []byte, fn func(key, val []byte) error) error {
+func ScanObject(data []byte, fn func(key, val []byte) error) error {
 	s, _ := scanPool.Get().(*scanner)
 	if s == nil {
 		rd := bytes.NewReader(nil)
@@ -74,6 +79,9 @@ func scanObject(data []byte, fn func(key, val []byte) error) error {
 			k = k[1 : len(k)-1] // strip the key's quotes
 		}
 		if err := fn(k, v); err != nil {
+			if errors.Is(err, ErrStopScan) {
+				return nil
+			}
 			return err
 		}
 	}

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/buger/jsonparser"
+
 	"github.com/alex60217101990/terse/internal/protocol"
 )
 
@@ -165,6 +167,32 @@ func BenchmarkDecode_JsontextPooled(b *testing.B) {
 		decPool.Put(dec)
 		if session == "" || tool == "" || event == "" || len(scratch) == 0 {
 			b.Fatal("missing field")
+		}
+	}
+}
+
+// BenchmarkDecode_Jsonparser is the same field pull through the dependency the
+// repo already carries: a raw byte scan with no JSON validation.
+func BenchmarkDecode_Jsonparser(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		var session, tool, event string
+		var input []byte
+		err := jsonparser.ObjectEach(hookReq, func(key, val []byte, _ jsonparser.ValueType, _ int) error {
+			switch string(key) {
+			case "session_id":
+				session = string(val)
+			case "tool_name":
+				tool = string(val)
+			case "hook_event_name":
+				event = string(val)
+			case "tool_input":
+				input = val
+			}
+			return nil
+		})
+		if err != nil || session == "" || tool == "" || event == "" || len(input) == 0 {
+			b.Fatal("miss")
 		}
 	}
 }
