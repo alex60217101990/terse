@@ -8,7 +8,7 @@
 # Base pinned by digest (Scorecard Pinned-Dependencies) and pulled from
 # mirror.gcr.io — Google's pull-through cache of Docker Hub official images:
 # no rate limits and far fewer outages than registry-1.docker.io in CI.
-FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.27@sha256:65b6f280bf050ec5af12716857e8ea8439d694dbba8f31ceeb7630670071f2bb AS build
+FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 AS build
 ARG VERSION=dev
 ARG TARGETOS
 ARG TARGETARCH
