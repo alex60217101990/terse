@@ -145,31 +145,24 @@ homebrew_casks:
     # user ever runs the tool, so clearing com.apple.quarantine here lets both
     # binaries launch normally with zero manual steps. must_succeed:false so a
     # future signed/notarized release (where the flag is absent) still installs.
-    hooks:
-      post:
-        # Install the matching native client next to qdf-hook. chmod the
-        # DESTINATION (not the staged source, which the install never uses):
-        # FileUtils.cp is not guaranteed to preserve mode across Ruby/FileUtils
-        # versions and platforms, so set 0755 on the copy explicitly rather than
-        # rely on it — otherwise qdf-hookc could land non-executable and every
-        # hook would silently fall back to the CLI.
-        install: |
-          system_command "/usr/bin/xattr",
-                         args: ["-dr", "com.apple.quarantine", staged_path],
-                         must_succeed: false
-          client = Dir["#{staged_path}/qdf-hookc/qdf-hookc-*"].first
-          if client
-            bin = "#{HOMEBREW_PREFIX}/bin/qdf-hookc"
-            FileUtils.cp client, bin
-            FileUtils.chmod 0755, bin
-            system_command "/usr/bin/xattr",
-                           args: ["-dr", "com.apple.quarantine", bin],
-                           must_succeed: false
-          end
-        # Remove the copied client on uninstall (the `binary` stanza only tracks
-        # qdf-hook, so this file would otherwise be orphaned).
-        uninstall: |
-          FileUtils.rm_f "#{HOMEBREW_PREFIX}/bin/qdf-hookc"
+    #
+    # Homebrew 7 deprecated the Ruby-block `postflight`/`uninstall_postflight`
+    # stanzas (which is what `hooks.post` renders) in favour of the declarative
+    # `*_steps` DSL, so the stanzas go in verbatim through custom_block. The
+    # quarantine strip runs first, so the copied client inherits a clean file;
+    # chmod targets the DESTINATION explicitly so qdf-hookc never lands
+    # non-executable (every hook would silently fall back to the CLI). The
+    # uninstall step removes the copy, which the `binary` stanza doesn't track.
+    custom_block: |
+      postflight_steps do
+        run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ "{{" }}staged_path{{ "}}" }}"], must_succeed: false
+        copy "{{ "{{" }}staged_path{{ "}}" }}/qdf-hookc/qdf-hookc-*", "{{ "{{" }}HOMEBREW_PREFIX{{ "}}" }}/bin/qdf-hookc", source_glob: true
+        set_permissions "{{ "{{" }}HOMEBREW_PREFIX{{ "}}" }}/bin/qdf-hookc", "0755"
+      end
+
+      uninstall_postflight_steps do
+        remove "{{ "{{" }}HOMEBREW_PREFIX{{ "}}" }}/bin/qdf-hookc"
+      end
     caveats: |
       Wire qdf-hook into Claude Code, then restart it:
         qdf-hook init
