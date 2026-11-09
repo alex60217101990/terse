@@ -63,7 +63,7 @@ vet:
 	$(GO) vet ./...
 
 lint:
-	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run --timeout=5m
+	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run --timeout=5m
 
 test:
 	CGO_ENABLED=0 $(GO) test -race -count=1 -timeout=10m -coverprofile=coverage.out -covermode=atomic ./...
