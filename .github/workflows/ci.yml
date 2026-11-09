@@ -88,7 +88,10 @@ jobs:
           # v2.13.1 is the first release built with Go 1.27; an older binary
           # refuses the config outright ("the Go language version (go1.26) used
           # to build golangci-lint is lower than the targeted Go version").
-          version: v2.13.1
+          # v2.15.0 is the minimum for go 1.27.2: earlier builds bundle an
+          # x/tools that can't decode its stdlib export data ("export data
+          # version 5 is greater than maximum supported version 4", typecheck).
+          version: v2.15.0
           args: --timeout=5m
 
   client:
